@@ -29,7 +29,7 @@ export default function MorePage() {
 
       <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-white/90 text-black backdrop-blur">
         <div className="mx-auto flex max-w-md items-center justify-between px-6 py-3 text-[11px]">
-          <Link href="/" className="text-zinc-500">
+          <Link href="/dashboard" className="text-zinc-500">
             Inicio
           </Link>
           <Link href="/team" className="text-zinc-500">

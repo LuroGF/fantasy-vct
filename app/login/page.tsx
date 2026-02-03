@@ -22,9 +22,12 @@ export default function LoginPage() {
             placeholder="Contrasena"
             className="h-12 rounded-full border border-zinc-700 bg-zinc-900/70 px-5 text-sm text-white placeholder:text-zinc-500"
           />
-          <button className="mt-2 w-full rounded-lg bg-[#c7b26b] py-3 text-sm font-semibold text-black">
+          <Link
+            href="/dashboard"
+            className="mt-2 w-full rounded-lg bg-[#c7b26b] py-3 text-center text-sm font-semibold text-black"
+          >
             Iniciar sesion
-          </button>
+          </Link>
         </form>
 
         <div className="text-center text-xs text-zinc-500">
