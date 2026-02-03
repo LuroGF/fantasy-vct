@@ -19,7 +19,7 @@ export default function TeamPage() {
 
         <div className="flex items-center justify-between mb-4">
           <span className="text-lg font-black uppercase tracking-tighter italic">Ministros</span>
-          <span className="bg-v-red text-[10px] font-black uppercase px-2 py-0.5 skew-x-[-12deg]">
+          <span className="bg-v-red text-[10px] font-black uppercase px-2 py-0.5 -skew-x-12">
             Registrado
           </span>
         </div>

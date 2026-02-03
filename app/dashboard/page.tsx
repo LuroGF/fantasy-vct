@@ -97,7 +97,7 @@ export default async function DashboardPage() {
         </div>
         
         <div className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer">
-          <div className="absolute top-0 right-0 w-24 h-full bg-gradient-to-l from-v-red/5 to-transparent pointer-events-none" />
+          <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
           <div className="flex justify-between items-start mb-6">
             <div>
               <h3 className="text-2xl italic tracking-tighter">Ministros</h3>
