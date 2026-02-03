@@ -31,8 +31,8 @@ const fallbackData: VlrPayload = {
 async function getVlrData(): Promise<VlrPayload> {
   try {
     const headersList = headers();
-    const host = headersList.get("host");
-    const protocol = headersList.get("x-forwarded-proto") ?? "http";
+    const host = (await headersList).get("host");
+    const protocol = (await headersList).get("x-forwarded-proto") ?? "http";
     const baseUrl =
       host !== null
         ? `${protocol}://${host}`
