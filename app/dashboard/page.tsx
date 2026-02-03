@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import { supabase } from "@/lib/supabase";
 
 type VlrPayload = {
   stats: { label: string; value: string }[];
@@ -28,7 +29,6 @@ const fallbackData: VlrPayload = {
   ],
 };
 
-import { supabase } from "@/lib/supabase";
 
 async function getDashboardStats() {
   const { count: playerCount } = await supabase.from('pro_players').select('*', { count: 'exact', head: true });
@@ -54,7 +54,7 @@ async function getVlrData(): Promise<VlrPayload> {
 
     if (!response.ok) throw new Error("VLR API error");
     return (await response.json()) as VlrPayload;
-  } catch (error) {
+  } catch {
     return fallbackData;
   }
 }
@@ -101,7 +101,7 @@ export default async function DashboardPage() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <h3 className="text-2xl italic tracking-tighter">Ministros</h3>
-              <p className="text-[10px] font-black uppercase text-v-red tracking-widest">Liga Privada // Activa</p>
+              <p className="text-[10px] font-black uppercase text-v-red tracking-widest">{"Liga Privada // Activa"}</p>
             </div>
             <div className="flex gap-2">
               <div className="w-8 h-8 flex items-center justify-center bg-v-white/5 border border-white/5 text-v-red font-black group-hover:bg-v-red group-hover:text-white transition-colors">+</div>

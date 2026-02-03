@@ -10,6 +10,14 @@ const EMEA_TIER1_TEAMS = [
   "FNC", "VIT", "TH", "KC", "NAVI", "BBL", "FUT", "GX", "GIA", "KOI", "TL", "M8", "GENTLE MATES", "HERETICS", "GIANTX"
 ];
 
+interface ScrapedPlayer {
+  nickname: string;
+  teamTag: string;
+  rating: number;
+  role: string;
+  market_value: number;
+}
+
 export async function GET() {
   try {
     const response = await fetch(VLR_STATS_URL, {
@@ -22,7 +30,7 @@ export async function GET() {
 
     const html = await response.text();
     const $ = cheerio.load(html);
-    const players: any[] = [];
+    const players: ScrapedPlayer[] = [];
 
     // Buscamos las filas de la tabla de estadísticas
     $(".wf-table tbody tr").each((i, el) => {
@@ -105,8 +113,9 @@ export async function GET() {
       message: `${playerUpserts.length} jugadores de EMEA Tier 1 actualizados correctamente.` 
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Scraper Error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

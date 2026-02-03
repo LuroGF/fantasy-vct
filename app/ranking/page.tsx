@@ -20,7 +20,7 @@ export default function RankingPage() {
 
       <div className="v-panel p-4">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[10px] font-black uppercase tracking-widest text-v-white/50">Temporada 2026 // Semana 04</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-v-white/50">{"Temporada 2026 // Semana 04"}</span>
           <div className="h-2 w-2 rounded-full bg-v-red" />
         </div>
         <div className="grid gap-2">

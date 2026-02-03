@@ -1,6 +1,17 @@
 import { supabase } from "@/lib/supabase";
 
-async function getMarketData() {
+interface Player {
+  id: string;
+  nickname: string;
+  role: string;
+  market_value: number;
+  pro_teams: {
+    tag: string;
+    name: string;
+  } | null;
+}
+
+async function getMarketData(): Promise<Player[]> {
   const { data: players, error } = await supabase
     .from('pro_players')
     .select('*, pro_teams(tag, name)')
@@ -10,7 +21,7 @@ async function getMarketData() {
     console.error("Error fetching market data:", error);
     return [];
   }
-  return players;
+  return (players as unknown as Player[]) || [];
 }
 
 export default async function MarketPage() {
@@ -47,14 +58,14 @@ export default async function MarketPage() {
           >
             {/* Background design element */}
             <div className="absolute -right-4 -top-8 text-6xl font-black text-white/5 italic select-none">
-              {(player as any).pro_teams?.tag}
+              {player.pro_teams?.tag}
             </div>
 
             <div className="flex items-center justify-between relative z-10">
               <div className="flex flex-col">
                 <span className="text-2xl font-black italic uppercase tracking-tighter">{player.nickname}</span>
                 <span className="text-[10px] font-black uppercase tracking-widest text-v-red">
-                  {(player as any).pro_teams?.tag} // {player.role}
+                  {`${player.pro_teams?.tag} // ${player.role}`}
                 </span>
               </div>
               <div className="text-right">
