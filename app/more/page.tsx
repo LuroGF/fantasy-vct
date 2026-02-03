@@ -11,41 +11,39 @@ const options = [
 
 export default function MorePage() {
   return (
-    <main className="min-h-screen bg-[#1f1f1f] text-white">
-      <section className="mx-auto w-full max-w-md px-5 pb-28 pt-10">
-        <h1 className="text-center text-3xl font-black tracking-tight">MAS</h1>
-        <div className="mt-5 grid gap-3">
-          {options.map((item) => (
-            <button
-              key={item}
-              className="flex items-center justify-between rounded-xl bg-white px-4 py-3 text-sm text-black shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
-            >
-              <span>{item}</span>
-              <span className="text-zinc-400">›</span>
-            </button>
-          ))}
+    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-4xl leading-none">Más</h1>
+          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Ajustes de Terminal</p>
         </div>
-      </section>
+      </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-white/90 text-black backdrop-blur">
-        <div className="mx-auto flex max-w-md items-center justify-between px-6 py-3 text-[11px]">
-          <Link href="/dashboard" className="text-zinc-500">
-            Inicio
-          </Link>
-          <Link href="/team" className="text-zinc-500">
-            Mi equipo
-          </Link>
-          <Link href="/market" className="text-zinc-500">
-            Mercado
-          </Link>
-          <Link href="/ranking" className="text-zinc-500">
-            Clasificacion
-          </Link>
-          <Link href="/more" className="font-semibold">
-            Mas
-          </Link>
+      <div className="v-panel p-2 space-y-1 bg-v-gray/40">
+        {options.map((item) => (
+          <button
+            key={item}
+            className="w-full flex items-center justify-between p-4 hover:bg-v-white/5 transition-colors group border-b border-white/5 last:border-0"
+          >
+            <span className={`text-sm font-black uppercase tracking-widest ${item === "Cerrar sesion" ? "text-v-red" : "text-v-white/80"}`}>
+              {item}
+            </span>
+            <span className="text-v-white/20 group-hover:text-v-red transition-colors text-xl">
+              //
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="text-center space-y-2 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-white/20">Valorant Fantasy VCT // 2026</p>
+        <div className="flex justify-center gap-4">
+          <div className="w-1 h-1 bg-v-red/20" />
+          <div className="w-1 h-1 bg-v-red/50" />
+          <div className="w-1 h-1 bg-v-red/20" />
         </div>
-      </nav>
-    </main>
+      </div>
+    </div>
+
   );
 }

@@ -1,82 +1,83 @@
-import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
-const players = [
-  { name: "K1ng", team: "FNC", role: "Duelista", price: "22.500.000" },
-  { name: "Niko", team: "VIT", role: "Iniciador", price: "18.200.000" },
-  { name: "Zell", team: "GX", role: "Controlador", price: "15.600.000" },
-  { name: "Maru", team: "BBL", role: "Centinela", price: "14.800.000" },
-];
+async function getMarketData() {
+  const { data: players, error } = await supabase
+    .from('pro_players')
+    .select('*, pro_teams(tag, name)')
+    .order('market_value', { ascending: false });
 
-export default function MarketPage() {
+  if (error) {
+    console.error("Error fetching market data:", error);
+    return [];
+  }
+  return players;
+}
+
+export default async function MarketPage() {
+  const players = await getMarketData();
+
   return (
-    <main className="min-h-screen bg-[#1f1f1f] text-white">
-      <section className="mx-auto w-full max-w-md px-5 pb-28 pt-10">
-        <h1 className="text-center text-3xl font-black tracking-tight">
-          MERCADO
-        </h1>
-        <div className="mt-4 rounded-2xl border border-zinc-700 bg-black/60 p-4">
-          <div className="text-xs uppercase tracking-wide text-zinc-500">
-            Filtros
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {["Rol", "Equipo", "Precio", "Forma"].map((label) => (
-              <button
-                key={label}
-                className="rounded-lg border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-xs text-zinc-200"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-4xl leading-none">Mercado</h1>
+          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Transferencias VCT EMEA</p>
         </div>
+      </div>
 
-        <div className="mt-4 grid gap-3">
-          {players.map((player) => (
-            <div
-              key={player.name}
-              className="rounded-xl bg-white px-4 py-3 text-sm text-black shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+      <div className="v-panel p-4 space-y-4">
+        <div className="text-[10px] uppercase tracking-widest font-black text-v-white/40">Filtros de Búsqueda</div>
+        <div className="grid grid-cols-2 gap-3">
+          {["ROL", "EQUIPO", "PRECIO", "FORMA"].map((label) => (
+            <button
+              key={label}
+              className="h-10 border border-white/5 bg-v-navy text-[10px] font-black tracking-widest hover:border-v-red/50 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-base font-semibold">{player.name}</div>
-                  <div className="text-xs text-zinc-500">
-                    {player.team} • {player.role}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs uppercase text-zinc-500">Precio</div>
-                  <div className="text-sm font-semibold">
-                    {player.price}
-                  </div>
-                </div>
-              </div>
-              <button className="mt-3 w-full rounded-lg bg-[#c7b26b] py-2 text-xs font-semibold text-black">
-                Fichar
-              </button>
-            </div>
+              {label}
+            </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-white/90 text-black backdrop-blur">
-        <div className="mx-auto flex max-w-md items-center justify-between px-6 py-3 text-[11px]">
-          <Link href="/dashboard" className="text-zinc-500">
-            Inicio
-          </Link>
-          <Link href="/team" className="text-zinc-500">
-            Mi equipo
-          </Link>
-          <Link href="/market" className="font-semibold">
-            Mercado
-          </Link>
-          <Link href="/ranking" className="text-zinc-500">
-            Clasificación
-          </Link>
-          <Link href="/more" className="text-zinc-500">
-            Más
-          </Link>
-        </div>
-      </nav>
-    </main>
+      <div className="grid gap-4">
+        {players?.map((player) => (
+          <div
+            key={player.id}
+            className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer"
+          >
+            {/* Background design element */}
+            <div className="absolute -right-4 -top-8 text-6xl font-black text-white/5 italic select-none">
+              {(player as any).pro_teams?.tag}
+            </div>
+
+            <div className="flex items-center justify-between relative z-10">
+              <div className="flex flex-col">
+                <span className="text-2xl font-black italic uppercase tracking-tighter">{player.nickname}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-v-red">
+                  {(player as any).pro_teams?.tag} // {player.role}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="block text-[10px] font-black uppercase text-v-white/40 mb-1">Valor Contrato</span>
+                <span className="text-lg font-black italic">
+                  ${(player.market_value / 1000000).toFixed(1)}M
+                </span>
+              </div>
+            </div>
+
+            <button className="v-btn-primary w-full mt-4 py-2 text-xs shadow-lg shadow-v-red/10">
+              Asignar Contrato
+            </button>
+          </div>
+        ))}
+
+        {players?.length === 0 && (
+          <div className="text-center py-12 v-panel border-v-white/10">
+            <p className="text-v-white/40 text-sm italic">No hay jugadores disponibles en el mercado.</p>
+            <p className="text-[10px] font-black uppercase text-v-red mt-2">Ejecuta el Scraper para poblar la base de datos</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

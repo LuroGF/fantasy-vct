@@ -1,0 +1,15 @@
+{
+    "css.customData": [],
+    "css.validate": false,
+    "less.validate": false,
+    "scss.validate": false,
+    "tailwindCSS.includeLanguages": {
+        "plaintext": "javascript",
+        "html": "HTML",
+        "javascript": "javascript",
+        "typescript": "typescript"
+    },
+    "files.associations": {
+        "*.css": "tailwindcss"
+    }
+}

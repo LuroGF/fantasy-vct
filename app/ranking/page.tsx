@@ -10,60 +10,48 @@ const standings = [
 
 export default function RankingPage() {
   return (
-    <main className="min-h-screen bg-[#1f1f1f] text-white">
-      <section className="mx-auto w-full max-w-md px-5 pb-28 pt-10">
-        <h1 className="text-center text-3xl font-black tracking-tight">
-          CLASIFICACION
-        </h1>
-        <div className="mt-4 rounded-2xl border border-zinc-700 bg-black/60 p-4">
-          <div className="text-xs uppercase tracking-wide text-zinc-500">
-            Semana actual
-          </div>
-          <div className="mt-3 text-sm text-zinc-300">
-            Top 5 de la jornada
-          </div>
+    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-4xl leading-none">Clasificación</h1>
+          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Líderes de Operación</p>
         </div>
+      </div>
 
-        <div className="mt-4 grid gap-3">
+      <div className="v-panel p-4">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[10px] font-black uppercase tracking-widest text-v-white/50">Temporada 2026 // Semana 04</span>
+          <div className="h-2 w-2 rounded-full bg-v-red" />
+        </div>
+        <div className="grid gap-2">
           {standings.map((row) => (
             <div
               key={row.pos}
-              className="flex items-center justify-between rounded-xl bg-white px-4 py-3 text-sm text-black shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+              className={`flex items-center justify-between p-3 border-l-2 ${row.pos === 1 ? "bg-v-red/10 border-v-red" : "bg-v-white/5 border-v-white/10"
+                }`}
             >
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#c7b26b] text-xs font-semibold text-black">
-                  {row.pos}
+              <div className="flex items-center gap-4">
+                <span className={`text-xl font-black italic ${row.pos === 1 ? "text-v-red" : "text-v-white/40"}`}>
+                  #{row.pos.toString().padStart(2, '0')}
                 </span>
-                <span className="font-semibold">{row.name}</span>
+                <span className="text-sm font-black uppercase tracking-tight italic">{row.name}</span>
               </div>
               <div className="text-right">
-                <div className="text-xs uppercase text-zinc-500">Puntos</div>
-                <div className="text-sm font-semibold">{row.points}</div>
+                <span className="text-lg font-black italic">{row.points}</span>
+                <span className="text-[10px] font-black uppercase text-v-white/20 ml-1">Pts</span>
               </div>
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-white/90 text-black backdrop-blur">
-        <div className="mx-auto flex max-w-md items-center justify-between px-6 py-3 text-[11px]">
-          <Link href="/dashboard" className="text-zinc-500">
-            Inicio
-          </Link>
-          <Link href="/team" className="text-zinc-500">
-            Mi equipo
-          </Link>
-          <Link href="/market" className="text-zinc-500">
-            Mercado
-          </Link>
-          <Link href="/ranking" className="font-semibold">
-            Clasificacion
-          </Link>
-          <Link href="/more" className="text-zinc-500">
-            Mas
-          </Link>
-        </div>
-      </nav>
-    </main>
+      <div className="v-panel p-4 border-l-v-white/5">
+        <h4 className="text-sm font-black uppercase tracking-widest mb-2">Premios de la Temporada</h4>
+        <p className="text-xs text-v-white/40 font-medium">
+          El top 3 agentes al final de la temporada recibirán el Pase de Batalla Premium y un pack de 2175 VP.
+        </p>
+      </div>
+    </div>
+
   );
 }

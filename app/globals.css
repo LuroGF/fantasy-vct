@@ -1,38 +1,103 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f1923; /* valorant-black */
-  --foreground: #ece8e1; /* valorant-white */
-  
-  /* Custom Theme Variables */
-  --color-riot-red: #ff4655;
-  --color-valorant-black: #0f1923;
-  --color-valorant-white: #ece8e1;
-  --color-neon-green: #3ad383; /* Example neon accent */
-  --color-neon-purple: #bd3944; /* Darker accent */
+  --background: #0f1923;
+  /* valorant-black */
+  --foreground: #ece8e1;
+  /* valorant-white */
+
+  /* Valorant Core Colors */
+  --valorant-red: #ff4655;
+  --valorant-navy: #0f1923;
+  --valorant-white: #ece8e1;
+  --valorant-dark-gray: #1f2326;
+  --valorant-light-gray: #7b8084;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  
-  --color-riot-red: var(--color-riot-red);
-  --color-valorant-black: var(--color-valorant-black);
-  --color-valorant-white: var(--color-valorant-white);
-  --color-neon-green: var(--color-neon-green);
-}
+  --color-v-red: var(--valorant-red);
+  --color-v-navy: var(--valorant-navy);
+  --color-v-white: var(--valorant-white);
+  --color-v-gray: var(--valorant-dark-gray);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f1923;
-    --foreground: #ece8e1;
-  }
+  --font-valorant: var(--font-oswald), cursive;
+  --font-sans: var(--font-inter), sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--valorant-navy);
+  background-image:
+    radial-gradient(circle at top right, rgba(255, 70, 85, 0.05), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(255, 70, 85, 0.05), transparent 40%),
+    linear-gradient(rgba(15, 25, 35, 0.97), rgba(15, 25, 35, 0.97)),
+    url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+  color: var(--valorant-white);
+  min-height: 100vh;
+  font-family: var(--font-inter), sans-serif;
+  overflow-x: hidden;
+}
+
+/* Valorant-style sharp buttons */
+@utility v-btn {
+  @apply relative inline-flex items-center justify-center px-6 py-3 font-bold uppercase tracking-wider transition-all duration-200;
+  clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+}
+
+@utility v-btn-primary {
+  @apply v-btn bg-v-red text-white hover:bg-[#ff5d6a] active:scale-95;
+}
+
+@utility v-btn-secondary {
+  @apply v-btn border border-v-white/20 bg-transparent text-v-white hover:bg-v-white/5;
+}
+
+/* Industrial glass effect */
+@utility v-panel {
+  @apply bg-v-gray/80 backdrop-blur-md border-l-4 border-v-red p-4 sm:p-6;
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+.v-font {
+  font-family: var(--font-oswald);
+  @apply font-black uppercase tracking-tighter;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--valorant-navy);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--valorant-red);
+}
+
+/* Mobile optimizations */
+/* No overrides needed here as v-panel is now responsive by default */
+
+/* Custom Animations */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.4; transform: scale(1.1); }
+  50% { opacity: 0.7; transform: scale(1.15); }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@utility animate-pulse-slow {
+  animation: pulse-slow 8s ease-in-out infinite;
+}
+
+@utility animate-bounce-subtle {
+  animation: bounce-subtle 3s ease-in-out infinite;
 }
