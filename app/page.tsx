@@ -56,224 +56,160 @@ async function getVlrData(): Promise<VlrPayload> {
 export default async function Home() {
   const data = await getVlrData();
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="relative overflow-hidden">
+    <main className="min-h-screen bg-[#1f1f1f] text-white">
+      <div className="relative overflow-hidden px-5 pb-10 pt-14">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -right-32 h-72 w-72 rounded-full bg-red-600/20 blur-3xl" />
-          <div className="absolute top-40 -left-24 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl" />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-red-600/50 to-transparent" />
+          <div className="absolute -top-32 -right-24 h-72 w-72 rounded-full bg-black/60 blur-3xl" />
+          <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-black/60 blur-3xl" />
         </div>
 
-        <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-5 pb-16 pt-20 sm:px-8 sm:pt-24">
-          <nav className="flex w-full items-center justify-between text-sm text-zinc-300">
-            <span className="text-xs uppercase tracking-[0.3em] text-zinc-500">
-              Fantasy VCT
+        <div className="relative mx-auto flex w-full max-w-md flex-col items-center gap-8">
+          <div className="flex w-full items-center justify-between text-sm text-zinc-400">
+            <span className="text-xs tracking-[0.4em] text-zinc-500">VCF</span>
+            <span className="rounded-full border border-zinc-700 px-3 py-1 text-[11px] uppercase">
+              Beta
             </span>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/leagues"
-                className="rounded-full border border-zinc-800 px-4 py-1.5 text-xs uppercase tracking-wide transition hover:bg-zinc-900"
-              >
-                Leagues
-              </Link>
-              <Link
-                href="/dashboard"
-                className="hidden rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-red-700 sm:inline-flex"
-              >
-                Dashboard
-              </Link>
-            </div>
-          </nav>
+          </div>
 
-          <div className="flex w-full flex-col items-center gap-4 text-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-red-600/40 bg-red-600/10 px-3 py-1 text-xs uppercase tracking-[0.25em] text-red-300">
-              Fantasy Esports
-            </span>
-            <h1 className="text-balance text-4xl font-extrabold tracking-tight sm:text-6xl">
-              Fantasy Valorant
-            </h1>
-            <p className="max-w-2xl text-pretty text-base text-zinc-300 sm:text-lg">
-              Draft your dream roster, climb weekly leaderboards, and prove you
-              understand the meta. Built on VLR match data (scraped and
-              normalized) with updates after every series.
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-300/30 bg-amber-200/10">
+              <div className="h-10 w-10 rotate-45 border-4 border-amber-300/70" />
+            </div>
+            <h1 className="text-4xl font-black tracking-tight">VCF</h1>
+            <p className="text-sm text-zinc-300">
+              Valorant Champions Fantasy
             </p>
           </div>
 
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <div className="flex w-full flex-col gap-3">
             <Link
-              href="/dashboard"
-              className="w-full rounded-xl bg-red-600 px-6 py-3 text-center font-semibold transition hover:bg-red-700 sm:w-auto"
+              href="/register"
+              className="rounded-lg bg-[#c7b26b] py-3 text-center text-sm font-semibold text-black"
             >
-              Go to Dashboard
+              Crear cuenta
             </Link>
-
             <Link
-              href="/leagues"
-              className="w-full rounded-xl border border-zinc-700 px-6 py-3 text-center font-semibold transition hover:bg-zinc-800 sm:w-auto"
+              href="/login"
+              className="rounded-lg border border-zinc-700 py-3 text-center text-sm font-semibold"
             >
-              View Leagues
+              Ya tengo cuenta
             </Link>
-          </div>
-
-          <div className="grid w-full gap-4 sm:grid-cols-3">
-            {[
-              {
-                title: "Smart Drafting",
-                body: "Salary caps, role balance, and auto-synergy hints keep every roster competitive.",
-              },
-              {
-                title: "Live Performance",
-                body: "VLR match data powers projections so your squad evolves with every series.",
-              },
-              {
-                title: "Social Leagues",
-                body: "Create private leagues, invite friends, and track weekly battles.",
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-              >
-                <h3 className="text-lg font-semibold text-white">{card.title}</h3>
-                <p className="mt-2 text-sm text-zinc-400">{card.body}</p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
 
-      <section className="mx-auto w-full max-w-6xl px-5 pb-16 sm:px-8">
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold sm:text-3xl">
-              How it works
-            </h2>
-            <div className="mt-6 grid gap-5">
-              {[
-                {
-                  step: "1",
-                  title: "Pick a league",
-                  body: "Join a public league or create your own private room with custom scoring.",
-                },
-                {
-                  step: "2",
-                  title: "Draft your roster",
-                  body: "Build a balanced lineup across Duelist, Initiator, Controller, and Sentinel roles.",
-                },
-                {
-                  step: "3",
-                  title: "Track results",
-                  body: "See weekly points, clutch bonuses, and MVP awards directly in your dashboard.",
-                },
-              ].map((item) => (
-                <div key={item.step} className="flex gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600/20 text-sm font-semibold text-red-200">
-                    {item.step}
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold">{item.title}</h3>
-                    <p className="text-sm text-zinc-400">{item.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/70 p-6">
-              <h3 className="text-lg font-semibold">Live stats snapshot</h3>
-              <div className="mt-4 grid gap-3">
-                {data.stats.map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-3"
-                  >
-                    <span className="text-xs uppercase tracking-wide text-zinc-500">
-                      {stat.label}
-                    </span>
-                    <span className="text-lg font-semibold text-white">
-                      {stat.value}
-                    </span>
-                  </div>
-                ))}
+      <section className="mx-auto w-full max-w-md px-5 pb-8">
+        <h2 className="text-center text-3xl font-black tracking-tight">
+          MIS LIGAS
+        </h2>
+        <div className="mt-4 rounded-xl border border-zinc-700 bg-black/60 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-base">Ministros</span>
+            <div className="flex items-center gap-2">
+              <div className="rounded-md bg-[#c7b26b] px-2 py-1 text-xs font-semibold text-black">
+                +
+              </div>
+              <div className="rounded-md bg-[#c7b26b] px-2 py-1 text-xs font-semibold text-black">
+                ↗
               </div>
             </div>
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-6">
-              <h3 className="text-lg font-semibold">Weekly highlights</h3>
-              <ul className="mt-4 grid gap-3 text-sm text-zinc-300">
-                <li>Clutch multiplier for multi-kill rounds.</li>
-                <li>Bonus for highest ACS in a series.</li>
-                <li>Team synergy boosts for matching roles.</li>
-              </ul>
+          </div>
+          <div className="mt-3 grid gap-3 border-t border-zinc-700 pt-3 text-sm text-zinc-200">
+            <div className="flex items-center justify-between">
+              <span>20 jugadores</span>
+              <span>3/20</span>
             </div>
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
-              <h3 className="text-lg font-semibold">Ready to climb?</h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Start your first roster in minutes and see where you rank after
-                the next matchday.
-              </p>
-              <Link
-                href="/dashboard"
-                className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-amber-400 px-5 py-3 text-sm font-semibold text-black transition hover:bg-amber-300 sm:w-auto"
-              >
-                Create My Team
-              </Link>
+            <div className="flex items-center justify-between">
+              <span>68 puntos</span>
+              <span>100.000.000</span>
             </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <Link
+            href="/team"
+            className="block w-full rounded-lg bg-[#c7b26b] py-3 text-center text-sm font-semibold text-black"
+          >
+            + Nueva liga
+          </Link>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-md px-5 pb-8">
+        <h2 className="text-center text-3xl font-black tracking-tight">
+          RESULTADOS
+        </h2>
+        <div className="mt-4 grid gap-3">
+          {data.upcomingMatches.map((match) => (
+            <div
+              key={match.teams}
+              className="rounded-xl bg-white px-4 py-3 text-sm text-black shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold">{match.teams.split(" vs ")[0]}</span>
+                <div className="text-center text-xs text-zinc-600">
+                  <div className="text-sm font-semibold text-[#b1262a]">
+                    {match.time}
+                  </div>
+                  <div>23 Feb</div>
+                </div>
+                <span className="font-semibold">
+                  {match.teams.split(" vs ")[1] ?? "TBD"}
+                </span>
+              </div>
+            </div>
+          ))}
+          <Link
+            href="/ranking"
+            className="block w-full rounded-xl bg-white py-3 text-center text-sm font-semibold text-black"
+          >
+            Ver más resultados
+          </Link>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-md px-5 pb-20">
+        <h2 className="text-center text-3xl font-black tracking-tight">
+          UNETE, COMPITE O CREA
+        </h2>
+        <div className="mt-4 grid gap-4">
+          <div className="rounded-2xl bg-white p-4 text-black">
+            <div className="text-lg font-black text-[#b1262a]">SOLO YO</div>
+            <p className="mt-2 text-sm text-zinc-600">
+              Únete a una liga pública y compite contra jugadores de todo el
+              mundo.
+            </p>
+          </div>
+          <div className="rounded-2xl bg-white p-4 text-black">
+            <div className="text-lg font-black text-[#4e2f8c]">CON AMIGOS</div>
+            <p className="mt-2 text-sm text-zinc-600">
+              Crea tu propia liga o únete a una existente con un código de
+              invitación.
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-5 pb-20 sm:px-8">
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold sm:text-3xl">
-              Matchday radar
-            </h2>
-            <p className="mt-2 text-sm text-zinc-400">
-              Upcoming series scraped from VLR. This section is ready to be
-              wired to the scrapper feed.
-            </p>
-            <div className="mt-6 grid gap-3">
-              {data.upcomingMatches.map((match) => (
-                <div
-                  key={match.teams}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3"
-                >
-                  <div className="text-xs uppercase tracking-wide text-zinc-500">
-                    {match.time} • {match.event}
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-white">
-                    {match.teams}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-zinc-800 bg-gradient-to-br from-red-600/20 via-zinc-950 to-zinc-950 p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold sm:text-3xl">
-              Scoring overview
-            </h2>
-            <p className="mt-2 text-sm text-zinc-300">
-              Transparent scoring makes every decision meaningful. These values
-              are ready to match your official ruleset.
-            </p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {data.scoring.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-950/80 px-4 py-3"
-                >
-                  <span className="text-sm text-zinc-300">{item.label}</span>
-                  <span className="text-sm font-semibold text-white">
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-white/90 text-black backdrop-blur">
+        <div className="mx-auto flex max-w-md items-center justify-between px-6 py-3 text-[11px]">
+          <Link href="/" className="font-semibold">
+            Inicio
+          </Link>
+          <Link href="/team" className="text-zinc-500">
+            Mi equipo
+          </Link>
+          <Link href="/market" className="text-zinc-500">
+            Mercado
+          </Link>
+          <Link href="/ranking" className="text-zinc-500">
+            Clasificación
+          </Link>
+          <Link href="/more" className="text-zinc-500">
+            Más
+          </Link>
         </div>
-      </section>
+      </nav>
     </main>
   );
 }
