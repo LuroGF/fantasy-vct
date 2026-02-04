@@ -1,4 +1,4 @@
-const cheerio = require('cheerio');
+import * as cheerio from 'cheerio';
 
 async function test() {
     const VLR_STATS_URL = "https://www.vlr.gg/stats/?event_group_id=all&event_id=all&region=eu&country=all&min_rounds=100&min_rating=0&agent_id=all&timespan=180d";

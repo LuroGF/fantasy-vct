@@ -15,7 +15,7 @@ const navItems = [
     { href: "/dashboard", label: "Inicio", icon: Home },
     { href: "/team", label: "Mi equipo", icon: Users },
     { href: "/market", label: "Mercado", icon: ShoppingCart },
-    { href: "/ranking", label: "Ranking", icon: Trophy },
+    { href: "/leagues", label: "Ligas", icon: Trophy },
     { href: "/more", label: "Más", icon: MoreHorizontal },
 ];
 
@@ -35,7 +35,7 @@ export default function Navbar() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className="relative flex flex-1 flex-col items-center justify-center gap-1 h-full"
+                            className="relative flex flex-1 flex-col items-center justify-center gap-1 h-full active:scale-90 transition-transform select-none"
                         >
                             {isActive && (
                                 <motion.div

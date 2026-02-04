@@ -1,13 +1,34 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { signUp } from "@/lib/actions/auth";
 
 export default function RegisterPage() {
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const result = await signUp(formData);
+
+    if (result?.error) {
+      setError(result.error);
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-10 py-12 animate-in fade-in slide-in-from-bottom-6 duration-1000">
       {/* Header Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-8 bg-v-red" />
-          <h1 className="text-5xl italic tracking-tighter text-v-white">Reclutamiento</h1>
+          <h1 className="text-5xl italic tracking-tighter text-v-white uppercase">Reclutamiento</h1>
         </div>
         <p className="text-v-white/50 text-[10px] font-black uppercase tracking-[0.3em]">
           Nueva Identidad de Operativo VCF
@@ -16,11 +37,13 @@ export default function RegisterPage() {
 
       {/* Form Container */}
       <div className="v-panel p-6 space-y-6">
-        <form className="grid gap-6">
+        <form onSubmit={handleSubmit} className="grid gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">Alias de Agente</label>
             <input
+              name="username"
               type="text"
+              required
               placeholder="Nickname"
               className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
@@ -28,7 +51,9 @@ export default function RegisterPage() {
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">Protocolo Email</label>
             <input
+              name="email"
               type="email"
+              required
               placeholder="tu@agencia.com"
               className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
@@ -36,21 +61,32 @@ export default function RegisterPage() {
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">Código de Seguridad</label>
             <input
+              name="password"
               type="password"
+              required
               placeholder="••••••••"
               className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
           </div>
 
-          <Link
-            href="/dashboard"
-            className="v-btn-primary w-full py-4 text-sm mt-4 shadow-xl shadow-v-red/20 group"
+          {error && (
+            <div className="text-[10px] font-black uppercase text-v-red animate-pulse">
+              {">>>"} ERROR: {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="v-btn-primary w-full py-4 text-sm mt-4 shadow-xl shadow-v-red/20 group disabled:opacity-50"
           >
             <span className="flex items-center justify-center gap-2">
-              Finalizar Registro
-              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              {loading ? "PROCESANDO..." : "Finalizar Registro"}
+              {!loading && (
+                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              )}
             </span>
-          </Link>
+          </button>
         </form>
 
         <div className="relative py-2">
