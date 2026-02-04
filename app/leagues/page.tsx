@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { createLeague, joinLeague, getUserLeagues } from "@/lib/actions/leagues";
