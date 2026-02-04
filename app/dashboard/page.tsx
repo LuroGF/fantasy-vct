@@ -46,30 +46,15 @@ async function getDashboardStats(supabase: any) {
   };
 }
 
-async function getVlrData(): Promise<VlrPayload | null> {
-  try {
-    const headersList = await headers();
-    const host = headersList.get("host");
-    const protocol = headersList.get("x-forwarded-proto") ?? "http";
-    const baseUrl = host !== null ? `${protocol}://${host}` : "http://localhost:3000";
-
-    const response = await fetch(`${baseUrl}/api/vlr`, {
-      next: { revalidate: 300 },
-    });
-
-    if (!response.ok) return null;
-    return (await response.json()) as VlrPayload;
-  } catch {
-    return null;
-  }
-}
-
+import { fetchVlrMatches } from "@/lib/vlr";
 import { getUserLeagues } from "@/lib/actions/leagues";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const data = await getVlrData();
+  
+  // Llamada directa a la lógica de scraping sin fetch interno
+  const data = await fetchVlrMatches();
   const stats = await getDashboardStats(supabase);
   const matches = data?.upcomingMatches || [];
   

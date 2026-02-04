@@ -1,132 +1,9 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import { supabaseAdmin } from "@/lib/supabase";
-import { createClient } from "@/utils/supabase/server";
-import { Database } from "@/types/supabase";
-
-export const revalidate = 60;
-
-export type VlrPayload = {
-  stats: { label: string; value: string }[];
-  upcomingMatches: { 
-    time: string; 
-    teams: string; 
-    event: string; 
-    id: string; 
-    date?: string; 
-    isVctEmea?: boolean;
-  }[];
-  scoring: { label: string; value: string }[];
-};
-
-const VLR_MATCHES_URL = "https://www.vlr.gg/matches";
-
-// Mapeo manual de alias de equipos para mejorar el matching con la DB
-const TEAM_ALIASES: Record<string, string> = {
-  "FNATIC": "FNC",
-  "TEAM VITALITY": "VIT",
-  "TEAM HERETICS": "TH",
-  "KARMINE CORP": "KC",
-  "NAVI": "NAVI",
-  "NATUS VINCERE": "NAVI",
-  "BBL ESPORTS": "BBL",
-  "FUT ESPORTS": "FUT",
-  "GIANTX": "GX",
-  "KOI": "KOI",
-  "TEAM LIQUID": "TL",
-  "GENTLE MATES": "M8",
-  "ULF ESPORTS": "ULF", // Añadido para el evento actual
-};
 
 function cleanText(value: string | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? "";
-}
-
-function parseUpcomingMatches(html: string) {
-  const $ = cheerio.load(html);
-  const results: VlrPayload["upcomingMatches"] = [];
-
-  // VLR groups matches by date headers: .wf-label.mod-large
-  $(".wf-label.mod-large").each((_, label) => {
-    const rawDate = $(label).text().trim(); // e.g. "Wednesday, Feb 4"
-    
-    // The matches are siblings of this label or in the next container
-    let next = $(label).next();
-    while (next.length && !next.hasClass("wf-label")) {
-      const processItem = (item: any) => {
-        const card = $(item);
-        const id = card.attr("href")?.split("/")[1] || "";
-        const time = cleanText(card.find(".match-item-time").first().text());
-        const event = cleanText(card.find(".match-item-event").first().text());
-        
-        const teams = card
-          .find(".match-item-vs-team-name")
-          .map((__, team) => cleanText($(team).text()))
-          .get()
-          .filter(Boolean);
-
-        const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
-
-        const isVctEmea = event.toUpperCase().includes("VCT") && 
-                          event.toUpperCase().includes("EMEA") && 
-                          !event.toUpperCase().includes("GAME CHANGERS") &&
-                          !event.toUpperCase().includes("CHALLENGERS");
-
-        if (teamsLabel && event) {
-          results.push({
-            time: time || "LIVE",
-            teams: teamsLabel,
-            event,
-            id,
-            date: rawDate,
-            isVctEmea 
-          });
-        }
-      };
-
-      if (next.hasClass("match-item")) {
-        processItem(next);
-      } else {
-        next.find(".match-item").each((__, item) => processItem(item));
-      }
-      next = next.next();
-    }
-  });
-
-  const emeaMatches = results.filter((m) => m.isVctEmea);
-  if (emeaMatches.length > 0) return emeaMatches.slice(0, 15);
-  return results.slice(0, 10);
-}
-
-async function loadVlrData(): Promise<VlrPayload> {
-  const response = await fetch(VLR_MATCHES_URL, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; FantasyVCT/1.0; +https://fantasy-vct.local)",
-      Accept: "text/html",
-    },
-    next: { revalidate },
-  });
-
-  if (!response.ok) {
-    throw new Error(`VLR fetch failed: ${response.status}`);
-  }
-
-  const html = await response.text();
-  const upcomingMatches = parseUpcomingMatches(html);
-
-  return {
-    stats: [], // Ahora se obtienen en el Dashboard directamente
-    upcomingMatches: upcomingMatches,
-    scoring: [
-        { label: "Kill", value: "+2" },
-        { label: "Assist", value: "+1" },
-        { label: "First blood", value: "+3" },
-        { label: "Clutch round", value: "+4" },
-        { label: "Match win", value: "+5" },
-        { label: "Series MVP", value: "+6" },
-    ],
-  };
 }
 
 async function scrapeMatchDetails(matchId: string) {
@@ -219,8 +96,9 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
   }
 }
 
+import { fetchVlrMatches } from "@/lib/vlr";
+
 export async function GET(request: Request) {
-  const supabase = await createClient(); // For auth context if needed
   const { searchParams } = new URL(request.url);
   const matchId = searchParams.get("id");
 
@@ -295,76 +173,17 @@ export async function GET(request: Request) {
     }
   }
 
-  // Si no, flujo normal de partidos próximos (Sincronización masiva de lista)
+  // Sincronización masiva de partidos próximos
   try {
-    const data = await loadVlrData();
-    
-    // Obtener la jornada activa
-    const { data: activeGw } = await supabaseAdmin
-        .from('gameweeks')
-        .select('id')
-        .eq('is_active', true)
-        .single<Database['public']['Tables']['gameweeks']['Row']>();
-
-    // Sincronización con DB
-    const { data: teamsData } = await supabaseAdmin
-        .from('pro_teams')
-        .select('id, name, tag')
-        .returns<{ id: string; name: string; tag: string }[]>();
-
-    const teamMap = new Map<string, string>();
-    teamsData?.forEach((t) => {
-      if (t.name) teamMap.set(t.name.toUpperCase(), t.id);
-      if (t.tag) teamMap.set(t.tag.toUpperCase(), t.id);
-    });
-
-    const matchUpserts = data.upcomingMatches
-      .map((m: any) => {
-        const parts = m.teams.split(" vs ");
-        let nameA = parts[0]?.toUpperCase() || "";
-        let nameB = parts[1]?.toUpperCase() || "";
-        
-        // Resolver por alias
-        const tagA = TEAM_ALIASES[nameA] || nameA;
-        const tagB = TEAM_ALIASES[nameB] || nameB;
-        
-        const teamAId = teamMap.get(nameA) || teamMap.get(tagA);
-        const teamBId = teamMap.get(nameB) || teamMap.get(tagB);
-        
-        if (!teamAId || !teamBId) {
-           console.log(`Sync Skip: Missing Teams [${nameA} vs ${nameB}] in DB!`);
-           return null;
-        }
-
-        const isoDate = m.date ? parseVlrDate(m.date, m.time) : null;
-
-        return {
-          vlr_id: m.id,
-          team_a: teamAId,
-          team_b: teamBId,
-          match_date: isoDate,
-          status: m.time.toLowerCase().includes("live") ? 'live' : 'upcoming',
-          gameweek_id: activeGw?.id || null,
-        };
-      })
-      .filter((m: any) => m !== null);
-
-    if (matchUpserts.length > 0) {
-      console.log(`Sync: Upserting ${matchUpserts.length} matches...`);
-      const { error: upsertError } = await supabaseAdmin
-        .from('matches')
-        .upsert(matchUpserts as any, { onConflict: 'vlr_id' });
-        
-      if (upsertError) console.error("Sync Error:", upsertError);
-    }
-
+    const data = await fetchVlrMatches();
     return NextResponse.json(data);
-  } catch (error) {
+  } catch (error: any) {
     console.error("VLR scrape failed", error);
     return NextResponse.json({
+        error: error.message,
         stats: [],
         upcomingMatches: [],
         scoring: []
-    });
+    }, { status: 500 });
   }
 }
