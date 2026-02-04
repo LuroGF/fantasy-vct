@@ -12,27 +12,6 @@ export type VlrPayload = {
   scoring: { label: string; value: string }[];
 };
 
-const fallbackData: VlrPayload = {
-  stats: [
-    { label: "Active leagues", value: "128" },
-    { label: "Weekly managers", value: "4.2k" },
-    { label: "Matches tracked", value: "312" },
-  ],
-  upcomingMatches: [
-    { time: "14:00", teams: "FNATIC vs NAVI", event: "VCT EMEA", id: "1" },
-    { time: "17:30", teams: "LOUD vs LEV", event: "VCT Americas", id: "2" },
-    { time: "20:00", teams: "PRX vs DRX", event: "VCT Pacific", id: "3" },
-  ],
-  scoring: [
-    { label: "Kill", value: "+2" },
-    { label: "Assist", value: "+1" },
-    { label: "First blood", value: "+3" },
-    { label: "Clutch round", value: "+4" },
-    { label: "Match win", value: "+5" },
-    { label: "Series MVP", value: "+6" },
-  ],
-};
-
 const VLR_MATCHES_URL = "https://www.vlr.gg/matches";
 
 // Mapeo manual de alias de equipos para mejorar el matching con la DB
@@ -49,6 +28,7 @@ const TEAM_ALIASES: Record<string, string> = {
   "KOI": "KOI",
   "TEAM LIQUID": "TL",
   "GENTLE MATES": "M8",
+  "ULF ESPORTS": "ULF", // Añadido para el evento actual
 };
 
 function cleanText(value: string | undefined) {
@@ -129,11 +109,16 @@ async function loadVlrData(): Promise<VlrPayload> {
   const upcomingMatches = parseUpcomingMatches(html);
 
   return {
-    stats: fallbackData.stats,
-    upcomingMatches: upcomingMatches.length
-      ? upcomingMatches
-      : fallbackData.upcomingMatches,
-    scoring: fallbackData.scoring,
+    stats: [], // Ahora se obtienen en el Dashboard directamente
+    upcomingMatches: upcomingMatches,
+    scoring: [
+        { label: "Kill", value: "+2" },
+        { label: "Assist", value: "+1" },
+        { label: "First blood", value: "+3" },
+        { label: "Clutch round", value: "+4" },
+        { label: "Match win", value: "+5" },
+        { label: "Series MVP", value: "+6" },
+    ],
   };
 }
 
@@ -297,7 +282,9 @@ export async function GET(request: Request) {
         const teamBId = teamMap.get(nameB) || teamMap.get(tagB);
         
         if (!teamAId || !teamBId) {
-           // console.log(`Sync: Saltando partido - Equipos no encontrados`);
+           console.log(`Sync Skip: Missing Team in DB!`);
+           console.log(`Team A: [${nameA}] -> Map: [${teamAId || 'EMPTY'}]`);
+           console.log(`Team B: [${nameB}] -> Map: [${teamBId || 'EMPTY'}]`);
            return null;
         }
 
@@ -320,6 +307,10 @@ export async function GET(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("VLR scrape failed", error);
-    return NextResponse.json(fallbackData);
+    return NextResponse.json({
+        stats: [],
+        upcomingMatches: [],
+        scoring: []
+    });
   }
 }

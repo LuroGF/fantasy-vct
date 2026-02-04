@@ -2,6 +2,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
+import { LiveHUD } from "@/components/LiveHUD";
+import { Challenges } from "@/components/Challenges";
 
 type VlrPayload = {
   stats: { label: string; value: string }[];
@@ -34,11 +36,12 @@ const fallbackData: VlrPayload = {
 async function getDashboardStats(supabase: any) {
   const { count: playerCount } = await supabase.from('pro_players').select('*', { count: 'exact', head: true });
   const { count: teamCount } = await supabase.from('pro_teams').select('*', { count: 'exact', head: true });
+  const { count: leagueCount } = await supabase.from('leagues').select('*', { count: 'exact', head: true });
 
   return {
     playerCount: playerCount || 0,
     teamCount: teamCount || 0,
-    leagueCount: 128 // Mock for now
+    leagueCount: leagueCount || 0
   };
 }
 
@@ -60,11 +63,24 @@ async function getVlrData(): Promise<VlrPayload | null> {
   }
 }
 
+import { getUserLeagues } from "@/lib/actions/leagues";
+
 export default async function DashboardPage() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   const data = await getVlrData();
   const stats = await getDashboardStats(supabase);
   const matches = data?.upcomingMatches || [];
+  
+  const userLeagues = user ? await getUserLeagues(user.id) : [];
+
+  // Obtener puntos reales del usuario (para el resumen del HUD)
+  const userStats = userLeagues[0] || { total_points: 0 };
+
+  const currentPoints = userStats?.total_points || 0;
+  const rank = 0; // Se podría implementar un ranking global sumando puntuaciones
+  const activeMatches = matches.filter(m => m.time.toLowerCase().includes("live") || m.time === "").length;
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header Info */}
@@ -75,6 +91,13 @@ export default async function DashboardPage() {
         </div>
         <StatusBadge label="En Línea" variant="white" className="animate-none" pulse />
       </div>
+
+      {/* Live HUD Component */}
+      <LiveHUD 
+        currentPoints={currentPoints} 
+        rank={rank} 
+        activeMatches={activeMatches} 
+      />
 
       {/* Real-time DB Stats */}
       <div className="grid grid-cols-3 gap-2">
@@ -104,30 +127,36 @@ export default async function DashboardPage() {
           <span className="text-[10px] font-black uppercase text-v-red italic tracking-widest">S3 // 2026</span>
         </div>
         
-        <div className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer">
-          <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
-          <div className="absolute -right-4 -top-6 text-7xl font-black text-white/5 italic select-none uppercase tracking-tighter">
-            EMEA
-          </div>
-          
-          <div className="flex justify-between items-start mb-6 relative z-10">
-            <div>
-              <h3 className="text-3xl italic tracking-tighter border-b-2 border-v-red w-fit">Ministros</h3>
-              <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest mt-1">{"ID: VCF-992-KLA // Activa"}</p>
+        {userLeagues.map((ul: any) => (
+          <div key={ul.leagues.id} className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer">
+            <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
+            
+            <div className="flex justify-between items-start mb-6 relative z-10">
+              <div>
+                <h3 className="text-3xl italic tracking-tighter border-b-2 border-v-red w-fit">{ul.leagues.name}</h3>
+                <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest mt-1">{"ID: "}{ul.leagues.invite_code}{" // Activa"}</p>
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 relative z-10">
-            <div>
-              <p className="text-[10px] font-black uppercase text-v-white/30">Puntuación Combat</p>
-              <p className="text-xl font-black italic">1,240 <span className="text-v-red text-[8px] not-italic">RANK #402</span></p>
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase text-v-white/30">Créditos Disp.</p>
-              <p className="text-xl font-black italic">$100.0M</p>
+            <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 relative z-10">
+              <div>
+                <p className="text-[10px] font-black uppercase text-v-white/30">Puntuación Combat</p>
+                <p className="text-xl font-black italic">{ul.total_points.toLocaleString()} <span className="text-v-red text-[8px] not-italic">ACTIVA</span></p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-v-white/30">Créditos Disp.</p>
+                <p className="text-xl font-black italic">${(ul.current_budget / 1000000).toFixed(1)}M</p>
+              </div>
             </div>
           </div>
-        </div>
+        ))}
+
+        {userLeagues.length === 0 && (
+          <div className="v-panel border-dashed border-v-white/10 py-12 text-center opacity-40">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sin Unidades Desplegadas</p>
+            <Link href="/leagues" className="text-v-red text-[8px] underline mt-2 block">Unirse a Operación</Link>
+          </div>
+        )}
 
         <Link href="/team" className="v-btn-primary w-full shadow-xl shadow-v-red/20 group">
           <span className="flex items-center justify-center gap-2">
@@ -174,18 +203,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Promotions / Info */}
-      <div className="grid gap-4">
-        <div className="v-panel p-4 border-l-v-white/10 overflow-hidden relative group cursor-pointer hover:border-v-red transition-all">
-          <div className="absolute right-0 bottom-0 opacity-10 group-hover:opacity-30 transition-opacity translate-x-4 translate-y-4">
-             <svg width="120" height="120" viewBox="0 0 100 100"><path d="M10 90 L90 10 M50 90 L90 50" stroke="white" strokeWidth="4" fill="none" /></svg>
-          </div>
-          <h4 className="text-xl italic mb-1 group-hover:translate-x-1 transition-transform">Matchmaking Solo</h4>
-          <p className="text-[10px] text-v-white/40 leading-relaxed font-black uppercase tracking-wider">
-            Sube de rango en el servidor global.
-          </p>
-        </div>
-      </div>
+      {/* Protocolo de Desafíos */}
+      <Challenges />
+
     </div>
   );
 }

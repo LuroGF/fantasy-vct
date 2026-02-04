@@ -84,14 +84,15 @@ h3,
 /* No overrides needed here as v-panel is now responsive by default */
 
 /* Custom Animations */
-@keyframes pulse-slow {
-  0%, 100% { opacity: 0.4; transform: scale(1.1); }
-  50% { opacity: 0.7; transform: scale(1.15); }
+@keyframes scan {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
 }
 
-@keyframes bounce-subtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+@utility animate-scan {
+  animation: scan 4s linear infinite;
 }
 
 @utility animate-pulse-slow {

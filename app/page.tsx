@@ -36,9 +36,7 @@ export default function Home() {
 
         <div className="w-12 h-1 bg-v-red/50" />
 
-        <p className="text-sm font-medium text-v-white/70 leading-relaxed max-w-[280px]">
-          Toma el control de tu propia organización del VCT. Recluta oradores, gestiona presupuestos y domina la clasificación mundial.
-        </p>
+        <p className="text-sm font-medium text-v-white/70 leading-relaxed max-w-[280px]"> </p>
 
         <div className="flex flex-col w-full gap-4 mt-4">
           <Link
