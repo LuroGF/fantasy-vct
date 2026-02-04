@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
-import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 
 export const revalidate = 60;
 
@@ -33,6 +34,22 @@ const fallbackData: VlrPayload = {
 
 const VLR_MATCHES_URL = "https://www.vlr.gg/matches";
 
+// Mapeo manual de alias de equipos para mejorar el matching con la DB
+const TEAM_ALIASES: Record<string, string> = {
+  "FNATIC": "FNC",
+  "TEAM VITALITY": "VIT",
+  "TEAM HERETICS": "TH",
+  "KARMINE CORP": "KC",
+  "NAVI": "NAVI",
+  "NATUS VINCERE": "NAVI",
+  "BBL ESPORTS": "BBL",
+  "FUT ESPORTS": "FUT",
+  "GIANTX": "GX",
+  "KOI": "KOI",
+  "TEAM LIQUID": "TL",
+  "GENTLE MATES": "M8",
+};
+
 function cleanText(value: string | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? "";
 }
@@ -56,10 +73,10 @@ function parseUpcomingMatches(html: string) {
     const teamsLabel =
       teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
 
-    const isPriorityEvent = event.toUpperCase().includes("EMEA") || 
-                           event.toUpperCase().includes("CHAMPIONS TOUR");
+    // Filtro mucho más estricto: Solo VCT EMEA
+    const isEmeaS1 = event.toUpperCase().includes("EMEA") && (event.toUpperCase().includes("CHAMPIONS TOUR") || event.toUpperCase().includes("STAGE"));
 
-    if (teamsLabel && event && isPriorityEvent) {
+    if (teamsLabel && event && isEmeaS1) {
       results.push({
         time: time || "LIVE",
         teams: teamsLabel,
@@ -87,7 +104,7 @@ function parseUpcomingMatches(html: string) {
     });
   }
 
-  return results.slice(0, 8);
+  return results.slice(0, 10);
 }
 
 async function loadVlrData(): Promise<VlrPayload> {
@@ -160,6 +177,7 @@ async function scrapeMatchDetails(matchId: string) {
 }
 
 export async function GET(request: Request) {
+  const supabase = await createClient();
   const { searchParams } = new URL(request.url);
   const matchId = searchParams.get("id");
 
@@ -176,28 +194,44 @@ export async function GET(request: Request) {
   // Si no, flujo normal de partidos próximos
   try {
     const data = await loadVlrData();
-    // ... persistencia en DB ...
+    
+    // Sincronización con DB
     const { data: teamsData } = await supabase.from('pro_teams').select('id, name, tag');
     const teamMap = new Map<string, string>();
+    
     (teamsData as any[])?.forEach((t: { name: string; tag: string; id: string }) => {
-      teamMap.set(t.name.toUpperCase(), t.id);
+      if (t.name) teamMap.set(t.name.toUpperCase(), t.id);
       if (t.tag) teamMap.set(t.tag.toUpperCase(), t.id);
     });
 
     const matchUpserts = data.upcomingMatches.map(m => {
-      const teamA = m.teams.split(" vs ")[0]?.toUpperCase();
-      const teamB = m.teams.split(" vs ")[1]?.toUpperCase();
+      const parts = m.teams.split(" vs ");
+      let nameA = parts[0]?.toUpperCase();
+      let nameB = parts[1]?.toUpperCase();
       
+      // Intentar resolver por alias si no hay match directo
+      const tagA = TEAM_ALIASES[nameA] || nameA;
+      const tagB = TEAM_ALIASES[nameB] || nameB;
+      
+      const teamAId = teamMap.get(nameA) || teamMap.get(tagA);
+      const teamBId = teamMap.get(nameB) || teamMap.get(tagB);
+      
+      if (!teamAId || !teamBId) {
+         console.log(`Sync: Saltando partido ${m.teams} - Equipos no encontrados en DB: ${nameA}(${teamAId ? 'OK':'MISSING'}) vs ${nameB}(${teamBId ? 'OK':'MISSING'})`);
+      }
+
       return {
         vlr_id: m.id,
-        team_a: teamMap.get(teamA),
-        team_b: teamMap.get(teamB),
+        team_a: teamAId,
+        team_b: teamBId,
         status: m.time.toLowerCase().includes("live") ? 'live' : 'upcoming',
       };
     }).filter(m => m.team_a && m.team_b);
 
     if (matchUpserts.length > 0) {
-      await supabaseAdmin.from('matches').upsert(matchUpserts, { onConflict: 'vlr_id' });
+      const { error: upsertError } = await supabaseAdmin.from('matches').upsert(matchUpserts, { onConflict: 'vlr_id' });
+      if (upsertError) console.error("Sync: Error upserting matches:", upsertError);
+      else console.log(`Sync: ${matchUpserts.length} partidos sincronizados correctamente.`);
     }
 
     return NextResponse.json(data);

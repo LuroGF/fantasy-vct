@@ -1,9 +1,10 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function togglePlayerStatus(leagueId: string, profileId: string, playerId: string) {
+  const supabase = await createClient();
   try {
     // 1. Obtener el estado actual del jugador
     const { data: currentRoster, error: fetchError } = await supabase
@@ -52,6 +53,7 @@ export async function togglePlayerStatus(leagueId: string, profileId: string, pl
 }
 
 export async function getUserFullRoster(leagueId: string, profileId: string) {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_rosters")
     .select(`

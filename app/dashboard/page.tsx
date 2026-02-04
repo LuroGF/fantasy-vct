@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
 
 type VlrPayload = {
@@ -31,7 +31,7 @@ const fallbackData: VlrPayload = {
 };
 
 
-async function getDashboardStats() {
+async function getDashboardStats(supabase: any) {
   const { count: playerCount } = await supabase.from('pro_players').select('*', { count: 'exact', head: true });
   const { count: teamCount } = await supabase.from('pro_teams').select('*', { count: 'exact', head: true });
 
@@ -44,9 +44,9 @@ async function getDashboardStats() {
 
 async function getVlrData(): Promise<VlrPayload | null> {
   try {
-    const headersList = headers();
-    const host = (await headersList).get("host");
-    const protocol = (await headersList).get("x-forwarded-proto") ?? "http";
+    const headersList = await headers();
+    const host = headersList.get("host");
+    const protocol = headersList.get("x-forwarded-proto") ?? "http";
     const baseUrl = host !== null ? `${protocol}://${host}` : "http://localhost:3000";
 
     const response = await fetch(`${baseUrl}/api/vlr`, {
@@ -61,8 +61,9 @@ async function getVlrData(): Promise<VlrPayload | null> {
 }
 
 export default async function DashboardPage() {
+  const supabase = await createClient();
   const data = await getVlrData();
-  const stats = await getDashboardStats();
+  const stats = await getDashboardStats(supabase);
   const matches = data?.upcomingMatches || [];
   return (
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">

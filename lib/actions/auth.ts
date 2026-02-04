@@ -1,10 +1,10 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
-import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function signUp(formData: FormData) {
+  const supabase = await createClient();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const username = formData.get("username") as string;
@@ -27,15 +27,11 @@ export async function signUp(formData: FormData) {
     return { error: error.message };
   }
 
-  // Nota: Si el usuario tiene habilitado el trigger handle_new_user, 
-  // el perfil se creará automáticamente en public.profiles.
-  // De lo contrario, tendríamos que insertarlo manualmente aquí:
-  // const { error: profileError } = await supabase.from('profiles').insert({ id: data.user?.id, username });
-
   return redirect("/dashboard");
 }
 
 export async function signIn(formData: FormData) {
+  const supabase = await createClient();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -56,11 +52,13 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signOut() {
+  const supabase = await createClient();
   await supabase.auth.signOut();
   return redirect("/");
 }
 
 export async function getSession() {
+  const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
   return session;
 }

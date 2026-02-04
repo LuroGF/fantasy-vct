@@ -1,9 +1,10 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function buyPlayer(leagueId: string, profileId: string, playerId: string, price: number) {
+  const supabase = await createClient();
   try {
     // 1. Verificar presupuesto del usuario en esta liga
     const { data: participant, error: pError } = await supabase
@@ -27,7 +28,6 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     if (existingOwner) throw new Error("Este jugador ya ha sido fichado por otro agente");
 
     // 3. Iniciar transacción (simulada mediante inserts secuenciales ya que Supabase RPC es mejor para esto)
-    // En una app real usaríamos una función PL/pgSQL para asegurar atomicidad.
 
     // A. Registrar transacción
     const { error: tError } = await supabase
@@ -74,6 +74,7 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
 }
 
 export async function getUserRoster(leagueId: string, profileId: string) {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_rosters")
     .select(`

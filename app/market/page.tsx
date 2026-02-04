@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 import MarketView from "./MarketView";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { getSession } from "@/lib/actions/auth";
@@ -15,7 +15,7 @@ interface Player {
   } | null;
 }
 
-async function getMarketData(): Promise<Player[]> {
+async function getMarketData(supabase: any): Promise<Player[]> {
   const { data: players, error } = await supabase
     .from('pro_players')
     .select('*, pro_teams(tag, name)')
@@ -32,8 +32,10 @@ export default async function MarketPage() {
   const session = await getSession();
   if (!session) return redirect("/login");
 
+  const supabase = await createClient();
+
   const [players, leagues] = await Promise.all([
-    getMarketData(),
+    getMarketData(supabase),
     getUserLeagues(session.user.id)
   ]);
 

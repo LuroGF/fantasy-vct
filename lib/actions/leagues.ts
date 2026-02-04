@@ -1,6 +1,6 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 // Función para generar un código de invitación aleatorio
@@ -14,6 +14,7 @@ function generateInviteCode(length = 6) {
 }
 
 export async function createLeague(name: string, userId: string) {
+  const supabase = await createClient();
   try {
     const inviteCode = generateInviteCode();
     
@@ -51,6 +52,7 @@ export async function createLeague(name: string, userId: string) {
 }
 
 export async function joinLeague(inviteCode: string, userId: string) {
+  const supabase = await createClient();
   try {
     // 1. Buscar la liga por código
     const { data: league, error: findError } = await supabase
@@ -84,6 +86,7 @@ export async function joinLeague(inviteCode: string, userId: string) {
 }
 
 export async function getUserLeagues(userId: string) {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("league_participants")
     .select(`
