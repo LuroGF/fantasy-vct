@@ -11,7 +11,8 @@ export default async function TeamPage() {
   const leagues = await getUserLeagues(session.user.id);
   
   // Cargamos por defecto la primera liga si existe
-  const activeLeagueId = leagues[0]?.leagues.id;
+  const activeLeague = leagues[0]?.leagues;
+  const activeLeagueId = Array.isArray(activeLeague) ? activeLeague[0]?.id : (activeLeague as any)?.id;
   const roster = activeLeagueId ? await getUserFullRoster(activeLeagueId, session.user.id) : [];
 
   return (
