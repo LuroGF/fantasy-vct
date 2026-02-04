@@ -21,13 +21,12 @@ export async function calculateGameweekScores(gameweekId: number) {
     if (gwError || !gameweek) throw new Error("Gameweek not found");
 
     // 2. Get Matches in Gameweek
-    // Note: Schema uses 'match_date', check if it falls within range
+    // First, try matches explicitly assigned to this gameweek_id
+    // Fallback to date range if needed
     const { data: matches, error: matchError } = await supabaseAdmin
       .from("matches")
       .select("id")
-      .gte("match_date", gameweek.start_date)
-
-      .lte("match_date", gameweek.end_date)
+      .or(`gameweek_id.eq.${gameweekId},and(match_date.gte.${gameweek.start_date},match_date.lte.${gameweek.end_date})`)
       .returns<{ id: string }[]>();
 
     if (matchError) throw matchError;
