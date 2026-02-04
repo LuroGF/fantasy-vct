@@ -10,7 +10,14 @@ export async function GET(request: Request) {
   if (matchId) {
     try {
       const details = await scrapeMatchDetails(matchId);
-      if (!details) return NextResponse.json({ error: "Scrape failed" }, { status: 404 });
+      if (!details) {
+        console.error(`Match ${matchId}: Scrape returned null (likely 404 or rate limit)`);
+        return NextResponse.json({ error: "Scrape failed - match not found or rate limited" }, { status: 404 });
+      }
+      if (details.length === 0) {
+        console.warn(`Match ${matchId}: No player stats found (match may not have started yet)`);
+        return NextResponse.json({ error: "No stats available yet" }, { status: 404 });
+      }
 
       // 1. Get Match UUID from DB using VLR ID
       const { data: matchData } = await (supabaseAdmin

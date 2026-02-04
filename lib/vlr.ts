@@ -149,43 +149,63 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
 
 export async function scrapeMatchDetails(matchId: string) {
     const url = `https://www.vlr.gg/${matchId}`;
-    const response = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-    });
-  
-    if (!response.ok) return null;
-  
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    const stats: any[] = [];
-  
-    $(".wf-table-container").first().find("tbody tr").each((_, row) => {
-      const cols = $(row).find("td");
-      if (cols.length < 10) return;
-  
-      const playerLink = $(cols[0]).find("a").attr("href") || "";
-      const playerId = playerLink.split("/")[2] || "";
-      const nickname = cleanText($(cols[0]).find(".mod-player").text());
-      
-      const kdaRaw = cleanText($(cols[2]).find(".mod-vlr-kills").text());
-      const dRaw = cleanText($(cols[3]).find(".mod-vlr-deaths").text());
-      const aRaw = cleanText($(cols[4]).find(".mod-vlr-assists").text());
-      const fkRaw = cleanText($(cols[9]).text());
-      const fdRaw = cleanText($(cols[10]).text());
-  
-      stats.push({
-        vlr_id: playerId,
-        nickname,
-        kills: parseInt(kdaRaw) || 0,
-        deaths: parseInt(dRaw.replace("/", "")) || 0,
-        assists: parseInt(aRaw) || 0,
-        fb: parseInt(fkRaw) || 0,
-        fd: parseInt(fdRaw) || 0,
-        clutches: 0
+    
+    try {
+      const response = await fetch(url, {
+        headers: { 
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
       });
-    });
-  
-    return stats;
+    
+      if (!response.ok) {
+        console.error(`VLR fetch failed for ${matchId}: ${response.status} ${response.statusText}`);
+        return null;
+      }
+    
+      const html = await response.text();
+      
+      // Check if we got an error page instead of match data
+      if (html.includes('<!DOCTYPE') && !html.includes('vm-stats')) {
+        console.error(`VLR returned error page for ${matchId} (likely rate limited or match not found)`);
+        return null;
+      }
+      
+      const $ = cheerio.load(html);
+      const stats: any[] = [];
+    
+      $(".wf-table-container").first().find("tbody tr").each((_, row) => {
+        const cols = $(row).find("td");
+        if (cols.length < 10) return;
+    
+        const playerLink = $(cols[0]).find("a").attr("href") || "";
+        const playerId = playerLink.split("/")[2] || "";
+        const nickname = cleanText($(cols[0]).find(".mod-player").text());
+        
+        const kdaRaw = cleanText($(cols[2]).find(".mod-vlr-kills").text());
+        const dRaw = cleanText($(cols[3]).find(".mod-vlr-deaths").text());
+        const aRaw = cleanText($(cols[4]).find(".mod-vlr-assists").text());
+        const fkRaw = cleanText($(cols[9]).text());
+        const fdRaw = cleanText($(cols[10]).text());
+    
+        stats.push({
+          vlr_id: playerId,
+          nickname,
+          kills: parseInt(kdaRaw) || 0,
+          deaths: parseInt(dRaw.replace("/", "")) || 0,
+          assists: parseInt(aRaw) || 0,
+          fb: parseInt(fkRaw) || 0,
+          fd: parseInt(fdRaw) || 0,
+          clutches: 0
+        });
+      });
+    
+      return stats;
+    } catch (error) {
+      console.error(`Exception scraping match ${matchId}:`, error);
+      return null;
+    }
 }
 
 async function getOrCreateGameweekByDate(dateStr: string) {

@@ -62,10 +62,6 @@ export async function GET(request: Request) {
 
     if (matchError) throw matchError;
 
-    const host = request.headers.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const baseUrl = `${protocol}://${host}`;
-
     for (const match of (matches as any[]) || []) {
       if (!match.vlr_id) continue;
       
@@ -73,12 +69,61 @@ export async function GET(request: Request) {
       if (now.getTime() < matchTime - (30 * 60 * 1000)) continue; 
 
       try {
-        const syncRes = await fetch(`${baseUrl}/api/vlr?id=${match.vlr_id}`);
-        const syncData = await syncRes.json();
+        // Import and call scrapeMatchDetails directly instead of HTTP to avoid auth issues
+        const { scrapeMatchDetails } = await import('@/lib/vlr');
+        const details = await scrapeMatchDetails(match.vlr_id);
         
-        if (syncData.success) {
-            console.log(`Cron: Partido ${match.vlr_id} sincronizado.`);
+        if (!details || details.length === 0) {
+          console.log(`Cron: Partido ${match.vlr_id} sin estadísticas disponibles aún.`);
+          continue;
         }
+
+        // Get Players Map (Nickname -> UUID)
+        const { data: playersData } = await supabaseAdmin
+          .from('pro_players')
+          .select('id, nickname')
+          .returns<{ id: string; nickname: string }[]>();
+        
+        const playerMap = new Map<string, string>();
+        playersData?.forEach((p) => {
+          playerMap.set(p.nickname.toLowerCase(), p.id);
+        });
+
+        // Prepare Upserts
+        const performanceData = details
+          .map(d => {
+            const dbPlayerId = playerMap.get(d.nickname.toLowerCase());
+            if (!dbPlayerId) return null;
+
+            return {
+              match_id: match.id,
+              player_id: dbPlayerId,
+              kills: d.kills,
+              deaths: d.deaths,
+              assists: d.assists,
+              fb: d.fb,
+              clutches: d.clutches,
+            };
+          })
+          .filter((p): p is any => p !== null);
+        
+        if (performanceData.length > 0) {
+          const { error } = await supabaseAdmin
+            .from('player_performances')
+            .upsert(performanceData as any, { onConflict: 'match_id,player_id' });
+          
+          if (error) {
+            console.error(`Cron: Error guardando stats del partido ${match.vlr_id}:`, error);
+          } else {
+            // Mark match as finished
+            await (supabaseAdmin.from('matches') as any).update({ status: 'finished' }).eq('id', match.id);
+            console.log(`Cron: Partido ${match.vlr_id} sincronizado (${performanceData.length} jugadores).`);
+          }
+        }
+
+        // Add delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
       } catch (err) {
         console.error(`Cron: Error sincronizando partido ${match.vlr_id}:`, err);
       }
