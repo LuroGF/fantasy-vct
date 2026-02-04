@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import { supabaseAdmin } from "@/lib/supabase";
 import { createClient } from "@/utils/supabase/server";
+import { Database } from "@/types/supabase";
 
 export const revalidate = 60;
 
@@ -73,10 +74,13 @@ function parseUpcomingMatches(html: string) {
     const teamsLabel =
       teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
 
-    // Filtro mucho más estricto: Solo VCT EMEA
-    const isEmeaS1 = event.toUpperCase().includes("EMEA") && (event.toUpperCase().includes("CHAMPIONS TOUR") || event.toUpperCase().includes("STAGE"));
+    //Solo VCT EMEA principal
+    const isVctEmea = event.toUpperCase().includes("VCT") && 
+                      event.toUpperCase().includes("EMEA") && 
+                      !event.toUpperCase().includes("GAME CHANGERS") &&
+                      !event.toUpperCase().includes("CHALLENGERS");
 
-    if (teamsLabel && event && isEmeaS1) {
+    if (teamsLabel && event && isVctEmea) {
       results.push({
         time: time || "LIVE",
         teams: teamsLabel,
@@ -145,11 +149,10 @@ async function scrapeMatchDetails(matchId: string) {
   const $ = cheerio.load(html);
   const stats: any[] = [];
 
-  // Buscamos las tablas de estadísticas (suele haber una por mapa + global)
-  // La clase .wf-table-container suele envolver los stats
+  // Main stats table
   $(".wf-table-container").first().find("tbody tr").each((_, row) => {
     const cols = $(row).find("td");
-    if (cols.length < 5) return;
+    if (cols.length < 10) return; // Need at least items for FK/FD
 
     const playerLink = $(cols[0]).find("a").attr("href") || "";
     const playerId = playerLink.split("/")[2] || "";
@@ -160,16 +163,19 @@ async function scrapeMatchDetails(matchId: string) {
     const dRaw = cleanText($(cols[3]).find(".mod-vlr-deaths").text());
     const aRaw = cleanText($(cols[4]).find(".mod-vlr-assists").text());
 
-    // FB (First Bloods) y FD (First Deaths) suelen estar en columnas específicas o calculados
-    // NOTA: VLR a veces cambia las columnas. Intentamos pillar los básicos primero.
-    
+    // FK / FD (Indices 9 and 10 usually)
+    const fkRaw = cleanText($(cols[9]).text());
+    const fdRaw = cleanText($(cols[10]).text());
+
     stats.push({
       vlr_player_id: playerId,
       nickname,
       kills: parseInt(kdaRaw) || 0,
       deaths: parseInt(dRaw.replace("/", "")) || 0,
       assists: parseInt(aRaw) || 0,
-      // FB y Clutches requieren selectores más específicos dependiendo de la vista
+      fb: parseInt(fkRaw) || 0, // treating FK as First Blood for scoring
+      fd: parseInt(fdRaw) || 0,
+      clutches: 0 // Placeholder: Clutches require parsing 'Performance' tab
     });
   });
 
@@ -177,61 +183,138 @@ async function scrapeMatchDetails(matchId: string) {
 }
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const supabase = await createClient(); // For auth context if needed
   const { searchParams } = new URL(request.url);
   const matchId = searchParams.get("id");
 
-  // Si nos pasan un ID, scrapeamos ese partido específico
+  // Scrape specific match and Sync Stats
   if (matchId) {
     try {
       const details = await scrapeMatchDetails(matchId);
-      return NextResponse.json(details);
+      if (!details) return NextResponse.json({ error: "Scrape failed" }, { status: 404 });
+
+      // 1. Get Match UUID from DB using VLR ID
+      const { data: matchData } = await supabaseAdmin
+        .from('matches')
+        .select('id')
+        .eq('vlr_id', matchId)
+        .returns<{ id: string }[]>()
+        .single();
+
+      if (!matchData) {
+         return NextResponse.json({ error: "Match not found in DB. Sync matches first." }, { status: 404 });
+      }
+
+      // 2. Get Players Map (Nickname -> UUID)
+      // In a real app we might store vlr_player_id in pro_players to be safer
+      const { data: playersData } = await supabaseAdmin
+        .from('pro_players')
+        .select('id, nickname')
+        .returns<{ id: string; nickname: string }[]>();
+      
+      const playerMap = new Map<string, string>();
+      playersData?.forEach((p) => {
+          playerMap.set(p.nickname.toLowerCase(), p.id);
+      });
+
+      // 3. Prepare Upserts
+      type PerformanceInsert = Database['public']['Tables']['player_performances']['Insert'];
+      
+      const performanceData = details
+        .map(d => {
+          const dbPlayerId = playerMap.get(d.nickname.toLowerCase());
+          if (!dbPlayerId) return null;
+
+          return {
+              match_id: matchData.id,
+              player_id: dbPlayerId,
+              kills: d.kills,
+              deaths: d.deaths,
+              assists: d.assists,
+              fb: d.fb,
+              clutches: d.clutches,
+              // fantasy_points will be calculated by trigger
+          };
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null);
+      
+      const performances: PerformanceInsert[] = performanceData;
+
+      if (performances.length > 0) {
+          const { error } = await supabaseAdmin
+            .from('player_performances')
+            .upsert(performances as any, { onConflict: 'match_id,player_id' });
+          
+          if (error) {
+              console.error("Error saving stats:", error);
+              return NextResponse.json({ error: "DB Error", details: error }, { status: 500 });
+          }
+      }
+
+      return NextResponse.json({ 
+          success: true, 
+          synced: performances.length, 
+          total_scraped: details.length,
+          data: details 
+      });
+
     } catch (error) {
+      console.error("Match scrape error:", error);
       return NextResponse.json({ error: "Failed to scrape match details" }, { status: 500 });
     }
   }
 
-  // Si no, flujo normal de partidos próximos
+  // Si no, flujo normal de partidos próximos (Existing logic)
   try {
     const data = await loadVlrData();
     
     // Sincronización con DB
-    const { data: teamsData } = await supabase.from('pro_teams').select('id, name, tag');
+    const { data: teamsData } = await supabaseAdmin
+        .from('pro_teams')
+        .select('id, name, tag')
+        .returns<{ id: string; name: string; tag: string }[]>();
+
     const teamMap = new Map<string, string>();
     
-    (teamsData as any[])?.forEach((t: { name: string; tag: string; id: string }) => {
+    teamsData?.forEach((t) => {
       if (t.name) teamMap.set(t.name.toUpperCase(), t.id);
       if (t.tag) teamMap.set(t.tag.toUpperCase(), t.id);
     });
 
-    const matchUpserts = data.upcomingMatches.map(m => {
-      const parts = m.teams.split(" vs ");
-      let nameA = parts[0]?.toUpperCase();
-      let nameB = parts[1]?.toUpperCase();
-      
-      // Intentar resolver por alias si no hay match directo
-      const tagA = TEAM_ALIASES[nameA] || nameA;
-      const tagB = TEAM_ALIASES[nameB] || nameB;
-      
-      const teamAId = teamMap.get(nameA) || teamMap.get(tagA);
-      const teamBId = teamMap.get(nameB) || teamMap.get(tagB);
-      
-      if (!teamAId || !teamBId) {
-         console.log(`Sync: Saltando partido ${m.teams} - Equipos no encontrados en DB: ${nameA}(${teamAId ? 'OK':'MISSING'}) vs ${nameB}(${teamBId ? 'OK':'MISSING'})`);
-      }
+    type MatchInsert = Database['public']['Tables']['matches']['Insert'];
+    
+    const matchUpserts: MatchInsert[] = data.upcomingMatches
+      .map(m => {
+        const parts = m.teams.split(" vs ");
+        let nameA = parts[0]?.toUpperCase() || "";
+        let nameB = parts[1]?.toUpperCase() || "";
+        
+        // Intentar resolver por alias si no hay match directo
+        const tagA = TEAM_ALIASES[nameA] || nameA;
+        const tagB = TEAM_ALIASES[nameB] || nameB;
+        
+        const teamAId = teamMap.get(nameA) || teamMap.get(tagA);
+        const teamBId = teamMap.get(nameB) || teamMap.get(tagB);
+        
+        if (!teamAId || !teamBId) {
+           // console.log(`Sync: Saltando partido - Equipos no encontrados`);
+           return null;
+        }
 
-      return {
-        vlr_id: m.id,
-        team_a: teamAId,
-        team_b: teamBId,
-        status: m.time.toLowerCase().includes("live") ? 'live' : 'upcoming',
-      };
-    }).filter(m => m.team_a && m.team_b);
+        const matchData: MatchInsert = {
+          vlr_id: m.id,
+          team_a: teamAId,
+          team_b: teamBId,
+          status: m.time.toLowerCase().includes("live") ? 'live' : 'upcoming',
+        };
+        
+        return matchData;
+      })
+      .filter((m): m is MatchInsert => m !== null);
 
     if (matchUpserts.length > 0) {
-      const { error: upsertError } = await supabaseAdmin.from('matches').upsert(matchUpserts, { onConflict: 'vlr_id' });
+      const { error: upsertError } = await supabaseAdmin.from('matches').upsert(matchUpserts as any, { onConflict: 'vlr_id' });
       if (upsertError) console.error("Sync: Error upserting matches:", upsertError);
-      else console.log(`Sync: ${matchUpserts.length} partidos sincronizados correctamente.`);
     }
 
     return NextResponse.json(data);

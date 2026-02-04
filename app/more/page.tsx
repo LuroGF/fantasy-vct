@@ -1,12 +1,12 @@
 import Link from "next/link";
+import { signOut } from "@/lib/actions/auth";
 
 const options = [
-  "Perfil",
-  "Notificaciones",
-  "Invitar amigos",
-  "Reglas y puntuacion",
-  "Soporte",
-  "Cerrar sesion",
+  { label: "Perfil", href: "/profile" },
+  { label: "Notificaciones", href: "/notifications" },
+  { label: "Invitar amigos", href: "/invite" },
+  { label: "Reglas y puntuacion", href: "/rules" },
+  { label: "Soporte", href: "/support" },
 ];
 
 export default function MorePage() {
@@ -21,18 +21,33 @@ export default function MorePage() {
 
       <div className="v-panel p-2 space-y-1 bg-v-gray/40">
         {options.map((item) => (
-          <button
-            key={item}
+          <Link
+            key={item.label}
+            href={item.href}
             className="w-full flex items-center justify-between p-4 hover:bg-v-white/5 transition-colors group border-b border-white/5 last:border-0"
           >
-            <span className={`text-sm font-black uppercase tracking-widest ${item === "Cerrar sesion" ? "text-v-red" : "text-v-white/80"}`}>
-              {item}
+            <span className="text-sm font-black uppercase tracking-widest text-v-white/80">
+              {item.label}
             </span>
             <span className="text-v-white/20 group-hover:text-v-red transition-colors text-xl">
               {"//"}
             </span>
-          </button>
+          </Link>
         ))}
+        
+        <form action={signOut}>
+          <button
+            type="submit"
+            className="w-full flex items-center justify-between p-4 hover:bg-v-red/10 transition-colors group border-t border-white/10"
+          >
+            <span className="text-sm font-black uppercase tracking-widest text-v-red">
+              Cerrar sesión
+            </span>
+            <span className="text-v-red/50 group-hover:text-v-red transition-colors text-xl">
+              {"//"}
+            </span>
+          </button>
+        </form>
       </div>
 
       <div className="text-center space-y-2 py-4">
@@ -44,6 +59,5 @@ export default function MorePage() {
         </div>
       </div>
     </div>
-
   );
 }

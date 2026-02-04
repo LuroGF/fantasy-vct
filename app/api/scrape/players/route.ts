@@ -75,12 +75,12 @@ export async function GET() {
     
     const { error: teamError } = await supabase
       .from('pro_teams')
-      .upsert(teamUpserts, { onConflict: 'tag' });
+      .upsert(teamUpserts as any, { onConflict: 'tag' });
     
     if (teamError) throw teamError;
 
     // Obtenemos los IDs de los equipos para relacionarlos
-    const { data: teamsData } = await supabase.from('pro_teams').select('id, tag');
+    const { data: teamsData } = await supabase.from('pro_teams').select('id, tag').returns<{ id: string; tag: string }[]>();
     const teamMap = new Map(teamsData?.map(t => [t.tag, t.id]));
 
     // 2. Procesar Jugadores (Deduplicar por nickname)
@@ -103,7 +103,7 @@ export async function GET() {
 
     const { error: playerError } = await supabase
       .from('pro_players')
-      .upsert(playerUpserts, { onConflict: 'nickname' });
+      .upsert(playerUpserts as any, { onConflict: 'nickname' });
 
     if (playerError) throw playerError;
 

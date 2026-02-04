@@ -1,0 +1,21 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@utility",
+      "description": "Tailwind CSS v4: Define custom utility classes"
+    },
+    {
+      "name": "@theme",
+      "description": "Tailwind CSS v4: Define theme configuration"
+    },
+    {
+      "name": "@variant",
+      "description": "Tailwind CSS v4: Define custom variants"
+    },
+    {
+      "name": "@source",
+      "description": "Tailwind CSS v4: Import additional CSS sources"
+    }
+  ]
+}
