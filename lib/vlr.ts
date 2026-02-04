@@ -42,18 +42,35 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
   try {
     const months: Record<string, number> = {
       'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11,
+      'January': 0, 'February': 1, 'March': 2, 'April': 3, 'June': 5,
+      'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
     };
-    const parts = vlrDate.split(', ');
+    
+    // El formato suele ser "Weekday, Month Day, Year" o "Today, Month Day"
+    const parts = vlrDate.split(',').map(p => p.trim());
     if (parts.length < 2) return null;
-    const monthDay = parts[1].split(' ');
-    const month = months[monthDay[0]];
-    const day = parseInt(monthDay[1]);
-    if (isNaN(month) || isNaN(day)) return null;
+
+    // Buscamos el bloque que contiene el mes (ej: "February 5")
+    const monthDayPart = parts[1].split(' ');
+    const monthName = monthDayPart[0];
+    const day = parseInt(monthDayPart[1]);
+    const month = months[monthName];
+
+    if (month === undefined || isNaN(day)) return null;
+
     const now = new Date();
     let year = now.getFullYear();
-    if (now.getMonth() === 11 && month === 0) year++;
+
+    // Si el tercer fragmento es un año, lo usamos
+    if (parts.length >= 3 && /^\d{4}$/.test(parts[2])) {
+        year = parseInt(parts[2]);
+    } else if (now.getMonth() === 11 && month === 0) {
+        year++;
+    }
+
     const date = new Date(year, month, day);
+    
     if (vlrTime && vlrTime.toLowerCase() !== 'live' && !vlrTime.includes('h')) {
         const timeMatch = vlrTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
         if (timeMatch) {
@@ -62,7 +79,9 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
             const ampm = timeMatch[3].toUpperCase();
             if (ampm === 'PM' && hours < 12) hours += 12;
             if (ampm === 'AM' && hours === 12) hours = 0;
-            date.setHours(hours, minutes);
+            // Establacer hora en UTC o local segun prefieras, VLR suele estar en UTC/timezone del server
+            // Por ahora mantenemos la logica original pero aseguramos el set
+            date.setHours(hours, minutes, 0, 0);
         }
     }
     return date.toISOString();
