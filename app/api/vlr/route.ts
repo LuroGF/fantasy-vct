@@ -253,6 +253,13 @@ export async function GET(request: Request) {
   try {
     const data = await loadVlrData();
     
+    // Obtener la jornada activa para asignar los partidos
+    const { data: activeGw } = await supabaseAdmin
+        .from('gameweeks')
+        .select('id')
+        .eq('is_active', true)
+        .single<Database['public']['Tables']['gameweeks']['Row']>();
+
     // Sincronización con DB
     const { data: teamsData } = await supabaseAdmin
         .from('pro_teams')
@@ -283,8 +290,6 @@ export async function GET(request: Request) {
         
         if (!teamAId || !teamBId) {
            console.log(`Sync Skip: Missing Team in DB!`);
-           console.log(`Team A: [${nameA}] -> Map: [${teamAId || 'EMPTY'}]`);
-           console.log(`Team B: [${nameB}] -> Map: [${teamBId || 'EMPTY'}]`);
            return null;
         }
 
@@ -293,6 +298,7 @@ export async function GET(request: Request) {
           team_a: teamAId,
           team_b: teamBId,
           status: m.time.toLowerCase().includes("live") ? 'live' : 'upcoming',
+          gameweek_id: activeGw?.id || null, // Asignar jornada activa
         };
         
         return matchData;
