@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+export const dynamic = "force-dynamic";
 import { createClient } from "@/utils/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LiveHUD } from "@/components/LiveHUD";
@@ -7,7 +8,7 @@ import { Challenges } from "@/components/Challenges";
 
 type VlrPayload = {
   stats: { label: string; value: string }[];
-  upcomingMatches: { time: string; teams: string; event: string }[];
+  upcomingMatches: { time: string; teams: string; event: string; date?: string }[];
   scoring: { label: string; value: string }[];
 };
 
@@ -184,7 +185,10 @@ export default async function DashboardPage() {
                   <span className={`text-xs font-black ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
                     {isLive ? "EN VIVO" : match.time}
                   </span>
-                  <span className="text-[8px] font-black uppercase text-v-white/20 truncate max-w-[80px]">
+                  <span className="text-[8px] font-black uppercase text-v-white/40 mb-0.5">
+                    {match.date?.split(',')[1]?.trim() || ''}
+                  </span>
+                  <span className="text-[8px] font-black uppercase text-v-white/10 truncate max-w-[80px]">
                     {match.event}
                   </span>
                 </div>

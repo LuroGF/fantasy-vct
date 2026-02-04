@@ -2,6 +2,7 @@ import { getSession } from "@/lib/actions/auth";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { getUserFullRoster } from "@/lib/actions/roster";
 import { redirect } from "next/navigation";
+export const dynamic = "force-dynamic";
 import TeamView from "./TeamView";
 
 export default async function TeamPage() {

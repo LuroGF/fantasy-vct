@@ -8,7 +8,14 @@ export const revalidate = 60;
 
 export type VlrPayload = {
   stats: { label: string; value: string }[];
-  upcomingMatches: { time: string; teams: string; event: string; id: string }[];
+  upcomingMatches: { 
+    time: string; 
+    teams: string; 
+    event: string; 
+    id: string; 
+    date?: string; 
+    isVctEmea?: boolean;
+  }[];
   scoring: { label: string; value: string }[];
 };
 
@@ -39,55 +46,55 @@ function parseUpcomingMatches(html: string) {
   const $ = cheerio.load(html);
   const results: VlrPayload["upcomingMatches"] = [];
 
-  $(".match-item").each((_, element) => {
-    const card = $(element);
-    const id = card.attr("href")?.split("/")[1] || "";
-    const time = cleanText(card.find(".match-item-time").first().text());
-    const event = cleanText(card.find(".match-item-event").first().text());
+  // VLR groups matches by date headers: .wf-label.mod-large
+  $(".wf-label.mod-large").each((_, label) => {
+    const rawDate = $(label).text().trim(); // e.g. "Wednesday, Feb 4"
     
-    const teams = card
-      .find(".match-item-vs-team-name")
-      .map((__, team) => cleanText($(team).text()))
-      .get()
-      .filter(Boolean);
-
-    const teamsLabel =
-      teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
-
-    //Solo VCT EMEA principal
-    const isVctEmea = event.toUpperCase().includes("VCT") && 
-                      event.toUpperCase().includes("EMEA") && 
-                      !event.toUpperCase().includes("GAME CHANGERS") &&
-                      !event.toUpperCase().includes("CHALLENGERS");
-
-    if (teamsLabel && event && isVctEmea) {
-      results.push({
-        time: time || "LIVE",
-        teams: teamsLabel,
-        event,
-        id,
-      });
-    }
-  });
-
-  if (results.length === 0) {
-    $(".match-item").slice(0, 6).each((_, element) => {
-        const card = $(element);
+    // The matches are siblings of this label or in the next container
+    let next = $(label).next();
+    while (next.length && !next.hasClass("wf-label")) {
+      const processItem = (item: any) => {
+        const card = $(item);
         const id = card.attr("href")?.split("/")[1] || "";
         const time = cleanText(card.find(".match-item-time").first().text());
         const event = cleanText(card.find(".match-item-event").first().text());
-        const teams = card.find(".match-item-vs-team-name").map((__, team) => cleanText($(team).text())).get();
-        if (teams.length >= 2) {
-            results.push({
-                time: time || "LIVE",
-                teams: `${teams[0]} vs ${teams[1]}`,
-                event,
-                id
-            });
-        }
-    });
-  }
+        
+        const teams = card
+          .find(".match-item-vs-team-name")
+          .map((__, team) => cleanText($(team).text()))
+          .get()
+          .filter(Boolean);
 
+        const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
+
+        const isVctEmea = event.toUpperCase().includes("VCT") && 
+                          event.toUpperCase().includes("EMEA") && 
+                          !event.toUpperCase().includes("GAME CHANGERS") &&
+                          !event.toUpperCase().includes("CHALLENGERS");
+
+        if (teamsLabel && event) {
+          results.push({
+            time: time || "LIVE",
+            teams: teamsLabel,
+            event,
+            id,
+            date: rawDate,
+            isVctEmea 
+          });
+        }
+      };
+
+      if (next.hasClass("match-item")) {
+        processItem(next);
+      } else {
+        next.find(".match-item").each((__, item) => processItem(item));
+      }
+      next = next.next();
+    }
+  });
+
+  const emeaMatches = results.filter((m) => m.isVctEmea);
+  if (emeaMatches.length > 0) return emeaMatches.slice(0, 15);
   return results.slice(0, 10);
 }
 
@@ -167,6 +174,51 @@ async function scrapeMatchDetails(matchId: string) {
   return stats;
 }
 
+function parseVlrDate(vlrDate: string, vlrTime: string) {
+  try {
+    const months: Record<string, number> = {
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    };
+    
+    // vlrDate is e.g. "Wednesday, Feb 4"
+    const parts = vlrDate.split(', ');
+    if (parts.length < 2) return null;
+    
+    const monthDay = parts[1].split(' ');
+    const month = months[monthDay[0]];
+    const day = parseInt(monthDay[1]);
+    
+    if (isNaN(month) || isNaN(day)) return null;
+
+    // Current date for year context
+    const now = new Date();
+    let year = now.getFullYear();
+
+    // If we're in Dec and the match is Jan, it's next year
+    if (now.getMonth() === 11 && month === 0) year++;
+    
+    const date = new Date(year, month, day);
+    
+    if (vlrTime && vlrTime.toLowerCase() !== 'live' && !vlrTime.includes('h')) {
+        const timeMatch = vlrTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (timeMatch) {
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const ampm = timeMatch[3].toUpperCase();
+            if (ampm === 'PM' && hours < 12) hours += 12;
+            if (ampm === 'AM' && hours === 12) hours = 0;
+            date.setHours(hours, minutes);
+        }
+    }
+    
+    return date.toISOString();
+  } catch (e) {
+    console.error("Error parsing date:", vlrDate, vlrTime, e);
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   const supabase = await createClient(); // For auth context if needed
   const { searchParams } = new URL(request.url);
@@ -191,7 +243,6 @@ export async function GET(request: Request) {
       }
 
       // 2. Get Players Map (Nickname -> UUID)
-      // In a real app we might store vlr_player_id in pro_players to be safer
       const { data: playersData } = await supabaseAdmin
         .from('pro_players')
         .select('id, nickname')
@@ -203,8 +254,6 @@ export async function GET(request: Request) {
       });
 
       // 3. Prepare Upserts
-      type PerformanceInsert = Database['public']['Tables']['player_performances']['Insert'];
-      
       const performanceData = details
         .map(d => {
           const dbPlayerId = playerMap.get(d.nickname.toLowerCase());
@@ -218,17 +267,14 @@ export async function GET(request: Request) {
               assists: d.assists,
               fb: d.fb,
               clutches: d.clutches,
-              // fantasy_points will be calculated by trigger
           };
         })
-        .filter((p): p is NonNullable<typeof p> => p !== null);
+        .filter((p): p is any => p !== null);
       
-      const performances: PerformanceInsert[] = performanceData;
-
-      if (performances.length > 0) {
+      if (performanceData.length > 0) {
           const { error } = await supabaseAdmin
             .from('player_performances')
-            .upsert(performances as any, { onConflict: 'match_id,player_id' });
+            .upsert(performanceData as any, { onConflict: 'match_id,player_id' });
           
           if (error) {
               console.error("Error saving stats:", error);
@@ -238,7 +284,7 @@ export async function GET(request: Request) {
 
       return NextResponse.json({ 
           success: true, 
-          synced: performances.length, 
+          synced: performanceData.length, 
           total_scraped: details.length,
           data: details 
       });
@@ -249,11 +295,11 @@ export async function GET(request: Request) {
     }
   }
 
-  // Si no, flujo normal de partidos próximos (Existing logic)
+  // Si no, flujo normal de partidos próximos (Sincronización masiva de lista)
   try {
     const data = await loadVlrData();
     
-    // Obtener la jornada activa para asignar los partidos
+    // Obtener la jornada activa
     const { data: activeGw } = await supabaseAdmin
         .from('gameweeks')
         .select('id')
@@ -267,21 +313,18 @@ export async function GET(request: Request) {
         .returns<{ id: string; name: string; tag: string }[]>();
 
     const teamMap = new Map<string, string>();
-    
     teamsData?.forEach((t) => {
       if (t.name) teamMap.set(t.name.toUpperCase(), t.id);
       if (t.tag) teamMap.set(t.tag.toUpperCase(), t.id);
     });
 
-    type MatchInsert = Database['public']['Tables']['matches']['Insert'];
-    
-    const matchUpserts: MatchInsert[] = data.upcomingMatches
-      .map(m => {
+    const matchUpserts = data.upcomingMatches
+      .map((m: any) => {
         const parts = m.teams.split(" vs ");
         let nameA = parts[0]?.toUpperCase() || "";
         let nameB = parts[1]?.toUpperCase() || "";
         
-        // Intentar resolver por alias si no hay match directo
+        // Resolver por alias
         const tagA = TEAM_ALIASES[nameA] || nameA;
         const tagB = TEAM_ALIASES[nameB] || nameB;
         
@@ -289,25 +332,30 @@ export async function GET(request: Request) {
         const teamBId = teamMap.get(nameB) || teamMap.get(tagB);
         
         if (!teamAId || !teamBId) {
-           console.log(`Sync Skip: Missing Team in DB!`);
+           console.log(`Sync Skip: Missing Teams [${nameA} vs ${nameB}] in DB!`);
            return null;
         }
 
-        const matchData: MatchInsert = {
+        const isoDate = m.date ? parseVlrDate(m.date, m.time) : null;
+
+        return {
           vlr_id: m.id,
           team_a: teamAId,
           team_b: teamBId,
+          match_date: isoDate,
           status: m.time.toLowerCase().includes("live") ? 'live' : 'upcoming',
-          gameweek_id: activeGw?.id || null, // Asignar jornada activa
+          gameweek_id: activeGw?.id || null,
         };
-        
-        return matchData;
       })
-      .filter((m): m is MatchInsert => m !== null);
+      .filter((m: any) => m !== null);
 
     if (matchUpserts.length > 0) {
-      const { error: upsertError } = await supabaseAdmin.from('matches').upsert(matchUpserts as any, { onConflict: 'vlr_id' });
-      if (upsertError) console.error("Sync: Error upserting matches:", upsertError);
+      console.log(`Sync: Upserting ${matchUpserts.length} matches...`);
+      const { error: upsertError } = await supabaseAdmin
+        .from('matches')
+        .upsert(matchUpserts as any, { onConflict: 'vlr_id' });
+        
+      if (upsertError) console.error("Sync Error:", upsertError);
     }
 
     return NextResponse.json(data);

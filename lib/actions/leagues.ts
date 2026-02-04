@@ -98,7 +98,8 @@ export async function getUserLeagues(userId: string) {
         invite_code
       )
     `)
-    .eq("profile_id", userId);
+    .eq("profile_id", userId)
+    .order('created_at', { ascending: true });
 
   if (error) {
     console.error("Error fetching leagues:", error);
