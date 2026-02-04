@@ -1,6 +1,5 @@
 import * as cheerio from "cheerio";
 import { supabaseAdmin } from "./supabase";
-import { Database } from "@/types/supabase";
 
 const VLR_MATCHES_URL = "https://www.vlr.gg/matches";
 
@@ -112,7 +111,7 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
   const emeaMatches = results.filter((m) => m.isVctEmea);
   const finalMatches = emeaMatches.length > 0 ? emeaMatches.slice(0, 15) : results.slice(0, 10);
 
-  // Sync with DB in background (ignore returned promise here to speed up)
+  // Sync with DB in background
   syncMatchesToDb(finalMatches).catch(console.error);
 
   return {
@@ -129,19 +128,112 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
   };
 }
 
-async function syncMatchesToDb(matches: VlrMatch[]) {
-    const { data: activeGw } = await supabaseAdmin.from('gameweeks').select('id').eq('is_active', true).single<any>();
-    const { data: teamsData } = await supabaseAdmin.from('pro_teams').select('id, name, tag').returns<any[]>();
+export async function scrapeMatchDetails(matchId: string) {
+    const url = `https://www.vlr.gg/${matchId}`;
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+  
+    if (!response.ok) return null;
+  
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const stats: any[] = [];
+  
+    $(".wf-table-container").first().find("tbody tr").each((_, row) => {
+      const cols = $(row).find("td");
+      if (cols.length < 10) return;
+  
+      const playerLink = $(cols[0]).find("a").attr("href") || "";
+      const playerId = playerLink.split("/")[2] || "";
+      const nickname = cleanText($(cols[0]).find(".mod-player").text());
+      
+      const kdaRaw = cleanText($(cols[2]).find(".mod-vlr-kills").text());
+      const dRaw = cleanText($(cols[3]).find(".mod-vlr-deaths").text());
+      const aRaw = cleanText($(cols[4]).find(".mod-vlr-assists").text());
+      const fkRaw = cleanText($(cols[9]).text());
+      const fdRaw = cleanText($(cols[10]).text());
+  
+      stats.push({
+        vlr_id: playerId,
+        nickname,
+        kills: parseInt(kdaRaw) || 0,
+        deaths: parseInt(dRaw.replace("/", "")) || 0,
+        assists: parseInt(aRaw) || 0,
+        fb: parseInt(fkRaw) || 0,
+        fd: parseInt(fdRaw) || 0,
+        clutches: 0
+      });
+    });
+  
+    return stats;
+}
+
+async function getOrCreateGameweekByDate(dateStr: string) {
+    const date = new Date(dateStr);
+    // Calcular Lunes 00:00 y Domingo 23:59
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+    const monday = new Date(d.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const startStr = monday.toISOString();
     
+    // Buscar si existe
+    const { data: existing } = await (supabaseAdmin
+        .from('gameweeks')
+        .select('id')
+        .eq('start_date', startStr) as any)
+        .maybeSingle();
+    
+    if (existing) return (existing as any).id;
+
+    // Crear nueva
+    const weekLabel = monday.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+    const { data: created, error } = await (supabaseAdmin
+        .from('gameweeks')
+        .insert({
+            name: `Jornada ${weekLabel}`,
+            start_date: startStr,
+            end_date: sunday.toISOString(),
+            is_active: false,
+            is_locked: false
+        } as any) as any)
+        .select('id')
+        .single();
+    
+    if (error) {
+        console.error("Error creating gameweek:", error);
+        return null;
+    }
+    return (created as any).id;
+}
+
+export async function syncMatchesToDb(matches: VlrMatch[]) {
+    const { data: teamsData } = await (supabaseAdmin.from('pro_teams').select('id, name, tag') as any);
+    
+    // De esta forma protegemos los partidos finalizados de ser sobreescritos por error
+    const { data: existingMatches } = await (supabaseAdmin.from('matches').select('vlr_id, status') as any);
+    const finishedIds = new Set((existingMatches as any[])?.filter((m: any) => m.status === 'finished').map((m: any) => m.vlr_id) || []);
+
     const teamMap = new Map<string, string>();
-    teamsData?.forEach((t) => {
+    (teamsData as any[])?.forEach((t: any) => {
       if (t.name) teamMap.set(t.name.toUpperCase(), t.id);
       if (t.tag) teamMap.set(t.tag.toUpperCase(), t.id);
     });
 
-    const matchUpserts = matches.map((m) => {
+    const matchUpserts = [];
+
+    for (const m of matches) {
+        if (finishedIds.has(m.id)) continue;
+
         const parts = m.teams.split(" vs ");
-        if (parts.length < 2) return null;
+        if (parts.length < 2) continue;
 
         let nameA = parts[0]?.toUpperCase() || "";
         let nameB = parts[1]?.toUpperCase() || "";
@@ -154,18 +246,32 @@ async function syncMatchesToDb(matches: VlrMatch[]) {
         
         if (!teamAId || !teamBId) {
             console.log(`Sync Skip: teams not found [${nameA} vs ${nameB}]`);
-            return null;
+            continue;
         }
 
-        return {
+        const matchDate = m.date ? parseVlrDate(m.date, m.time) : null;
+        let gwId = null;
+        if (matchDate) {
+            gwId = await getOrCreateGameweekByDate(matchDate);
+        }
+
+        let status = 'upcoming';
+        const timeLower = m.time.toLowerCase();
+        if (timeLower.includes("live")) {
+            status = 'live';
+        } else if (timeLower.includes("final") || /\d+-\d+/.test(m.time)) {
+            status = 'finished';
+        }
+
+        matchUpserts.push({
           vlr_id: m.id,
           team_a: teamAId,
           team_b: teamBId,
-          match_date: m.date ? parseVlrDate(m.date, m.time) : null,
-          status: m.time.toLowerCase().includes("live") ? 'live' : 'upcoming',
-          gameweek_id: activeGw?.id || null,
-        };
-    }).filter((m): m is any => m !== null);
+          match_date: matchDate,
+          status: status,
+          gameweek_id: gwId,
+        });
+    }
 
     if (matchUpserts.length > 0) {
       console.log(`Syncing ${matchUpserts.length} matches to DB...`);

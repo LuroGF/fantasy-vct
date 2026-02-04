@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${inter.variable} ${oswald.variable}`}>
-      <body className="antialiased h-[100dvh] flex flex-col items-center overflow-hidden">
+      <body className="antialiased h-dvh flex flex-col items-center overflow-hidden">
         {/* Main Wrapper to keep mobile feel on desktop */}
         <div className="w-full max-w-md h-full bg-v-navy/50 relative flex flex-col border-x border-white/5 shadow-2xl shadow-black/50 overflow-hidden">
           <main className="flex-1 pb-24 overflow-y-auto pt-4 px-4 overscroll-contain">

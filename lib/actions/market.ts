@@ -6,7 +6,18 @@ import { revalidatePath } from "next/cache";
 export async function buyPlayer(leagueId: string, profileId: string, playerId: string, price: number) {
   const supabase = await createClient();
   try {
-    // 1. Verificar presupuesto del usuario en esta liga
+    // 1. Verificar si la jornada está bloqueada
+    const { data: activeGw } = await supabase
+      .from('gameweeks')
+      .select('is_locked')
+      .eq('is_active', true)
+      .single();
+
+    if (activeGw?.is_locked) {
+      throw new Error("El mercado está cerrado para esta jornada (jornada bloqueada)");
+    }
+
+    // 2. Verificar presupuesto del usuario en esta liga
     const { data: participant, error: pError } = await supabase
       .from("league_participants")
       .select("current_budget")
