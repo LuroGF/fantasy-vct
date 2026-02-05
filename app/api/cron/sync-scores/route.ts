@@ -56,20 +56,24 @@ export async function GET(request: Request) {
     // --- C. SINCRONIZAR ESTADÍSTICAS ---
     const { data: matches, error: matchError } = await (supabaseAdmin
       .from('matches')
-      .select('id, vlr_id, status, match_date')
-      .eq('gameweek_id', activeGw.id)
-      .neq('status', 'finished') as any);
+      .select('id, vlr_id, status, match_date, player_performances(match_id)')
+      .eq('gameweek_id', activeGw.id) as any);
 
     if (matchError) throw matchError;
 
     for (const match of (matches as any[]) || []) {
       if (!match.vlr_id) continue;
       
+      // Si ya tiene stats, saltar (a menos que queramos forzar resync, pero por ahora no)
+      if (match.player_performances && match.player_performances.length > 0) {
+        continue;
+      }
+
       const matchTime = match.match_date ? new Date(match.match_date).getTime() : 0;
+      // No intentar scrapear si falta mucho para el partido
       if (now.getTime() < matchTime - (30 * 60 * 1000)) continue; 
 
       try {
-        // Import and call scrapeMatchDetails directly instead of HTTP to avoid auth issues
         const { scrapeMatchDetails } = await import('@/lib/vlr');
         const details = await scrapeMatchDetails(match.vlr_id);
         
@@ -93,7 +97,11 @@ export async function GET(request: Request) {
         const performanceData = details
           .map(d => {
             const dbPlayerId = playerMap.get(d.nickname.toLowerCase());
-            if (!dbPlayerId) return null;
+            if (!dbPlayerId) {
+                // Si no existe el jugador, intentamos crear un placeholder o loguear
+                // console.log(`Cron: Jugador ${d.nickname} no encontrado en pro_players`);
+                return null;
+            }
 
             return {
               match_id: match.id,

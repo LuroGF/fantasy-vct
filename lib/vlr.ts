@@ -224,48 +224,59 @@ export async function scrapeMatchDetails(matchId: string) {
     
       const html = await response.text();
       
-      // Check if we got an error page or stats are missing
+      // Check if stats are available
       const $ = cheerio.load(html);
-      const statsTable = $("table.wf-table-inset.mod-overview").first();
+      const tables = $("table.wf-table-inset.mod-overview");
       
-      if (!statsTable.length) {
-        console.error(`VLR stats table not found for ${matchId} (might be live or not yet available)`);
+      if (!tables.length) {
+        console.error(`VLR stats table not found for ${matchId}`);
         return null;
       }
       
-      const stats: any[] = [];
+      const statsMap = new Map<string, any>();
     
-      statsTable.find("tbody tr").each((_, row) => {
-        const cols = $(row).find("td");
-        if (cols.length < 10) return;
-    
-        const playerLink = $(cols[0]).find("a").attr("href") || "";
-        const playerId = playerLink.split("/")[2] || "";
-        const nickname = cleanText($(cols[0]).find(".mod-player").text());
+      tables.each((_, table) => {
+        const rows = $(table).find("tr").slice(1); // Skip header row
         
-        // Usar los indices correctos segun vlr-594757.html
-        // K=4, D=5, A=6, FK=11, FD=12
-        const kRaw = cleanText($(cols[4]).find(".mod-both").first().text());
-        const dRaw = cleanText($(cols[5]).find(".mod-both").first().text());
-        const aRaw = cleanText($(cols[6]).find(".mod-both").first().text());
-        const fkRaw = cleanText($(cols[11]).find(".mod-both").first().text());
-        const fdRaw = cleanText($(cols[12]).find(".mod-both").first().text());
+        rows.each((__, row) => {
+          const cols = $(row).find("td");
+          if (cols.length < 10) return;
     
-        if (!nickname) return;
+          const playerLink = $(cols[0]).find("a").attr("href") || "";
+          const playerId = playerLink.split("/")[2] || "";
+          const nickname = cleanText($(cols[0]).find(".mod-player").find(".text-of").text() || $(cols[0]).find(".mod-player").text());
+          
+          if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
 
-        stats.push({
-          vlr_id: playerId,
-          nickname,
-          kills: parseInt(kRaw) || 0,
-          deaths: parseInt(dRaw) || 0,
-          assists: parseInt(aRaw) || 0,
-          fb: parseInt(fkRaw) || 0,
-          fd: parseInt(fdRaw) || 0,
-          clutches: 0
+          // Stats indices based on inspection:
+          // K=4, D=5, A=6, FK=11, FD=12
+          const kRaw = cleanText($(cols[4]).find(".mod-both").first().text());
+          const dRaw = cleanText($(cols[5]).find(".mod-both").first().text());
+          const aRaw = cleanText($(cols[6]).find(".mod-both").first().text());
+          const fkRaw = cleanText($(cols[11]).find(".mod-both").first().text());
+          const fdRaw = cleanText($(cols[12]).find(".mod-both").first().text());
+          
+          const currentStats = {
+            vlr_id: playerId,
+            nickname,
+            kills: parseInt(kRaw) || 0,
+            deaths: parseInt(dRaw) || 0,
+            assists: parseInt(aRaw) || 0,
+            fb: parseInt(fkRaw) || 0,
+            fd: parseInt(fdRaw) || 0,
+            clutches: 0
+          };
+
+          // If we find the same player in multiple tables (e.g. All Maps + Map 1),
+          // we prefer the one with more kills (usually the "All Maps" one).
+          const existing = statsMap.get(playerId);
+          if (!existing || currentStats.kills > existing.kills) {
+            statsMap.set(playerId, currentStats);
+          }
         });
       });
     
-      return stats;
+      return Array.from(statsMap.values());
     } catch (error) {
       console.error(`Exception scraping match ${matchId}:`, error);
       return null;

@@ -7,54 +7,61 @@ function cleanText(value) {
 }
 
 async function testLocalScraper() {
-    console.log("Testing local scraper logic on vlr-594757.html...");
+    console.log("Testing IMPROVED local scraper logic on vlr-594757.html...");
     const html = fs.readFileSync("vlr-594757.html", "utf8");
     const $ = cheerio.load(html);
     
-    // Debug selection
+    // Logic from lib/vlr.ts
     const tables = $("table.wf-table-inset.mod-overview");
     console.log(`Found ${tables.length} overview tables.`);
 
-    const stats = [];
-    tables.each((i, table) => {
-        console.log(`Table ${i} has ${$(table).find("tr").length} total rows (including header).`);
+    const statsMap = new Map();
+    tables.each((_, table) => {
+        const rows = $(table).find("tr").slice(1);
         
-        // Let's try finding tr directly if tbody tr fails
-        const rows = $(table).find("tr").slice(1); // skip header
-        console.log(`Table ${i} has ${rows.length} data rows.`);
-
-        rows.each((j, row) => {
+        rows.each((__, row) => {
             const cols = $(row).find("td");
             if (cols.length < 10) return;
 
-            const playerCell = $(cols[0]);
-            const nickname = cleanText(playerCell.find(".text-of").first().text() || playerCell.text());
+            const playerLink = $(cols[0]).find("a").attr("href") || "";
+            const playerId = playerLink.split("/")[2] || "";
+            const nickname = cleanText($(cols[0]).find(".mod-player").find(".text-of").text() || $(cols[0]).find(".mod-player").text());
             
-            // Indices: K=4, D=5, A=6, FK=11, FD=12
-            const kRaw = cleanText($(cols[4]).find(".mod-both").text());
-            const dRaw = cleanText($(cols[5]).find(".mod-both").text());
-            const aRaw = cleanText($(cols[6]).find(".mod-both").text());
-            const fkRaw = cleanText($(cols[11]).find(".mod-both").text());
-            const fdRaw = cleanText($(cols[12]).find(".mod-both").text());
+            if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
 
-            if (!nickname || nickname.includes("Team")) return;
+            const kRaw = cleanText($(cols[4]).find(".mod-both").first().text());
+            const dRaw = cleanText($(cols[5]).find(".mod-both").first().text());
+            const aRaw = cleanText($(cols[6]).find(".mod-both").first().text());
+            const fkRaw = cleanText($(cols[11]).find(".mod-both").first().text());
+            const fdRaw = cleanText($(cols[12]).find(".mod-both").first().text());
 
-            stats.push({
+            const currentStats = {
+                vlr_id: playerId,
                 nickname,
                 kills: parseInt(kRaw) || 0,
                 deaths: parseInt(dRaw) || 0,
                 assists: parseInt(aRaw) || 0,
                 fb: parseInt(fkRaw) || 0,
-            });
+                fd: parseInt(fdRaw) || 0
+            };
+
+            const existing = statsMap.get(playerId);
+            if (!existing || currentStats.kills > existing.kills) {
+                statsMap.set(playerId, currentStats);
+            }
         });
     });
 
-    console.log(`Extracted ${stats.length} players stats total.`);
-    if (stats.length > 0) {
-        console.table(stats.slice(0, 5));
+    const stats = Array.from(statsMap.values());
+    console.log(`Extracted ${stats.length} unique players stats.`);
+    console.table(stats.slice(0, 10));
+    
+    // Expect 10 players for a match (2 teams of 5)
+    // Actually, in the All Maps view there should be 10 players.
+    if (stats.length === 10) {
+        console.log("✅ SUCCESS: Found precisely 10 players.");
     } else {
-        console.log("FIRST TABLE HTML SNIPPET:");
-        console.log($("table.wf-table-inset.mod-overview").first().html()?.substring(0, 1000));
+        console.log(`⚠️ WARNING: Found ${stats.length} players instead of 10.`);
     }
 }
 
