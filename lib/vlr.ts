@@ -168,8 +168,41 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
         { label: "Clutch round", value: "+4" },
         { label: "Match win", value: "+5" },
         { label: "Series MVP", value: "+6" },
+        { label: "Negative K/D", value: "-1" },
     ],
   };
+}
+
+async function getOrCreateTeam(name: string) {
+    const upperName = name.toUpperCase();
+    const tag = TEAM_ALIASES[upperName] || upperName.substring(0, 4);
+    
+    // Buscar primero
+    const { data: existing } = await (supabaseAdmin
+        .from('pro_teams')
+        .select('id')
+        .or(`name.eq."${name}",tag.eq."${tag}"`) as any)
+        .maybeSingle();
+    
+    if (existing) return (existing as any).id;
+
+    // Crear si no existe
+    console.log(`  🆕 Creando equipo faltante: ${name} (${tag})`);
+    const { data: created, error } = await (supabaseAdmin
+        .from('pro_teams')
+        .insert({
+            name: name,
+            tag: tag,
+            region: 'EMEA' // Default para este proyecto
+        } as any) as any)
+        .select('id')
+        .single();
+    
+    if (error) {
+        console.error(`  ❌ Error creando equipo ${name}:`, error);
+        return null;
+    }
+    return (created as any).id;
 }
 
 export async function scrapeMatchDetails(matchId: string) {
@@ -191,16 +224,18 @@ export async function scrapeMatchDetails(matchId: string) {
     
       const html = await response.text();
       
-      // Check if we got an error page instead of match data
-      if (html.includes('<!DOCTYPE') && !html.includes('vm-stats')) {
-        console.error(`VLR returned error page for ${matchId} (likely rate limited or match not found)`);
+      // Check if we got an error page or stats are missing
+      const $ = cheerio.load(html);
+      const statsTable = $("table.wf-table-inset.mod-overview").first();
+      
+      if (!statsTable.length) {
+        console.error(`VLR stats table not found for ${matchId} (might be live or not yet available)`);
         return null;
       }
       
-      const $ = cheerio.load(html);
       const stats: any[] = [];
     
-      $(".wf-table-container").first().find("tbody tr").each((_, row) => {
+      statsTable.find("tbody tr").each((_, row) => {
         const cols = $(row).find("td");
         if (cols.length < 10) return;
     
@@ -208,17 +243,21 @@ export async function scrapeMatchDetails(matchId: string) {
         const playerId = playerLink.split("/")[2] || "";
         const nickname = cleanText($(cols[0]).find(".mod-player").text());
         
-        const kdaRaw = cleanText($(cols[2]).find(".mod-vlr-kills").text());
-        const dRaw = cleanText($(cols[3]).find(".mod-vlr-deaths").text());
-        const aRaw = cleanText($(cols[4]).find(".mod-vlr-assists").text());
-        const fkRaw = cleanText($(cols[9]).text());
-        const fdRaw = cleanText($(cols[10]).text());
+        // Usar los indices correctos segun vlr-594757.html
+        // K=4, D=5, A=6, FK=11, FD=12
+        const kRaw = cleanText($(cols[4]).find(".mod-both").first().text());
+        const dRaw = cleanText($(cols[5]).find(".mod-both").first().text());
+        const aRaw = cleanText($(cols[6]).find(".mod-both").first().text());
+        const fkRaw = cleanText($(cols[11]).find(".mod-both").first().text());
+        const fdRaw = cleanText($(cols[12]).find(".mod-both").first().text());
     
+        if (!nickname) return;
+
         stats.push({
           vlr_id: playerId,
           nickname,
-          kills: parseInt(kdaRaw) || 0,
-          deaths: parseInt(dRaw.replace("/", "")) || 0,
+          kills: parseInt(kRaw) || 0,
+          deaths: parseInt(dRaw) || 0,
           assists: parseInt(aRaw) || 0,
           fb: parseInt(fkRaw) || 0,
           fd: parseInt(fdRaw) || 0,
@@ -307,11 +346,14 @@ export async function syncMatchesToDb(matches: VlrMatch[]) {
         const tagA = TEAM_ALIASES[nameA] || nameA;
         const tagB = TEAM_ALIASES[nameB] || nameB;
         
-        const teamAId = teamMap.get(nameA) || teamMap.get(tagA);
-        const teamBId = teamMap.get(nameB) || teamMap.get(tagB);
+        let teamAId = teamMap.get(nameA) || teamMap.get(tagA);
+        let teamBId = teamMap.get(nameB) || teamMap.get(tagB);
+        
+        if (!teamAId) teamAId = await getOrCreateTeam(parts[0]);
+        if (!teamBId) teamBId = await getOrCreateTeam(parts[1]);
         
         if (!teamAId || !teamBId) {
-            console.log(`Sync Skip: teams not found [${nameA} vs ${nameB}]`);
+            console.log(`Sync Skip: teams not found and could not create [${nameA} vs ${nameB}]`);
             continue;
         }
 
@@ -325,7 +367,7 @@ export async function syncMatchesToDb(matches: VlrMatch[]) {
         const timeLower = m.time.toLowerCase();
         if (timeLower.includes("live")) {
             status = 'live';
-        } else if (timeLower.includes("final") || /\d+-\d+/.test(m.time)) {
+        } else if (timeLower.includes("final") || timeLower.includes("completed") || /\d+-\d+/.test(m.time)) {
             status = 'finished';
         }
 
@@ -341,6 +383,7 @@ export async function syncMatchesToDb(matches: VlrMatch[]) {
 
     if (matchUpserts.length > 0) {
       console.log(`Syncing ${matchUpserts.length} matches to DB...`);
-      await supabaseAdmin.from('matches').upsert(matchUpserts as any, { onConflict: 'vlr_id' });
+      const { error: upsertError } = await supabaseAdmin.from('matches').upsert(matchUpserts as any, { onConflict: 'vlr_id' });
+      if (upsertError) console.error("Error upserting matches:", upsertError);
     }
 }
