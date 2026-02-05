@@ -59,6 +59,7 @@ export async function getUserFullRoster(leagueId: string, profileId: string) {
     .select(`
       player_id,
       acquisition_price,
+      release_clause,
       is_active,
       pro_players (
         id,

@@ -167,18 +167,31 @@ export async function GET(request: Request) {
                     deaths: d.deaths,
                     assists: d.assists,
                     fb: d.fb,
+                    fd: d.fd || 0,
+                    acs: d.acs || 0,
                     clutches: d.clutches,
-                    fantasy_points: calculateFantasyPoints(d)
+                    mvp: false // Default, calculated below
                 });
             }
         }
         
-        const performanceData = missingPlayers;
-        
+        // Calcular MVP (Jugador con mayor ACS en el partido)
+        let performanceData = missingPlayers;
         if (performanceData.length > 0) {
-          const { error } = await supabaseAdmin
-            .from('player_performances')
-            .upsert(performanceData as any, { onConflict: 'match_id,player_id' });
+            // Encontrar el max ACS
+            const maxAcs = Math.max(...performanceData.map(p => p.acs || 0));
+            
+            // Marcar MVP(s) - por si hay empate
+            if (maxAcs > 0) {
+                performanceData = performanceData.map(p => ({
+                    ...p,
+                    mvp: (p.acs || 0) === maxAcs
+                }));
+            }
+
+            const { error } = await supabaseAdmin
+              .from('player_performances')
+              .upsert(performanceData as any, { onConflict: 'match_id,player_id' });
           
           if (error) {
             console.error(`Cron: Error guardando stats del partido ${match.vlr_id}:`, error);
@@ -226,6 +239,11 @@ export async function GET(request: Request) {
             console.log(`Cron: Siguiente jornada activada: ${nextGw.name}`);
         }
     }
+
+    // --- F. ACTUALIZAR VALORES DE MERCADO ---
+    console.log("Cron: Actualizando valores de mercado...");
+    const { updateMarketValues } = await import('@/lib/actions/market-dynamics');
+    await updateMarketValues();
 
     return NextResponse.json({
       success: true,

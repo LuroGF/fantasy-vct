@@ -183,19 +183,65 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
   };
 }
 
-export function calculateFantasyPoints(stats: { kills: number; deaths: number; assists: number; fb: number; fd: number; clutches: number }) {
+export function calculateFantasyPoints(stats: { 
+  kills: number; 
+  deaths: number; 
+  assists: number; 
+  fb: number; 
+  fd: number; 
+  clutches: number;
+  mvp?: boolean;
+}, role?: 'Duelista' | 'Iniciador' | 'Controlador' | 'Centinela'): number {
   let points = 0;
-  points += stats.kills * 2;
-  points += stats.assists * 1;
-  points += stats.fb * 3;
-  points += stats.clutches * 4;
-  
-  // Negative K/D
-  if (stats.kills < stats.deaths) {
-    points -= 1;
+
+  // Si no hay rol, usar sistema estándar (legacy)
+  if (!role) {
+    points += stats.kills * 2;
+    points += stats.assists * 1;
+    points += stats.fb * 3;
+    points += stats.clutches * 4;
+    if (stats.kills < stats.deaths) points -= 1;
+    return Math.round(points);
   }
-  
-  return points;
+
+  // Sistema por roles
+  switch (role) {
+    case 'Duelista':
+      points += stats.kills * 1;
+      points += stats.assists * 0.5;
+      points += stats.fb * 5;
+      points += stats.fd * -3;
+      points += stats.deaths * -1;
+      if (stats.kills >= 45) points += 10;
+      if (stats.mvp) points += 5;
+      break;
+
+    case 'Centinela':
+      points += stats.kills * 2;
+      points += stats.assists * 0.5;
+      points += stats.fb * 6;
+      points += stats.fd * -4;
+      points += stats.deaths * -1;
+      if (stats.mvp) points += 5;
+      break;
+
+    case 'Iniciador':
+    case 'Controlador':
+      points += stats.kills * 1.5;
+      points += stats.assists * 2;
+      points += stats.fb * 3;
+      points += stats.fd * -2;
+      points += stats.deaths * -1;
+      if (stats.assists >= 20) {
+        points += 10;
+      } else {
+        points -= 5;
+      }
+      if (stats.mvp) points += 5;
+      break;
+  }
+
+  return Math.round(points);
 }
 
 async function getOrCreateTeam(name: string) {
@@ -277,6 +323,7 @@ export async function scrapeMatchDetails(matchId: string) {
           a: findIdx(["A", "ASSIST", "ASSISTS"]),
           fk: findIdx(["FK", "FIRST KILLS"]),
           fd: findIdx(["FD", "FIRST DEATHS"]),
+          acs: findIdx(["ACS", "AVERAGE COMBAT SCORE"]),
         };
 
         // If we can't find basic K/D/A, this table might not be what we want
@@ -329,6 +376,7 @@ export async function scrapeMatchDetails(matchId: string) {
             assists: getStat(idx.a),
             fb: getStat(idx.fk),
             fd: getStat(idx.fd),
+            acs: getStat(idx.acs),
             clutches: 0
           };
 

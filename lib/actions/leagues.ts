@@ -93,6 +93,7 @@ export async function getUserLeagues(userId: string) {
     .from("league_participants")
     .select(`
       current_budget,
+      transfers_made_this_week,
       league_id,
       leagues (
         id,

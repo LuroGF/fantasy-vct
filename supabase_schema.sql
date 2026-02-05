@@ -83,6 +83,8 @@ create table public.player_performances (
   assists integer null default 0,
   clutches integer null default 0,
   fb integer null default 0,
+  fd integer null default 0,
+  mvp boolean null default false,
   fantasy_points integer null default 0,
   constraint player_performances_pkey primary key (id),
   constraint player_performances_match_id_player_id_key unique (match_id, player_id),
