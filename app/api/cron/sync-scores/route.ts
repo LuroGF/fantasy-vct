@@ -56,7 +56,15 @@ export async function GET(request: Request) {
     // --- C. SINCRONIZAR ESTADÍSTICAS ---
     const { data: matches, error: matchError } = await (supabaseAdmin
       .from('matches')
-      .select('id, vlr_id, status, match_date, player_performances(match_id)')
+      .select(`
+        id, 
+        vlr_id, 
+        status, 
+        match_date, 
+        team_a_data:pro_teams!team_a(id, name, tag),
+        team_b_data:pro_teams!team_b(id, name, tag),
+        player_performances(match_id)
+      `)
       .eq('gameweek_id', activeGw.id) as any);
 
     if (matchError) throw matchError;
@@ -78,7 +86,7 @@ export async function GET(request: Request) {
         const details = await scrapeMatchDetails(match.vlr_id);
         
         if (!details || details.length === 0) {
-          console.log(`Cron: Partido ${match.vlr_id} sin estadísticas disponibles aún.`);
+          console.log(`Cron: Partido ${match.vlr_id} - No se encontraron tablas de estadísticas o están vacías.`);
           continue;
         }
 
@@ -94,26 +102,65 @@ export async function GET(request: Request) {
         });
 
         // Prepare Upserts
-        const performanceData = details
-          .map(d => {
-            const dbPlayerId = playerMap.get(d.nickname.toLowerCase());
+        const missingPlayers: any[] = [];
+        for (const d of details) {
+            let dbPlayerId = playerMap.get(d.nickname.toLowerCase());
+            
             if (!dbPlayerId) {
-                // Si no existe el jugador, intentamos crear un placeholder o loguear
-                // console.log(`Cron: Jugador ${d.nickname} no encontrado en pro_players`);
-                return null;
+                console.log(`Cron: Creando jugador faltante: ${d.nickname} (${d.teamTag})`);
+                
+                // Determinar el team_id correcto
+                let teamId = null;
+                const tag = d.teamTag?.toUpperCase();
+                const teamA = (match as any).team_a_data;
+                const teamB = (match as any).team_b_data;
+                
+                if (tag === teamA?.tag || tag === teamA?.name?.toUpperCase()) {
+                    teamId = teamA.id;
+                } else if (tag === teamB?.tag || tag === teamB?.name?.toUpperCase()) {
+                    teamId = teamB.id;
+                } else {
+                    // Si no coincide el tag, intentamos por orden de aparición o default al primer equipo
+                    // (En VLR los jugadores suelen estar agrupados por equipo)
+                    // Como fallback seguro, si no hay coincidencia, no lo creamos o logueamos
+                    console.warn(`Cron: No se pudo determinar el equipo para ${d.nickname} (Tag: ${d.teamTag})`);
+                }
+
+                if (teamId) {
+                    const { data: newPlayer, error: createError } = await supabaseAdmin
+                        .from('pro_players')
+                        .insert({
+                            nickname: d.nickname,
+                            team_id: teamId,
+                            role: 'Flex', // Default role
+                            market_value: 500000, // Default value
+                        } as any)
+                        .select('id')
+                        .single();
+                    
+                    if (createError) {
+                        console.error(`Cron: Error creando jugador ${d.nickname}:`, createError);
+                    } else if (newPlayer) {
+                        dbPlayerId = (newPlayer as any).id;
+                        playerMap.set(d.nickname.toLowerCase(), dbPlayerId!);
+                    }
+                }
             }
 
-            return {
-              match_id: match.id,
-              player_id: dbPlayerId,
-              kills: d.kills,
-              deaths: d.deaths,
-              assists: d.assists,
-              fb: d.fb,
-              clutches: d.clutches,
-            };
-          })
-          .filter((p): p is any => p !== null);
+            if (dbPlayerId) {
+                missingPlayers.push({
+                    match_id: match.id,
+                    player_id: dbPlayerId,
+                    kills: d.kills,
+                    deaths: d.deaths,
+                    assists: d.assists,
+                    fb: d.fb,
+                    clutches: d.clutches,
+                });
+            }
+        }
+        
+        const performanceData = missingPlayers;
         
         if (performanceData.length > 0) {
           const { error } = await supabaseAdmin

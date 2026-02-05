@@ -223,52 +223,83 @@ export async function scrapeMatchDetails(matchId: string) {
       }
     
       const html = await response.text();
-      
-      // Check if stats are available
       const $ = cheerio.load(html);
+      
+      // We look for all stats tables
       const tables = $("table.wf-table-inset.mod-overview");
       
       if (!tables.length) {
-        console.error(`VLR stats table not found for ${matchId}`);
+        console.error(`VLR stats table not found for ${matchId}. The match might not have started or stats are not yet available.`);
         return null;
       }
       
       const statsMap = new Map<string, any>();
     
-      tables.each((_, table) => {
-        const rows = $(table).find("tr").slice(1); // Skip header row
+      tables.each((i, table) => {
+        const rows = $(table).find("tr");
+        const headerRow = rows.first();
+        const dataRows = rows.slice(1);
         
-        rows.each((__, row) => {
+        // Dynamic column detection
+        const headers = headerRow.find("th").map((_, th) => $(th).text().trim().toUpperCase()).get();
+        if (headers.length === 0) return;
+
+        const findIdx = (names: string[]) => headers.findIndex(h => names.includes(h));
+        
+        const idx = {
+          k: findIdx(["K", "KILL", "KILLS"]),
+          d: findIdx(["D", "DEATH", "DEATHS"]),
+          a: findIdx(["A", "ASSIST", "ASSISTS"]),
+          fk: findIdx(["FK", "FIRST KILLS"]),
+          fd: findIdx(["FD", "FIRST DEATHS"]),
+        };
+
+        // If we can't find basic K/D/A, this table might not be what we want
+        if (idx.k === -1 || idx.d === -1) {
+            // console.log(`Table ${i} in ${matchId} skipped: missing K/D headers`);
+            return;
+        }
+
+        dataRows.each((__, row) => {
           const cols = $(row).find("td");
-          if (cols.length < 10) return;
-    
-          const playerLink = $(cols[0]).find("a").attr("href") || "";
+          if (cols.length < headers.length) return;
+
+          const playerCell = $(cols[0]);
+          const playerLink = playerCell.find("a").attr("href") || "";
           const playerId = playerLink.split("/")[2] || "";
-          const nickname = cleanText($(cols[0]).find(".mod-player").find(".text-of").text() || $(cols[0]).find(".mod-player").text());
+          
+          // Better nickname and team tag extraction
+          const playerInfo = playerCell.find(".mod-player");
+          let nickname = playerCell.find(".text-of").text().trim();
+          if (!nickname) {
+              nickname = playerInfo.text().trim().split("\n")[0].trim();
+          }
+          const teamTag = playerInfo.find(".ge-text-light").text().trim();
           
           if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
 
-          // Stats indices based on inspection:
-          // K=4, D=5, A=6, FK=11, FD=12
-          const kRaw = cleanText($(cols[4]).find(".mod-both").first().text());
-          const dRaw = cleanText($(cols[5]).find(".mod-both").first().text());
-          const aRaw = cleanText($(cols[6]).find(".mod-both").first().text());
-          const fkRaw = cleanText($(cols[11]).find(".mod-both").first().text());
-          const fdRaw = cleanText($(cols[12]).find(".mod-both").first().text());
+          const getStat = (colIdx: number) => {
+              if (colIdx === -1) return 0;
+              const col = $(cols[colIdx]);
+              // Prefer .mod-both (total) if it exists, otherwise use raw text
+              const val = col.find(".mod-both").first().text().trim() || col.text().trim();
+              // Clean up any weird characters and parse
+              return parseInt(val.replace(/[^\d]/g, "")) || 0;
+          };
           
           const currentStats = {
             vlr_id: playerId,
             nickname,
-            kills: parseInt(kRaw) || 0,
-            deaths: parseInt(dRaw) || 0,
-            assists: parseInt(aRaw) || 0,
-            fb: parseInt(fkRaw) || 0,
-            fd: parseInt(fdRaw) || 0,
+            teamTag,
+            kills: getStat(idx.k),
+            deaths: getStat(idx.d),
+            assists: getStat(idx.a),
+            fb: getStat(idx.fk),
+            fd: getStat(idx.fd),
             clutches: 0
           };
 
-          // If we find the same player in multiple tables (e.g. All Maps + Map 1),
-          // we prefer the one with more kills (usually the "All Maps" one).
+          // If we find the same player in multiple tables, prefer the one with more kills (usually "All Maps")
           const existing = statsMap.get(playerId);
           if (!existing || currentStats.kills > existing.kills) {
             statsMap.set(playerId, currentStats);
@@ -276,7 +307,11 @@ export async function scrapeMatchDetails(matchId: string) {
         });
       });
     
-      return Array.from(statsMap.values());
+      const result = Array.from(statsMap.values());
+      if (result.length === 0) {
+          console.warn(`VLR: Found tables but extracted 0 players for match ${matchId}`);
+      }
+      return result;
     } catch (error) {
       console.error(`Exception scraping match ${matchId}:`, error);
       return null;
