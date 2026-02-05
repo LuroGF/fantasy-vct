@@ -6,7 +6,7 @@ import { Database } from "@/types/supabase";
 export async function GET(request: Request) {
   try {
     const now = new Date();
-    console.log("Cron: Iniciando sincronización de jornada y puntuaciones...");
+    console.log("Cron: Iniciando sincronización de jornada y puntuaciones (Dynamic Lock)...");
 
     // 1. Obtener la jornada activa
     const { data: activeGw, error: gwError } = await (supabaseAdmin
