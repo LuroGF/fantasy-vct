@@ -34,15 +34,54 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: "No hay jornadas futuras para activar" });
     }
 
-    // --- A. AUTO-LOCK ---
-    const startTime = new Date(activeGw.start_date).getTime();
-    const lockTime = startTime - (24 * 60 * 60 * 1000); 
+    // --- A. AUTO-LOCK/UNLOCK DINÁMICO ---
+    // El mercado debe estar CERRADO si hay partidos en vivo o falta menos de 1h para el siguiente.
+    // El mercado debe estar ABIERTO en caso contrario (permitiendo fichajes entre días).
     
-    if (now.getTime() >= lockTime && !activeGw.is_locked) {
-      console.log(`Cron: Bloqueando mercado para la jornada ${activeGw.name}`);
-      await (supabaseAdmin.from('gameweeks') as any).update({ is_locked: true }).eq('id', activeGw.id);
-      (activeGw as any).is_locked = true;
+    // Obtenemos todos los partidos de la jornada activa que no han terminado
+    const { data: activeMatches } = await (supabaseAdmin
+      .from('matches')
+      .select('match_date, status')
+      .eq('gameweek_id', activeGw.id)
+      .neq('status', 'finished') as any);
+      
+    let shouldLock = false;
+    
+    if (activeMatches && activeMatches.length > 0) {
+      const nowTime = now.getTime();
+      
+      for (const m of activeMatches) {
+        // 1. Si hay partido en juego -> BLOQUEAR
+        if (m.status === 'live') {
+          shouldLock = true;
+          console.log("Cron: Partido en vivo detectado. Mercado debe estar BLOQUEADO.");
+          break;
+        }
+        
+        // 2. Si hay partido pendiente que empieza en menos de 1h -> BLOQUEAR
+        if (m.status === 'upcoming' && m.match_date) {
+            const matchTime = new Date(m.match_date).getTime();
+            const timeDiff = matchTime - nowTime;
+            
+            // Si falta menos de 1 hora (3600000 ms) y es futuro, O si ya pasó la hora pero no está finished (retraso)
+            if (timeDiff <= 3600000) { 
+                shouldLock = true;
+                console.log(`Cron: Partido próximo detectado (${Math.round(timeDiff/60000)} min). Mercado debe estar BLOQUEADO.`);
+                break;
+            }
+        }
+      }
     }
+
+    // Aplicar el estado calculado si es diferente al actual
+    if (activeGw.is_locked !== shouldLock) {
+      console.log(`Cron: Cambiando estado de bloqueo de mercado: ${activeGw.is_locked} -> ${shouldLock}`);
+      await (supabaseAdmin.from('gameweeks') as any).update({ is_locked: shouldLock }).eq('id', activeGw.id);
+      (activeGw as any).is_locked = shouldLock; // Actualizamos la referencia local para el resto del script
+    } else {
+        console.log(`Cron: Estado de mercado correcto (${shouldLock ? 'BLOQUEADO' : 'ABIERTO'}). No se requieren cambios.`);
+    }
+
 
     // --- B. VINCULAR PARTIDOS ---
     console.log(`Cron: Vinculando partidos a la jornada ${activeGw.name}...`);

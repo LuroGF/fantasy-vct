@@ -80,6 +80,7 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
         year--; // Si estamos en Enero y el partido fue en Dic
     }
 
+    // Crear fecha base (sin hora)
     const date = new Date(year, month, day);
     
     if (vlrTime && vlrTime.toLowerCase() !== 'live' && !vlrTime.includes('h')) {
@@ -90,11 +91,19 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
             const ampm = timeMatch[3].toUpperCase();
             if (ampm === 'PM' && hours < 12) hours += 12;
             if (ampm === 'AM' && hours === 12) hours = 0;
-            date.setHours(hours, minutes, 0, 0);
-        } else if (vlrTime.includes(":")) {
-          // Formato 24h: "14:30"
-          const [h, m] = vlrTime.split(":").map(Number);
-          if (!isNaN(h) && !isNaN(m)) date.setHours(h, m, 0, 0);
+            
+            // VLR muestra hora Pacific (PST = UTC-8, PDT = UTC-7)
+            // Para convertir a CET/CEST (UTC+1/+2):
+            // PST (UTC-8) + 9 horas = CET (UTC+1)
+            // PDT (UTC-7) + 9 horas = CEST (UTC+2)
+            // Usamos +9 horas como aproximación válida
+            const pstHours = hours;
+            const cetHours = (pstHours + 9) % 24;
+            const dayOffset = Math.floor((pstHours + 9) / 24);
+            
+            // Establecer la hora en hora local (que será interpretada como CET)
+            date.setDate(date.getDate() + dayOffset);
+            date.setHours(cetHours, minutes, 0, 0);
         }
     }
     return date.toISOString();
