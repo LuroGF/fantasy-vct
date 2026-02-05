@@ -129,7 +129,16 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
           const isVctEmea = event.toUpperCase().includes("VCT") && event.toUpperCase().includes("EMEA") && !event.toUpperCase().includes("GAME CHANGERS") && !event.toUpperCase().includes("CHALLENGERS");
 
           if (teamsLabel && event) {
-            results.push({ time: time || "LIVE", teams: teamsLabel, event, id, date: rawDate, isVctEmea });
+            // Convertir rawDate a ISO usando parseVlrDate
+            const parsedDate = parseVlrDate(rawDate, time);
+            results.push({ 
+              time: time || "LIVE", 
+              teams: teamsLabel, 
+              event, 
+              id, 
+              date: parsedDate || rawDate, // Usar fecha parseada o raw como fallback
+              isVctEmea 
+            });
           }
         };
         if (next.hasClass("match-item")) processItem(next);
