@@ -69,6 +69,17 @@ export async function GET(request: Request) {
 
     if (matchError) throw matchError;
 
+    // Obtener mapa de jugadores UNA SOLA VEZ para todo el cron
+    const { data: playersData } = await supabaseAdmin
+      .from('pro_players')
+      .select('id, nickname')
+      .returns<{ id: string; nickname: string }[]>();
+    
+    const playerMap = new Map<string, string>();
+    playersData?.forEach((p) => {
+      playerMap.set(p.nickname.toLowerCase(), p.id);
+    });
+
     for (const match of (matches as any[]) || []) {
       if (!match.vlr_id) continue;
       
@@ -85,19 +96,9 @@ export async function GET(request: Request) {
           continue;
         }
 
-        // Get Players Map (Nickname -> UUID)
-        const { data: playersData } = await supabaseAdmin
-          .from('pro_players')
-          .select('id, nickname')
-          .returns<{ id: string; nickname: string }[]>();
-        
-        const playerMap = new Map<string, string>();
-        playersData?.forEach((p) => {
-          playerMap.set(p.nickname.toLowerCase(), p.id);
-        });
-
         // Prepare Upserts
-        const missingPlayers: any[] = [];
+        const matchPerformances: any[] = [];
+
         for (const d of details) {
             let dbPlayerId = playerMap.get(d.nickname.toLowerCase());
             
@@ -160,7 +161,7 @@ export async function GET(request: Request) {
             }
 
             if (dbPlayerId) {
-                missingPlayers.push({
+                matchPerformances.push({
                     match_id: match.id,
                     player_id: dbPlayerId,
                     kills: d.kills,
@@ -176,7 +177,8 @@ export async function GET(request: Request) {
         }
         
         // Calcular MVP (Jugador con mayor ACS en el partido)
-        let performanceData = missingPlayers;
+        let performanceData = matchPerformances;
+
         if (performanceData.length > 0) {
             // Encontrar el max ACS
             const maxAcs = Math.max(...performanceData.map(p => p.acs || 0));

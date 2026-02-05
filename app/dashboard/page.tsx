@@ -200,7 +200,10 @@ export default async function DashboardPage() {
                     {isLive ? "EN VIVO" : match.time}
                   </span>
                   <span className="text-[8px] font-black uppercase text-v-white/40 mb-0.5">
-                    {match.date?.split(',')[1]?.trim() || ''}
+                    {(() => {
+                      const d = match.rawDate || match.date || "";
+                      return d.includes(",") ? d.split(",")[1].trim() : d;
+                    })()}
                   </span>
                   <span className="text-[8px] font-black uppercase text-v-white/10 truncate max-w-[80px]">
                     {match.event}

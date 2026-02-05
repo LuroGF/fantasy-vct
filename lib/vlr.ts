@@ -9,6 +9,7 @@ export type VlrMatch = {
   event: string; 
   id: string; 
   date?: string; 
+  rawDate?: string;
   isVctEmea?: boolean;
 };
 
@@ -42,18 +43,25 @@ function cleanText(value: string | undefined) {
 function parseVlrDate(vlrDate: string, vlrTime: string) {
   try {
     const months: Record<string, number> = {
-      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Jun': 5,
       'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11,
-      'January': 0, 'February': 1, 'March': 2, 'April': 3, 'June': 5,
+      'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5,
       'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
     };
     
     // El formato suele ser "Weekday, Month Day, Year" o "Today, Month Day"
+    // O incluso "Yesterday, Month Day"
     const parts = vlrDate.split(',').map(p => p.trim());
-    if (parts.length < 2) return null;
+    if (parts.length < 2) {
+      if (parts[0].toLowerCase().includes("today") || parts[0].toLowerCase().includes("yesterday") || parts[0].toLowerCase().includes("tomorrow")) {
+         // Si es Today/Yesterday, a veces no viene el mes en el label principal o viene distinto
+         // Pero VLR suele poner "Weekday, Month Day"
+      }
+      return null;
+    }
 
     // Buscamos el bloque que contiene el mes (ej: "February 5")
-    const monthDayPart = parts[1].split(' ');
+    const monthDayPart = parts[1].trim().split(/\s+/);
     const monthName = monthDayPart[0];
     const day = parseInt(monthDayPart[1]);
     const month = months[monthName];
@@ -67,7 +75,9 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
     if (parts.length >= 3 && /^\d{4}$/.test(parts[2])) {
         year = parseInt(parts[2]);
     } else if (now.getMonth() === 11 && month === 0) {
-        year++;
+        year++; // Si estamos en Dic y el partido es en Enero
+    } else if (now.getMonth() === 0 && month === 11) {
+        year--; // Si estamos en Enero y el partido fue en Dic
     }
 
     const date = new Date(year, month, day);
@@ -80,9 +90,11 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
             const ampm = timeMatch[3].toUpperCase();
             if (ampm === 'PM' && hours < 12) hours += 12;
             if (ampm === 'AM' && hours === 12) hours = 0;
-            // Establacer hora en UTC o local segun prefieras, VLR suele estar en UTC/timezone del server
-            // Por ahora mantenemos la logica original pero aseguramos el set
             date.setHours(hours, minutes, 0, 0);
+        } else if (vlrTime.includes(":")) {
+          // Formato 24h: "14:30"
+          const [h, m] = vlrTime.split(":").map(Number);
+          if (!isNaN(h) && !isNaN(m)) date.setHours(h, m, 0, 0);
         }
     }
     return date.toISOString();
@@ -95,10 +107,10 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
   const fetchPage = async (url: string) => {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Accept: "text/html",
       },
-      next: { revalidate: 60 },
+      next: { revalidate: 300 },
     });
     if (!response.ok) return null;
     return response.text();
@@ -126,17 +138,19 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
           const event = cleanText(card.find(".match-item-event").first().text());
           const teams = card.find(".match-item-vs-team-name").map((__, team) => cleanText($(team).text())).get().filter(Boolean);
           const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
-          const isVctEmea = event.toUpperCase().includes("VCT") && event.toUpperCase().includes("EMEA") && !event.toUpperCase().includes("GAME CHANGERS") && !event.toUpperCase().includes("CHALLENGERS");
+          
+          const eventUpper = event.toUpperCase();
+          const isVctEmea = eventUpper.includes("VCT") && eventUpper.includes("EMEA") && !eventUpper.includes("GAME CHANGERS") && !eventUpper.includes("CHALLENGERS");
 
           if (teamsLabel && event) {
-            // Convertir rawDate a ISO usando parseVlrDate
             const parsedDate = parseVlrDate(rawDate, time);
             results.push({ 
               time: time || "LIVE", 
               teams: teamsLabel, 
               event, 
               id, 
-              date: parsedDate || rawDate, // Usar fecha parseada o raw como fallback
+              date: parsedDate || undefined, // Solo ISO o undefined
+              rawDate: rawDate,
               isVctEmea 
             });
           }
@@ -152,18 +166,38 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
   const upcomingResults = parseMatches(upcomingHtml);
   const finishedResults = resultsHtml ? parseMatches(resultsHtml) : [];
   
-  // Merge and deduplicate by ID
-  const allMatches = [...upcomingResults, ...finishedResults];
-  const uniqueMatchesMap = new Map();
-  allMatches.forEach(m => {
-    if (!uniqueMatchesMap.has(m.id)) {
-      uniqueMatchesMap.set(m.id, m);
-    }
+  // MERGE results and dedup
+  const allMatchesMap = new Map();
+  [...upcomingResults, ...finishedResults].forEach(m => {
+    if (!allMatchesMap.has(m.id)) allMatchesMap.set(m.id, m);
   });
   
-  const results = Array.from(uniqueMatchesMap.values());
+  const results = Array.from(allMatchesMap.values());
   const emeaMatches = results.filter((m) => m.isVctEmea);
-  const finalMatches = emeaMatches.length > 0 ? emeaMatches.slice(0, 15) : results.slice(0, 10);
+  
+  // Ordenar: primero los Live, luego los del futuro cercano, luego los pasados
+  emeaMatches.sort((a: any, b: any) => {
+    const isLiveA = a.time === "LIVE";
+    const isLiveB = b.time === "LIVE";
+    if (isLiveA && !isLiveB) return -1;
+    if (isLiveB && !isLiveA) return 1;
+
+    const dateA = a.date ? new Date(a.date).getTime() : 0;
+    const dateB = b.date ? new Date(b.date).getTime() : 0;
+    const now = Date.now();
+
+    const isFutureA = dateA > now;
+    const isFutureB = dateB > now;
+
+    if (isFutureA && !isFutureB) return -1;
+    if (isFutureB && !isFutureA) return 1;
+
+    if (isFutureA && isFutureB) return dateA - dateB; // Nearest future first
+    return dateB - dateA; // Newest past first
+  });
+
+  const finalMatches = emeaMatches.length > 0 ? emeaMatches.slice(0, 20) : results.slice(0, 10);
+
 
   // Sync with DB in background
   syncMatchesToDb(finalMatches).catch(console.error);
@@ -484,7 +518,7 @@ export async function syncMatchesToDb(matches: VlrMatch[]) {
             continue;
         }
 
-        const matchDate = m.date ? parseVlrDate(m.date, m.time) : null;
+        const matchDate = m.date || null;
         let gwId = null;
         if (matchDate) {
             gwId = await getOrCreateGameweekByDate(matchDate);
