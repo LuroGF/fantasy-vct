@@ -58,6 +58,24 @@ export default async function DashboardPage() {
   const stats = await getDashboardStats(supabase);
   const matches = data?.upcomingMatches || [];
   
+  const now = new Date();
+  const fortyEightHoursFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+  const filteredMatches = matches.filter((match: any) => {
+    const isLive = match.time.toLowerCase().includes("live") || match.time === "";
+    if (isLive) return true;
+
+    if (match.date) {
+      try {
+        const matchDate = new Date(match.date);
+        return matchDate >= now && matchDate <= fortyEightHoursFromNow;
+      } catch (e) {
+        return true;
+      }
+    }
+    return true; 
+  });
+
   const userLeagues = user ? await getUserLeagues(user.id) : [];
 
   // Obtener puntos reales del usuario (para el resumen del HUD)
@@ -65,7 +83,7 @@ export default async function DashboardPage() {
 
   const currentPoints = userStats?.total_points || 0;
   const rank = 0; // Se podría implementar un ranking global sumando puntuaciones
-  const activeMatches = matches.filter(m => m.time.toLowerCase().includes("live") || m.time === "").length;
+  const activeMatches = (matches as any[]).filter(m => m.time.toLowerCase().includes("live") || m.time === "").length;
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -159,7 +177,7 @@ export default async function DashboardPage() {
           <Link href="/schedule" className="text-[10px] font-black uppercase text-v-red hover:tracking-widest transition-all mb-1">Agenda Completa</Link>
         </div>
         <div className="grid gap-3">
-          {matches.map((match) => {
+          {filteredMatches.map((match) => {
             const isLive = match.time.toLowerCase().includes("live") || match.time === "";
             return (
               <div key={match.teams} className="bg-v-gray/40 border-l-2 border-v-white/10 p-3 flex items-center justify-between group hover:border-v-red hover:bg-v-gray/60 transition-all">

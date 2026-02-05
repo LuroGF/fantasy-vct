@@ -58,12 +58,11 @@ export default function MarketView({ initialPlayers, initialLeagues, profileId }
 
     if (res.success) {
       setStatus({ type: "success", message: `¡${player.nickname} se ha unido a tu escuadra!` });
-      // Aquí podrías actualizar el presupuesto localmente si quisieras
     } else {
       setStatus({ type: "error", message: res.error as string });
     }
     setLoading(false);
-    setTimeout(() => setStatus({ type: "", message: "" }), 5000);
+    setTimeout(() => setStatus({ type: "", message: "" }), 3000);
   }
 
   return (
@@ -123,12 +122,22 @@ export default function MarketView({ initialPlayers, initialLeagues, profileId }
       </div>
 
       {status.message && (
-        <div className={`v-panel p-3 text-[10px] font-black uppercase text-center tracking-widest animate-in slide-in-from-top-2 duration-300 ${
-          status.type === 'error' ? 'border-v-red text-v-red' : 
-          status.type === 'success' ? 'border-green-500 text-green-500' : 
-          'border-v-white/20 text-v-white'
-        }`}>
-           {">>>"} {status.message}
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md animate-in slide-in-from-top-4 duration-500">
+          <div className={`v-panel p-4 shadow-2xl flex items-center justify-between border-b-4 ${
+            status.type === 'error' ? 'border-v-red' : 
+            status.type === 'success' ? 'border-green-500' : 
+            'border-v-white/20'
+          }`}>
+             <div className="flex items-center gap-3">
+               <div className={`w-2 h-2 animate-pulse ${status.type === 'success' ? 'bg-green-500' : 'bg-v-red'}`} />
+               <p className="text-[10px] font-black uppercase tracking-widest leading-tight">
+                 {status.message}
+               </p>
+             </div>
+             <button onClick={() => setStatus({ type: "", message: "" })} className="text-v-white/20 hover:text-v-white">
+               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+             </button>
+          </div>
         </div>
       )}
 

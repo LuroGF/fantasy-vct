@@ -106,3 +106,52 @@ export async function getUserLeagues(userId: string) {
   }
   return data;
 }
+
+export async function getLeagueClassification(leagueId: string) {
+  const supabase = await createClient();
+  
+  // 1. Obtener participantes y sus puntos
+  const { data: participants, error: pError } = await supabase
+    .from("league_participants")
+    .select(`
+      total_points,
+      profiles (
+        id,
+        username,
+        avatar_url
+      )
+    `)
+    .eq("league_id", leagueId)
+    .order("total_points", { ascending: false });
+
+  if (pError) throw pError;
+
+  // 2. Obtener rosters de todos los participantes de esta liga (solo activos)
+  const { data: rosters, error: rError } = await supabase
+    .from("user_rosters")
+    .select(`
+      profile_id,
+      player_id,
+      pro_players (
+        id,
+        nickname,
+        pro_teams (tag)
+      )
+    `)
+    .eq("league_id", leagueId)
+    .eq("is_active", true);
+
+  if (rError) throw rError;
+
+  // Agrupar rosters por profile_id
+  const rosterMap = new Map();
+  rosters.forEach((r: any) => {
+    if (!rosterMap.has(r.profile_id)) rosterMap.set(r.profile_id, []);
+    rosterMap.get(r.profile_id).push(r.pro_players);
+  });
+
+  return participants.map((p: any) => ({
+    ...p,
+    roster: rosterMap.get(p.profiles.id) || []
+  }));
+}

@@ -72,17 +72,12 @@ export async function GET(request: Request) {
     for (const match of (matches as any[]) || []) {
       if (!match.vlr_id) continue;
       
-      // Si ya tiene stats, saltar (a menos que queramos forzar resync, pero por ahora no)
-      if (match.player_performances && match.player_performances.length > 0) {
-        continue;
-      }
-
       const matchTime = match.match_date ? new Date(match.match_date).getTime() : 0;
-      // No intentar scrapear si falta mucho para el partido
-      if (now.getTime() < matchTime - (30 * 60 * 1000)) continue; 
+      // No intentar scrapear si falta mucho para el partido (a menos que ya esté finished)
+      if (now.getTime() < matchTime - (30 * 60 * 1000) && match.status !== 'finished') continue; 
 
       try {
-        const { scrapeMatchDetails } = await import('@/lib/vlr');
+        const { scrapeMatchDetails, calculateFantasyPoints } = await import('@/lib/vlr');
         const details = await scrapeMatchDetails(match.vlr_id);
         
         if (!details || details.length === 0) {
@@ -132,7 +127,7 @@ export async function GET(request: Request) {
                         .insert({
                             nickname: d.nickname,
                             team_id: teamId,
-                            role: 'Flex', // Default role
+                            role: 'Duelista', // Default role (valid)
                             market_value: 500000, // Default value
                         } as any)
                         .select('id')
@@ -143,6 +138,7 @@ export async function GET(request: Request) {
                     } else if (newPlayer) {
                         dbPlayerId = (newPlayer as any).id;
                         playerMap.set(d.nickname.toLowerCase(), dbPlayerId!);
+                        console.log(`Cron: Jugador ${d.nickname} creado con éxito.`);
                     }
                 }
             }
@@ -156,6 +152,7 @@ export async function GET(request: Request) {
                     assists: d.assists,
                     fb: d.fb,
                     clutches: d.clutches,
+                    fantasy_points: calculateFantasyPoints(d)
                 });
             }
         }

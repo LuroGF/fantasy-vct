@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PlayerCard } from "@/components/PlayerCard";
-import { togglePlayerStatus } from "@/lib/actions/roster";
+import { togglePlayerStatus, getUserFullRoster } from "@/lib/actions/roster";
 import { StatusBadge } from "@/components/StatusBadge";
 import Link from "next/link";
 
@@ -22,6 +22,21 @@ export default function TeamView({ initialRoster, initialLeagues, profileId }: T
     initialLeagues.find(l => l.leagues.id === activeLeagueId), 
     [activeLeagueId, initialLeagues]
   );
+
+  useEffect(() => {
+    // Si es la carga inicial y ya tenemos los datos, no volvemos a cargar
+    // Pero para simplificar, siempre cargamos si cambia el ID después del primer render
+    async function loadRoster() {
+      setLoading(true);
+      const data = await getUserFullRoster(activeLeagueId, profileId);
+      setRoster(data);
+      setLoading(false);
+    }
+    
+    // Solo cargamos si el activeLeagueId cambia (después del primer render)
+    // O si initialRoster cambia (aunque esto último es raro en client-side)
+    loadRoster();
+  }, [activeLeagueId, profileId]);
 
   const activePlayers = useMemo(() => roster.filter(r => r.is_active), [roster]);
   const inactivePlayers = useMemo(() => roster.filter(r => !r.is_active), [roster]);

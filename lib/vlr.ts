@@ -173,6 +173,21 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
   };
 }
 
+export function calculateFantasyPoints(stats: { kills: number; deaths: number; assists: number; fb: number; fd: number; clutches: number }) {
+  let points = 0;
+  points += stats.kills * 2;
+  points += stats.assists * 1;
+  points += stats.fb * 3;
+  points += stats.clutches * 4;
+  
+  // Negative K/D
+  if (stats.kills < stats.deaths) {
+    points -= 1;
+  }
+  
+  return points;
+}
+
 async function getOrCreateTeam(name: string) {
     const upperName = name.toUpperCase();
     const tag = TEAM_ALIASES[upperName] || upperName.substring(0, 4);
@@ -268,13 +283,21 @@ export async function scrapeMatchDetails(matchId: string) {
           const playerLink = playerCell.find("a").attr("href") || "";
           const playerId = playerLink.split("/")[2] || "";
           
-          // Better nickname and team tag extraction
+          // Better nickname and team tag extraction: VLR sometimes wraps in .mod-player, sometimes not
           const playerInfo = playerCell.find(".mod-player");
+          
           let nickname = playerCell.find(".text-of").text().trim();
-          if (!nickname) {
+          if (!nickname && playerInfo.length) {
               nickname = playerInfo.text().trim().split("\n")[0].trim();
           }
-          const teamTag = playerInfo.find(".ge-text-light").text().trim();
+          if (!nickname) {
+              nickname = playerCell.text().trim().split("\n")[0].trim();
+          }
+
+          let teamTag = playerCell.find(".ge-text-light").text().trim();
+          if (!teamTag && playerInfo.length) {
+              teamTag = playerInfo.find(".ge-text-light").text().trim();
+          }
           
           if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
 

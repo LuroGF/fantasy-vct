@@ -2,11 +2,11 @@ import Link from "next/link";
 import { signOut } from "@/lib/actions/auth";
 
 const options = [
-  { label: "Perfil", href: "/profile" },
-  { label: "Notificaciones", href: "/notifications" },
-  { label: "Invitar amigos", href: "/invite" },
-  { label: "Reglas y puntuacion", href: "/rules" },
-  { label: "Soporte", href: "/support" },
+  { label: "Perfil", href: "/more/profile" },
+  { label: "Notificaciones", href: "/more/notifications" },
+  { label: "Invitar amigos", href: "/more/invite" },
+  { label: "Reglas y puntuacion", href: "/more/rules" },
+  { label: "Soporte", href: "/more/support" },
 ];
 
 export default function MorePage() {
