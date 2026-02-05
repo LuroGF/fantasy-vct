@@ -30,13 +30,11 @@ export async function getPlayerStats(playerId: string) {
         *,
         matches (
           id,
-          start_date,
-          team1_id,
-          team2_id,
-          team1_score,
-          team2_score,
-          pro_teams_team1:team1_id (name, tag, logo_url),
-          pro_teams_team2:team2_id (name, tag, logo_url)
+          match_date,
+          team_a,
+          team_b,
+          pro_teams_team_a:team_a (name, tag, logo_url),
+          pro_teams_team_b:team_b (name, tag, logo_url)
         )
       `)
       .eq("player_id", playerId)
