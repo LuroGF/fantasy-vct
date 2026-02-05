@@ -1,0 +1,109 @@
+
+import { createClient } from "@/utils/supabase/server";
+import { getSession } from "@/lib/actions/auth";
+import { redirect } from "next/navigation";
+import { StatusBadge } from "@/components/StatusBadge";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+
+export default async function SchedulePage() {
+  const supabase = await createClient();
+  const session = await getSession();
+  
+  if (!session) redirect("/login");
+
+  // 1. Obtener jornada activa para saber qué mostrar
+  const { data: activeGw } = await supabase
+    .from('gameweeks')
+    .select('*')
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!activeGw) {
+    return (
+      <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+        <div className="flex items-end justify-between px-1">
+          <div>
+            <h1 className="text-4xl leading-none italic uppercase">Agenda</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Operaciones Semanales</p>
+          </div>
+        </div>
+        <div className="v-panel text-center py-20 opacity-40">
+          <p className="text-xs italic">No hay ninguna jornada activa en este momento.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Obtener todos los partidos de esta jornada
+  const { data: matches } = await supabase
+    .from('matches')
+    .select(`
+      id,
+      vlr_id,
+      match_date,
+      status,
+      team_a:pro_teams!matches_team_a_fkey (name, tag),
+      team_b:pro_teams!matches_team_b_fkey (name, tag)
+    `)
+    .eq('gameweek_id', activeGw.id)
+    .order('match_date', { ascending: true });
+
+  return (
+    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+      <div className="flex items-end justify-between px-1">
+        <div>
+          <h1 className="text-4xl leading-none italic uppercase">Calendario</h1>
+          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">{activeGw.name} // 2026</p>
+        </div>
+        <StatusBadge label="S3-SCHEDULE" variant="white" />
+      </div>
+
+      <div className="space-y-4">
+        {matches?.map((match: any) => {
+          const isLive = match.status === 'live';
+          const isFinished = match.status === 'finished';
+          const date = match.match_date ? new Date(match.match_date) : null;
+
+          return (
+            <div key={match.id} className="v-panel p-4 flex items-center justify-between group hover:border-v-red transition-all">
+              <div className="flex-1 text-sm font-black uppercase italic tracking-tighter">
+                {match.team_a?.tag || match.team_a?.name}
+              </div>
+              
+              <div className="flex flex-col items-center px-6 border-x border-white/5 min-w-[120px]">
+                {isLive ? (
+                  <span className="text-xs font-black text-v-red animate-pulse">EN VIVO</span>
+                ) : isFinished ? (
+                  <span className="text-xs font-black text-v-white/40">FINALIZADO</span>
+                ) : (
+                  <span className="text-xs font-black text-v-white">
+                    {date?.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+                <span className="text-[8px] font-black uppercase text-v-white/20 mt-1">
+                  {date?.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+
+              <div className="flex-1 text-sm font-black uppercase italic tracking-tighter text-right">
+                {match.team_b?.tag || match.team_b?.name}
+              </div>
+            </div>
+          );
+        })}
+
+        {(!matches || matches.length === 0) && (
+          <div className="v-panel text-center py-12 opacity-40">
+            <p className="text-xs italic">No hay partidos programados para esta jornada.</p>
+          </div>
+        )}
+      </div>
+
+      <Link href="/dashboard" className="v-btn-secondary w-full py-3 text-[10px]">
+        Volver al Centro de Mando
+      </Link>
+    </div>
+  );
+}

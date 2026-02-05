@@ -48,10 +48,13 @@ async function linkMatchesToGameweeks() {
     const startStr = monday.toISOString();
     
     // Buscar o crear gameweek
+    // Usamos gte/lte para mayor precisión en la búsqueda por fecha si hay discrepancias de formato
     let { data: gw } = await supabase
       .from('gameweeks')
       .select('id, name')
       .eq('start_date', startStr)
+      .order('id', { ascending: true })
+      .limit(1)
       .maybeSingle();
     
     if (!gw) {

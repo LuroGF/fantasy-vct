@@ -1,7 +1,7 @@
 create table public.gameweeks (
   id serial not null,
   name text not null,
-  start_date timestamp with time zone not null,
+  start_date timestamp with time zone not null unique,
   end_date timestamp with time zone not null,
   is_active boolean null default false,
   is_locked boolean null default false,

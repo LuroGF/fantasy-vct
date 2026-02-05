@@ -156,7 +156,7 @@ export default async function DashboardPage() {
       <div className="space-y-4">
         <div className="flex items-end justify-between px-1">
           <h2 className="text-2xl italic tracking-tighter">Transmisiones</h2>
-          <Link href="/ranking" className="text-[10px] font-black uppercase text-v-red hover:tracking-widest transition-all mb-1">Agenda Completa</Link>
+          <Link href="/schedule" className="text-[10px] font-black uppercase text-v-red hover:tracking-widest transition-all mb-1">Agenda Completa</Link>
         </div>
         <div className="grid gap-3">
           {matches.map((match) => {

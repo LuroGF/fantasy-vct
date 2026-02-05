@@ -91,42 +91,67 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
 }
 
 export async function fetchVlrMatches(): Promise<VlrPayload> {
-  const response = await fetch(VLR_MATCHES_URL, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      Accept: "text/html",
-    },
-    next: { revalidate: 60 },
-  });
+  const fetchPage = async (url: string) => {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        Accept: "text/html",
+      },
+      next: { revalidate: 60 },
+    });
+    if (!response.ok) return null;
+    return response.text();
+  };
 
-  if (!response.ok) throw new Error("VLR fetch failed");
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  const results: VlrMatch[] = [];
+  const [upcomingHtml, resultsHtml] = await Promise.all([
+    fetchPage(VLR_MATCHES_URL),
+    fetchPage("https://www.vlr.gg/matches/results")
+  ]);
 
-  $(".wf-label.mod-large").each((_, label) => {
-    const rawDate = $(label).text().trim();
-    let next = $(label).next();
-    while (next.length && !next.hasClass("wf-label")) {
-      const processItem = (item: any) => {
-        const card = $(item);
-        const id = card.attr("href")?.split("/")[1] || "";
-        const time = cleanText(card.find(".match-item-time").first().text());
-        const event = cleanText(card.find(".match-item-event").first().text());
-        const teams = card.find(".match-item-vs-team-name").map((__, team) => cleanText($(team).text())).get().filter(Boolean);
-        const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
-        const isVctEmea = event.toUpperCase().includes("VCT") && event.toUpperCase().includes("EMEA") && !event.toUpperCase().includes("GAME CHANGERS") && !event.toUpperCase().includes("CHALLENGERS");
+  if (!upcomingHtml) throw new Error("VLR upcoming fetch failed");
+  
+  const parseMatches = (html: string) => {
+    const $ = cheerio.load(html);
+    const results: VlrMatch[] = [];
 
-        if (teamsLabel && event) {
-          results.push({ time: time || "LIVE", teams: teamsLabel, event, id, date: rawDate, isVctEmea });
-        }
-      };
-      if (next.hasClass("match-item")) processItem(next);
-      else next.find(".match-item").each((__, item) => processItem(item));
-      next = next.next();
+    $(".wf-label.mod-large").each((_, label) => {
+      const rawDate = $(label).text().trim();
+      let next = $(label).next();
+      while (next.length && !next.hasClass("wf-label")) {
+        const processItem = (item: any) => {
+          const card = $(item);
+          const id = card.attr("href")?.split("/")[1] || "";
+          const time = cleanText(card.find(".match-item-time").first().text());
+          const event = cleanText(card.find(".match-item-event").first().text());
+          const teams = card.find(".match-item-vs-team-name").map((__, team) => cleanText($(team).text())).get().filter(Boolean);
+          const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
+          const isVctEmea = event.toUpperCase().includes("VCT") && event.toUpperCase().includes("EMEA") && !event.toUpperCase().includes("GAME CHANGERS") && !event.toUpperCase().includes("CHALLENGERS");
+
+          if (teamsLabel && event) {
+            results.push({ time: time || "LIVE", teams: teamsLabel, event, id, date: rawDate, isVctEmea });
+          }
+        };
+        if (next.hasClass("match-item")) processItem(next);
+        else next.find(".match-item").each((__, item) => processItem(item));
+        next = next.next();
+      }
+    });
+    return results;
+  };
+
+  const upcomingResults = parseMatches(upcomingHtml);
+  const finishedResults = resultsHtml ? parseMatches(resultsHtml) : [];
+  
+  // Merge and deduplicate by ID
+  const allMatches = [...upcomingResults, ...finishedResults];
+  const uniqueMatchesMap = new Map();
+  allMatches.forEach(m => {
+    if (!uniqueMatchesMap.has(m.id)) {
+      uniqueMatchesMap.set(m.id, m);
     }
   });
-
+  
+  const results = Array.from(uniqueMatchesMap.values());
   const emeaMatches = results.filter((m) => m.isVctEmea);
   const finalMatches = emeaMatches.length > 0 ? emeaMatches.slice(0, 15) : results.slice(0, 10);
 
@@ -227,7 +252,9 @@ async function getOrCreateGameweekByDate(dateStr: string) {
     const { data: existing } = await (supabaseAdmin
         .from('gameweeks')
         .select('id')
-        .eq('start_date', startStr) as any)
+        .eq('start_date', startStr)
+        .order('id', { ascending: true })
+        .limit(1) as any)
         .maybeSingle();
     
     if (existing) return (existing as any).id;
