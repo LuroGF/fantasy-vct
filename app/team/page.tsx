@@ -16,7 +16,7 @@ export default async function TeamPage() {
   const roster = activeLeagueId ? await getUserFullRoster(activeLeagueId, session.user.id) : [];
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+    <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl flex flex-col gap-6 animate-in fade-in duration-700">
       <div className="flex items-end justify-between px-1">
         <div>
           <h1 className="text-4xl leading-none italic uppercase">Mi Equipo</h1>

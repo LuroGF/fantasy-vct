@@ -82,7 +82,7 @@ export default async function DashboardPage() {
   const activeMatches = matches.filter(m => m.time.toLowerCase().includes("live") || m.time === "").length;
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 py-4">
       {/* Header Info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

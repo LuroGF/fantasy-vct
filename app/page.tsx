@@ -5,24 +5,30 @@ export default function Home() {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-v-navy">
       {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0">
-        <Image
-          src="/hero-bg.png"
-          alt="VCT Fantasy Background"
-          fill
-          className="object-cover opacity-60 scale-110 animate-pulse-slow"
-          priority
-        />
-        <div className="absolute inset-0 bg-linear-to-b from-v-navy/20 via-v-navy/60 to-v-navy" />
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <video
+          className="h-full w-full object-cover scale-100 blur-md"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+        >
+          <source src="../videos/aimers.mp4" type="video/mp4" />
+          {/* opcional fallback */}
+        </video>
+
+        {/* Overlay para contraste */}
+        <div className="absolute inset-0 bg-gradient-to-b from-v-navy/30 via-v-navy/70 to-v-navy" />
       </div>
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-md px-6 flex flex-col items-center text-center gap-8 py-12">
         {/* Animated Badge */}
         <div className="animate-bounce-subtle">
-           <div className="bg-v-red text-white text-[10px] font-black uppercase px-3 py-1 tracking-[0.3em] -skew-x-12 shadow-lg shadow-v-red/50">
-             Acceso Anticipado
-           </div>
+          <div className="bg-v-red text-white text-[10px] font-black uppercase px-3 py-1 tracking-[0.3em] -skew-x-12 shadow-lg shadow-v-red/50">
+            Acceso Anticipado
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -36,7 +42,9 @@ export default function Home() {
 
         <div className="w-12 h-1 bg-v-red/50" />
 
-        <p className="text-sm font-medium text-v-white/70 leading-relaxed max-w-[280px]"> </p>
+        <p className="text-sm font-medium text-v-white/70 leading-relaxed max-w-[280px]">
+          {" "}
+        </p>
 
         <div className="flex flex-col w-full gap-4 mt-4">
           <Link
@@ -44,29 +52,26 @@ export default function Home() {
             className="v-btn-primary py-4 text-sm shadow-2xl shadow-v-red/20 group"
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
-              Iniciar Operación
-              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              Iniciar sesión
+              <svg
+                className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="3"
+                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                />
+              </svg>
             </span>
           </Link>
-          
-          <Link
-            href="/register"
-            className="v-btn-secondary py-4 text-sm"
-          >
-            Reclutar Nueva Escuadra
-          </Link>
-        </div>
 
-        {/* Bottom stats decorations */}
-        <div className="grid grid-cols-2 gap-8 mt-8 opacity-40">
-           <div className="text-center">
-             <p className="text-[8px] font-black uppercase tracking-widest mb-1">Jugadores Activos</p>
-             <p className="text-xl font-black italic">12.4K</p>
-           </div>
-           <div className="text-center">
-             <p className="text-[8px] font-black uppercase tracking-widest mb-1">Premios Totales</p>
-             <p className="text-xl font-black italic">50K VP</p>
-           </div>
+          <Link href="/register" className="v-btn-secondary py-4 text-sm">
+            Crear cuenta
+          </Link>
         </div>
       </div>
 
