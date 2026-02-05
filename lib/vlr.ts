@@ -80,8 +80,8 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
         year--; // Si estamos en Enero y el partido fue en Dic
     }
 
-    // Crear fecha base (sin hora)
-    const date = new Date(year, month, day);
+    // Crear fecha base en UTC (00:00:00Z) para sumar offset limpiamente
+    const date = new Date(Date.UTC(year, month, day));
     
     if (vlrTime && vlrTime.toLowerCase() !== 'live' && !vlrTime.includes('h')) {
         const timeMatch = vlrTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -92,18 +92,19 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
             if (ampm === 'PM' && hours < 12) hours += 12;
             if (ampm === 'AM' && hours === 12) hours = 0;
             
-            // VLR muestra hora Pacific (PST = UTC-8, PDT = UTC-7)
-            // Para convertir a CET/CEST (UTC+1/+2):
-            // PST (UTC-8) + 9 horas = CET (UTC+1)
-            // PDT (UTC-7) + 9 horas = CEST (UTC+2)
-            // Usamos +9 horas como aproximación válida
-            const pstHours = hours;
-            const cetHours = (pstHours + 9) % 24;
-            const dayOffset = Math.floor((pstHours + 9) / 24);
             
-            // Establecer la hora en hora local (que será interpretada como CET)
-            date.setDate(date.getDate() + dayOffset);
-            date.setHours(cetHours, minutes, 0, 0);
+            // CORRECCIÓN V2: El usuario reporta que los partidos de las 17:00 CET aparecen como 11:00 (y 20:00 -> 14:00).
+            // Esto implica una diferencia de +6 horas respecto a la hora local española.
+            // Para guardar correctamente en UTC:
+            // 17:00 CET (Invierno) = 16:00 UTC.
+            // Input: 11:00. Objetivo: 16:00 UTC.
+            // Operación: +5 horas sobre el valor raw de la hora.
+            
+            // Nota: En verano (CEST) esto podría variar si VLR no cambia su offset.
+            const utcHours = hours + 5;
+            
+            // setUTCHours maneja el cambio de día automáticamente si pasa de 24
+            date.setUTCHours(utcHours, minutes, 0, 0);
         }
     }
     return date.toISOString();
