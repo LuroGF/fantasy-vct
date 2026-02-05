@@ -58,8 +58,18 @@ export default async function DashboardPage() {
   const stats = await getDashboardStats(supabase);
   const matches = data?.upcomingMatches || [];
   
+  
   const now = new Date();
-  const fortyEightHoursFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  
+  // Inicio del día de hoy (00:00:00)
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  
+  // Final de la semana (domingo a las 23:59:59)
+  const endOfWeek = new Date(now);
+  const daysUntilSunday = 7 - now.getDay(); // 0 = domingo, 1 = lunes, etc.
+  endOfWeek.setDate(now.getDate() + daysUntilSunday);
+  endOfWeek.setHours(23, 59, 59, 999);
 
   const filteredMatches = matches.filter((match: any) => {
     const isLive = match.time.toLowerCase().includes("live") || match.time === "";
@@ -68,7 +78,8 @@ export default async function DashboardPage() {
     if (match.date) {
       try {
         const matchDate = new Date(match.date);
-        return matchDate >= now && matchDate <= fortyEightHoursFromNow;
+        // Mostrar partidos desde hoy hasta el final de la semana
+        return matchDate >= startOfToday && matchDate <= endOfWeek;
       } catch (e) {
         return true;
       }

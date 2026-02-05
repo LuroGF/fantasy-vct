@@ -10,6 +10,7 @@ ALTER TABLE public.league_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_rosters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_performances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.market_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.participant_scores_history ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para PERMITIR LECTURA PÚBLICA (SELECT) a datos generales
 -- (Cualquier usuario autenticado o anónimo puede ver jugadores, equipos, partidos y jornadas)
@@ -18,6 +19,7 @@ CREATE POLICY "Public read teams" ON public.pro_teams FOR SELECT USING (true);
 CREATE POLICY "Public read matches" ON public.matches FOR SELECT USING (true);
 CREATE POLICY "Public read gameweeks" ON public.gameweeks FOR SELECT USING (true);
 CREATE POLICY "Public read performances" ON public.player_performances FOR SELECT USING (true);
+CREATE POLICY "Public read scores history" ON public.participant_scores_history FOR SELECT USING (true);
 
 -- Perfiles: Cualquiera puede ver perfiles, pero solo el dueño puede editar
 CREATE POLICY "Public read profiles" ON public.profiles FOR SELECT USING (true);
@@ -39,6 +41,32 @@ CREATE POLICY "Users can manage own roster" ON public.user_rosters
 -- Transacciones: Solo el usuario ve sus transacciones
 CREATE POLICY "Users can view own transactions" ON public.market_transactions FOR SELECT USING (auth.uid() = profile_id);
 CREATE POLICY "Users can insert own transactions" ON public.market_transactions FOR INSERT WITH CHECK (auth.uid() = profile_id);
+
+-- ============================================
+-- POLÍTICAS PARA OPERACIONES DEL SERVICE ROLE (Cron Jobs)
+-- ============================================
+
+-- PLAYER_PERFORMANCES - Permitir INSERT/UPDATE para sincronización de puntuaciones
+CREATE POLICY "Allow insert performances" ON public.player_performances FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow update performances" ON public.player_performances FOR UPDATE USING (true);
+
+-- PRO_PLAYERS - Permitir INSERT/UPDATE para crear jugadores automáticamente
+CREATE POLICY "Allow insert players" ON public.pro_players FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow update players" ON public.pro_players FOR UPDATE USING (true);
+
+-- PRO_TEAMS - Permitir INSERT/UPDATE para crear equipos automáticamente
+CREATE POLICY "Allow insert teams" ON public.pro_teams FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow update teams" ON public.pro_teams FOR UPDATE USING (true);
+
+-- MATCHES - Permitir UPDATE para cambiar status a 'finished'
+CREATE POLICY "Allow update matches" ON public.matches FOR UPDATE USING (true);
+
+-- GAMEWEEKS - Permitir UPDATE para activar/desactivar jornadas
+CREATE POLICY "Allow update gameweeks" ON public.gameweeks FOR UPDATE USING (true);
+
+-- PARTICIPANT_SCORES_HISTORY - Permitir INSERT/UPDATE para guardar puntuaciones
+CREATE POLICY "Allow insert scores history" ON public.participant_scores_history FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow update scores history" ON public.participant_scores_history FOR UPDATE USING (true);
 
 -- Asegurar que el SERVICE ROLE siempre tenga acceso total (por defecto en Supabase, pero bueno saberlo)
 -- El cliente admin (supabaseAdmin) usa la service_role key y se salta estas políticas.
