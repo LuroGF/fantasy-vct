@@ -87,11 +87,14 @@ export async function joinLeague(inviteCode: string, userId: string) {
 
 export async function getUserLeagues(userId: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  
+  // 1. Obtener las ligas del usuario
+  const { data: participations, error } = await supabase
     .from("league_participants")
     .select(`
-      total_points,
       current_budget,
+      transfers_made_this_week,
+      league_id,
       leagues (
         id,
         name,
@@ -104,5 +107,93 @@ export async function getUserLeagues(userId: string) {
     console.error("Error fetching leagues:", error);
     return [];
   }
-  return data;
+
+  // 2. Para cada liga, sumar los puntos desde participant_scores_history
+  const leaguesWithPoints = await Promise.all(
+    participations.map(async (participation: any) => {
+      const { data: scores } = await supabase
+        .from("participant_scores_history")
+        .select("points_earned")
+        .eq("league_id", participation.league_id)
+        .eq("profile_id", userId);
+
+      const total_points = scores?.reduce((sum, s) => sum + (s.points_earned || 0), 0) || 0;
+
+      return {
+        ...participation,
+        total_points
+      };
+    })
+  );
+
+  return leaguesWithPoints;
+}
+
+export async function getLeagueClassification(leagueId: string) {
+  const supabase = await createClient();
+  
+  // 1. Obtener participantes
+  const { data: participants, error: pError } = await supabase
+    .from("league_participants")
+    .select(`
+      profile_id,
+      profiles (
+        id,
+        username,
+        avatar_url
+      )
+    `)
+    .eq("league_id", leagueId);
+
+  if (pError) throw pError;
+
+  // 2. Para cada participante, sumar puntos desde participant_scores_history
+  const participantsWithPoints = await Promise.all(
+    participants.map(async (p: any) => {
+      const { data: scores } = await supabase
+        .from("participant_scores_history")
+        .select("points_earned")
+        .eq("league_id", leagueId)
+        .eq("profile_id", p.profile_id);
+
+      const total_points = scores?.reduce((sum, s) => sum + (s.points_earned || 0), 0) || 0;
+
+      return {
+        ...p,
+        total_points
+      };
+    })
+  );
+
+  // 3. Ordenar por puntos
+  participantsWithPoints.sort((a, b) => b.total_points - a.total_points);
+
+  // 4. Obtener rosters de todos los participantes de esta liga (solo activos)
+  const { data: rosters, error: rError } = await supabase
+    .from("user_rosters")
+    .select(`
+      profile_id,
+      player_id,
+      pro_players (
+        id,
+        nickname,
+        pro_teams (tag)
+      )
+    `)
+    .eq("league_id", leagueId)
+    .eq("is_active", true);
+
+  if (rError) throw rError;
+
+  // Agrupar rosters por profile_id
+  const rosterMap = new Map();
+  rosters.forEach((r: any) => {
+    if (!rosterMap.has(r.profile_id)) rosterMap.set(r.profile_id, []);
+    rosterMap.get(r.profile_id).push(r.pro_players);
+  });
+
+  return participantsWithPoints.map((p: any) => ({
+    ...p,
+    roster: rosterMap.get(p.profiles.id) || []
+  }));
 }

@@ -5,6 +5,7 @@ import { createLeague, joinLeague, getUserLeagues } from "@/lib/actions/leagues"
 import { getSession } from "@/lib/actions/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import LeagueDetails from "@/components/LeagueDetails";
 
 export default function LeaguesPage() {
   const [leagues, setLeagues] = useState<any[]>([]);
@@ -14,6 +15,7 @@ export default function LeaguesPage() {
   const [showJoin, setShowJoin] = useState(false);
   const [newLeagueName, setNewLeagueName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
   const [status, setStatus] = useState({ type: "", message: "" });
   const router = useRouter();
 
@@ -76,7 +78,14 @@ export default function LeaguesPage() {
         <StatusBadge label="S3-ACTIVE" variant="red" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      {selectedLeagueId ? (
+        <LeagueDetails 
+            leagueId={selectedLeagueId} 
+            onBack={() => setSelectedLeagueId(null)} 
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
         <button 
           onClick={() => { setShowCreate(true); setShowJoin(false); }}
           className="v-btn-primary py-4 text-[10px] shadow-lg shadow-v-red/10 active:scale-95 transition-all"
@@ -177,7 +186,11 @@ export default function LeaguesPage() {
         ) : (
           <div className="grid gap-4">
             {leagues.map((ul: any) => (
-              <div key={ul.leagues.id} className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98]">
+              <div 
+                key={ul.leagues.id} 
+                onClick={() => setSelectedLeagueId(ul.leagues.id)}
+                className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98]"
+              >
                 <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
                 <div className="flex justify-between items-start mb-6">
                   <div>
@@ -212,6 +225,8 @@ export default function LeaguesPage() {
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

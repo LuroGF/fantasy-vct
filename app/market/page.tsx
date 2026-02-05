@@ -33,11 +33,28 @@ export default async function MarketPage() {
   if (!session) return redirect("/login");
 
   const supabase = await createClient();
+  const leagues = await getUserLeagues(session.user.id);
+  const activeLeagueId = leagues[0]?.league_id;
 
-  const [players, leagues] = await Promise.all([
+  const [players, leagueRosters, activePowerUps] = await Promise.all([
     getMarketData(supabase),
-    getUserLeagues(session.user.id)
+    activeLeagueId 
+      ? supabase.from('user_rosters').select('*, profiles(username)').eq('league_id', activeLeagueId)
+      : Promise.resolve({ data: [] }),
+    activeLeagueId
+      ? supabase.from('active_powerups').select('target_player_id, profile_id, powerup_types(code)').eq('league_id', activeLeagueId)
+      : Promise.resolve({ data: [] })
   ]);
+
+  const powerupsData = (activePowerUps.data || []) as any[];
+  
+  const shieldedPlayerIds = powerupsData
+    .filter((ap: any) => ap.powerup_types?.code === 'LOCK')
+    .map((ap: any) => ap.target_player_id);
+
+  const hasScoutActive = powerupsData.some(
+    (ap: any) => ap.powerup_types?.code === 'SCOUT' && ap.profile_id === session.user.id
+  );
 
   return (
     <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl flex flex-col gap-6 animate-in fade-in duration-700">
@@ -52,6 +69,9 @@ export default async function MarketPage() {
         initialPlayers={players} 
         initialLeagues={leagues as any[]} 
         profileId={session.user.id}
+        initialLeagueRosters={leagueRosters.data || []}
+        initialShieldedPlayerIds={shieldedPlayerIds}
+        hasScoutActive={hasScoutActive}
       />
     </div>
   );

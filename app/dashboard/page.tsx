@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+export const dynamic = "force-dynamic";
 import { createClient } from "@/utils/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LiveHUD } from "@/components/LiveHUD";
@@ -7,7 +8,7 @@ import { Challenges } from "@/components/Challenges";
 
 type VlrPayload = {
   stats: { label: string; value: string }[];
-  upcomingMatches: { time: string; teams: string; event: string }[];
+  upcomingMatches: { time: string; teams: string; event: string; date?: string }[];
   scoring: { label: string; value: string }[];
 };
 
@@ -45,33 +46,47 @@ async function getDashboardStats(supabase: any) {
   };
 }
 
-async function getVlrData(): Promise<VlrPayload | null> {
-  try {
-    const headersList = await headers();
-    const host = headersList.get("host");
-    const protocol = headersList.get("x-forwarded-proto") ?? "http";
-    const baseUrl = host !== null ? `${protocol}://${host}` : "http://localhost:3000";
-
-    const response = await fetch(`${baseUrl}/api/vlr`, {
-      next: { revalidate: 300 },
-    });
-
-    if (!response.ok) return null;
-    return (await response.json()) as VlrPayload;
-  } catch {
-    return null;
-  }
-}
-
+import { fetchVlrMatches } from "@/lib/vlr";
 import { getUserLeagues } from "@/lib/actions/leagues";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const data = await getVlrData();
+  
+  // Llamada directa a la lógica de scraping sin fetch interno
+  const data = await fetchVlrMatches();
   const stats = await getDashboardStats(supabase);
   const matches = data?.upcomingMatches || [];
   
+  
+  const now = new Date();
+  
+  // Inicio del día de hoy (00:00:00)
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  
+  // Final de la semana (domingo a las 23:59:59)
+  const endOfWeek = new Date(now);
+  const daysUntilSunday = 7 - now.getDay(); // 0 = domingo, 1 = lunes, etc.
+  endOfWeek.setDate(now.getDate() + daysUntilSunday);
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  const filteredMatches = matches.filter((match: any) => {
+    const isLive = match.time.toLowerCase().includes("live") || match.time === "";
+    if (isLive) return true;
+
+    if (match.date) {
+      try {
+        const matchDate = new Date(match.date);
+        // Mostrar partidos desde hoy hasta el final de la semana
+        return matchDate >= startOfToday && matchDate <= endOfWeek;
+      } catch (e) {
+        return true;
+      }
+    }
+    return true; 
+  });
+
   const userLeagues = user ? await getUserLeagues(user.id) : [];
 
   // Obtener puntos reales del usuario (para el resumen del HUD)
@@ -79,7 +94,7 @@ export default async function DashboardPage() {
 
   const currentPoints = userStats?.total_points || 0;
   const rank = 0; // Se podría implementar un ranking global sumando puntuaciones
-  const activeMatches = matches.filter(m => m.time.toLowerCase().includes("live") || m.time === "").length;
+  const activeMatches = (matches as any[]).filter(m => m.time.toLowerCase().includes("live") || m.time === "").length;
 
   return (
     <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 py-4">
@@ -170,10 +185,10 @@ export default async function DashboardPage() {
       <div className="space-y-4">
         <div className="flex items-end justify-between px-1">
           <h2 className="text-2xl italic tracking-tighter">Transmisiones</h2>
-          <Link href="/ranking" className="text-[10px] font-black uppercase text-v-red hover:tracking-widest transition-all mb-1">Agenda Completa</Link>
+          <Link href="/schedule" className="text-[10px] font-black uppercase text-v-red hover:tracking-widest transition-all mb-1">Agenda Completa</Link>
         </div>
         <div className="grid gap-3">
-          {matches.map((match) => {
+          {filteredMatches.map((match) => {
             const isLive = match.time.toLowerCase().includes("live") || match.time === "";
             return (
               <div key={match.teams} className="bg-v-gray/40 border-l-2 border-v-white/10 p-3 flex items-center justify-between group hover:border-v-red hover:bg-v-gray/60 transition-all">
@@ -184,7 +199,13 @@ export default async function DashboardPage() {
                   <span className={`text-xs font-black ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
                     {isLive ? "EN VIVO" : match.time}
                   </span>
-                  <span className="text-[8px] font-black uppercase text-v-white/20 truncate max-w-[80px]">
+                  <span className="text-[8px] font-black uppercase text-v-white/40 mb-0.5">
+                    {(() => {
+                      const d = match.rawDate || match.date || "";
+                      return d.includes(",") ? d.split(",")[1].trim() : d;
+                    })()}
+                  </span>
+                  <span className="text-[8px] font-black uppercase text-v-white/10 truncate max-w-[80px]">
                     {match.event}
                   </span>
                 </div>

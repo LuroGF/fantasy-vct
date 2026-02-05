@@ -1,6 +1,6 @@
 "use server";
 
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 import { Database } from "@/types/supabase";
 
 type ParticipantScoreInsert = Database["public"]["Tables"]["participant_scores_history"]["Insert"];
@@ -21,13 +21,12 @@ export async function calculateGameweekScores(gameweekId: number) {
     if (gwError || !gameweek) throw new Error("Gameweek not found");
 
     // 2. Get Matches in Gameweek
-    // Note: Schema uses 'match_date', check if it falls within range
+    // First, try matches explicitly assigned to this gameweek_id
+    // Fallback to date range if needed
     const { data: matches, error: matchError } = await supabaseAdmin
       .from("matches")
       .select("id")
-      .gte("match_date", gameweek.start_date)
-
-      .lte("match_date", gameweek.end_date)
+      .or(`gameweek_id.eq.${gameweekId},and(match_date.gte.${gameweek.start_date},match_date.lte.${gameweek.end_date})`)
       .returns<{ id: string }[]>();
 
     if (matchError) throw matchError;
@@ -74,13 +73,34 @@ export async function calculateGameweekScores(gameweekId: number) {
         return;
     }
 
-    // 5. Aggregate Score per Participant
+    // 5. Get Active Powerups for this gameweek (Captain multiplier)
+    const { data: activePowerUps } = await (supabaseAdmin
+      .from("active_powerups")
+      .select("profile_id, target_player_id, powerup_types!inner(code)")
+      .eq("gameweek_id", gameweekId)
+      .eq("powerup_types.code", "CAPTAIN") as any);
+
+    const captainMap = new Map<string, string>(); // profile_id -> player_id
+    activePowerUps?.forEach((ap: any) => {
+      if (ap.profile_id && ap.target_player_id) {
+        captainMap.set(ap.profile_id, ap.target_player_id);
+      }
+    });
+
+    // 6. Aggregate Score per Participant
     const participantScores = new Map<string, { leagueId: string; profileId: string; points: number }>();
 
     rosters.forEach((r) => {
       if (!r.league_id || !r.profile_id) return;
       const key = `${r.league_id}-${r.profile_id}`;
-      const points = playerPointsMap.get(r.player_id!) || 0;
+      
+      let points = playerPointsMap.get(r.player_id!) || 0;
+      
+      // Apply Captain Multiplier (x2)
+      const captainPlayerId = captainMap.get(r.profile_id);
+      if (captainPlayerId === r.player_id) {
+        points = points * 2;
+      }
 
       if (!participantScores.has(key)) {
         participantScores.set(key, { leagueId: r.league_id!, profileId: r.profile_id!, points: 0 });
