@@ -29,6 +29,7 @@ const TEAM_ALIASES: Record<string, string> = {
   "FUT ESPORTS": "FUT",
   "GIANTX": "GX",
   "KOI": "KOI",
+  "PCIFIC ESPORTS": "PCF",
   "TEAM LIQUID": "TL",
   "GENTLE MATES": "M8",
   "ULF ESPORTS": "ULF",

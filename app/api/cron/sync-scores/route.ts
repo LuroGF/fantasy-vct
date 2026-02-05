@@ -110,9 +110,25 @@ export async function GET(request: Request) {
                 const teamA = (match as any).team_a_data;
                 const teamB = (match as any).team_b_data;
                 
-                if (tag === teamA?.tag || tag === teamA?.name?.toUpperCase()) {
+                const matchTeam = (t: any, queryTag: string) => {
+                    if (!t || !queryTag) return false;
+                    const name = t.name.toUpperCase();
+                    const teamTag = (t.tag || "").toUpperCase();
+                    const q = queryTag.toUpperCase();
+                    
+                    return (
+                        q === teamTag || 
+                        q === name ||
+                        name.includes(q) ||
+                        (teamTag && teamTag.includes(q)) ||
+                        q.startsWith(teamTag.substring(0, 3)) || // Caso como PCF -> PCIFIC
+                        (teamTag && teamTag.startsWith(q))
+                    );
+                };
+
+                if (matchTeam(teamA, tag)) {
                     teamId = teamA.id;
-                } else if (tag === teamB?.tag || tag === teamB?.name?.toUpperCase()) {
+                } else if (matchTeam(teamB, tag)) {
                     teamId = teamB.id;
                 } else {
                     // Si no coincide el tag, intentamos por orden de aparición o default al primer equipo
