@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 import { calculateGameweekScores } from "@/lib/actions/scoring";
 import { Database } from "@/types/supabase";
 

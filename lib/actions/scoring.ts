@@ -1,6 +1,6 @@
 "use server";
 
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 import { Database } from "@/types/supabase";
 
 type ParticipantScoreInsert = Database["public"]["Tables"]["participant_scores_history"]["Insert"];

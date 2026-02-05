@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { supabaseAdmin } from "./supabase";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 
 const VLR_MATCHES_URL = "https://www.vlr.gg/matches";
 

@@ -27,6 +27,8 @@ export default async function TeamPage() {
     ? await supabase.from('active_powerups').select('*, powerup_types(code)').eq('league_id', activeLeagueId).eq('profile_id', session.user.id).eq('gameweek_id', activeGw.id)
     : { data: [] };
 
+  const hasScoutActive = (activePowerUps || []).some(ap => ap.powerup_types?.code === 'SCOUT');
+
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-700">
       <div className="flex items-end justify-between px-1">
@@ -43,6 +45,7 @@ export default async function TeamPage() {
         initialInventory={inventory}
         initialActivePowerUps={activePowerUps || []}
         activeGameweekId={activeGw?.id}
+        hasScoutActive={hasScoutActive}
       />
     </div>
   );

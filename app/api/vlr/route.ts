@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 import { fetchVlrMatches, scrapeMatchDetails } from "@/lib/vlr";
 
 export async function GET(request: Request) {

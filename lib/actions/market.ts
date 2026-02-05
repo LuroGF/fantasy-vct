@@ -347,9 +347,19 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
             price: clausePrice
         });
 
+    // E. Notificar al dueño anterior
+    const { createNotification } = await import("./notifications");
+    const playerName = (rosterEntry.pro_players as any).nickname;
+    await createNotification({
+      profile_id: ownerId,
+      league_id: leagueId,
+      title: "⚠️ ¡Cláusula Pagada!",
+      message: `El usuario ha pagado la cláusula de $${(clausePrice / 1000000).toFixed(1)}M por ${playerName}.`,
+      type: "hostile_buy"
+    });
+
     revalidatePath("/market");
     revalidatePath("/team");
-    const playerName = (rosterEntry.pro_players as any).nickname;
     return { success: true, message: `Cláusula pagada. Has fichado a ${playerName}` };
 
   } catch (error) {

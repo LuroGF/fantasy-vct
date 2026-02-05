@@ -7,8 +7,6 @@ import { sellPlayer } from "@/lib/actions/market";
 import { StatusBadge } from "@/components/StatusBadge";
 import Link from "next/link";
 
-const MAX_TRANSFERS = 3;
-
 interface TeamViewProps {
   initialRoster: any[];
   initialLeagues: any[];
@@ -16,6 +14,7 @@ interface TeamViewProps {
   initialInventory: any[];
   initialActivePowerUps: any[];
   activeGameweekId?: any;
+  hasScoutActive?: boolean;
 }
 
 export default function TeamView({ 
@@ -24,8 +23,10 @@ export default function TeamView({
   profileId, 
   initialInventory, 
   initialActivePowerUps, 
-  activeGameweekId 
+  activeGameweekId,
+  hasScoutActive = false
 }: TeamViewProps) {
+  const weeklyLimit = hasScoutActive ? 4 : 3;
   const [roster, setRoster] = useState(initialRoster);
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagues[0]?.leagues.id || "");
   const [leagues, setLeagues] = useState(initialLeagues);
@@ -146,10 +147,10 @@ export default function TeamView({
             <div className="bg-v-navy/30 p-2 border-l-2 border-v-white/20">
                <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">Transferencias Semana</p>
                <p className="text-sm font-black italic">
-                 <span className={activeParticipation.transfers_made_this_week >= MAX_TRANSFERS ? "text-v-red" : "text-green-500"}>
+                 <span className={activeParticipation.transfers_made_this_week >= weeklyLimit ? "text-v-red" : "text-green-500"}>
                    {activeParticipation.transfers_made_this_week || 0}
                  </span>
-                 <span className="text-v-white/20 text-[10px] ml-1">/ {MAX_TRANSFERS}</span>
+                 <span className="text-v-white/20 text-[10px] ml-1">/ {weeklyLimit}</span>
                </p>
             </div>
           </div>

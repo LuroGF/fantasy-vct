@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
-import { supabaseAdmin as supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 
 // URL con estadísticas de EMEA (últimos 180 días para pillar a todos)
 const VLR_STATS_URL = "https://www.vlr.gg/stats/?event_group_id=all&event_id=all&region=eu&country=all&min_rounds=100&min_rating=0&agent_id=all&timespan=180d";
@@ -73,14 +73,14 @@ export async function GET() {
     const uniqueTeamTags = Array.from(new Set(players.map(p => p.teamTag)));
     const teamUpserts = uniqueTeamTags.map(tag => ({ name: tag, tag }));
     
-    const { error: teamError } = await supabase
+    const { error: teamError } = await supabaseAdmin
       .from('pro_teams')
       .upsert(teamUpserts as any, { onConflict: 'tag' });
     
     if (teamError) throw teamError;
 
     // Obtenemos los IDs de los equipos para relacionarlos
-    const { data: teamsData } = await supabase.from('pro_teams').select('id, tag').returns<{ id: string; tag: string }[]>();
+    const { data: teamsData } = await supabaseAdmin.from('pro_teams').select('id, tag').returns<{ id: string; tag: string }[]>();
     const teamMap = new Map(teamsData?.map(t => [t.tag, t.id]));
 
     // 2. Procesar Jugadores (Deduplicar por nickname)
@@ -101,7 +101,7 @@ export async function GET() {
 
     console.log(`Scraper: Preparados ${playerUpserts.length} jugadores para upsert.`);
 
-    const { error: playerError } = await supabase
+    const { error: playerError } = await supabaseAdmin
       .from('pro_players')
       .upsert(playerUpserts as any, { onConflict: 'nickname' });
 

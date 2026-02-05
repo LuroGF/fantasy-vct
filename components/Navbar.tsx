@@ -7,6 +7,8 @@ import { motion } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+import { NotificationBadge } from "./NotificationBadge";
+
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
@@ -31,6 +33,8 @@ export default function Navbar() {
             <div className="flex items-center justify-between px-2 h-16">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;
+                    const isMore = item.label === "Más";
+
                     return (
                         <Link
                             key={item.href}
@@ -44,12 +48,15 @@ export default function Navbar() {
                                     transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
                                 />
                             )}
-                            <item.icon
-                                className={cn(
-                                    "h-5 w-5 transition-colors duration-200 z-10",
-                                    isActive ? "text-v-red" : "text-v-white/50"
-                                )}
-                            />
+                            <div className="relative z-10">
+                                <item.icon
+                                    className={cn(
+                                        "h-5 w-5 transition-colors duration-200",
+                                        isActive ? "text-v-red" : "text-v-white/50"
+                                    )}
+                                />
+                                {isMore && <NotificationBadge />}
+                            </div>
                             <span
                                 className={cn(
                                     "text-[9px] font-black uppercase tracking-widest transition-colors duration-200 z-10 font-oswald",
