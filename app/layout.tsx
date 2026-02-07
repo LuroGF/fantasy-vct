@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -29,8 +30,9 @@ export default function RootLayout({
       <body className="antialiased h-dvh flex flex-col items-center overflow-hidden">
         {/* Main Wrapper to keep mobile feel on desktop */}
         <div className="relative min-h-[100dvh] w-full bg-v-navy/50 shadow-2xl shadow-black/50 overflow-hidden sm:border-x sm:border-white/5">
+          <Sidebar />
           <main
-            className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-7xl min-h-[100dvh] overflow-y-auto overscroll-contain pt-4 px-4 sm:px-6 lg:px-10 pb-24"
+            className=" min-h-[100dvh] overflow-y-auto overscroll-contain lg:px-10 pb-24"
           >
             {children}
           </main>
@@ -38,10 +40,7 @@ export default function RootLayout({
 
           {/* App container */}
           <div className="relative min-h-[100dvh] w-full flex flex-col">
-            {/* Si quieres "centrado y contenido" en desktop, usa:
-              lg:grid lg:place-items-center y un max-w grande.
-              Pero tú has pedido full screen en desktop, así que lo dejamos a full width.
-          */}
+            {}
             <div
               className="relative w-full flex-1 bg-v-navy/50 border-white/5 shadow-2xl shadow-black/50 overflow-hidden
                           sm:border-x sm:border-white/5"

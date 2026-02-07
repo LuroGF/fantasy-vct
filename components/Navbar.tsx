@@ -30,7 +30,7 @@ export default function Navbar() {
     if (hideNavbar) return null;
 
     return (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 border-t border-white/10 bg-v-navy/95 backdrop-blur-xl">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full lg:hidden z-50 border-t border-white/10 bg-v-navy/95 backdrop-blur-xl">
             <div className="flex items-center justify-between px-2 h-16">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;
