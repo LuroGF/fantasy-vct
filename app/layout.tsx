@@ -30,9 +30,7 @@ export default function RootLayout({
         {/* Main Wrapper to keep mobile feel on desktop */}
         <div className="relative min-h-[100dvh] w-full bg-v-navy/50 shadow-2xl shadow-black/50 overflow-hidden sm:border-x sm:border-white/5">
           <main
-            className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-3xl
-                            min-h-[100dvh] overflow-y-auto overscroll-contain
-                            pt-4 px-4 sm:px-6 lg:px-10 pb-24"
+            className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-7xl min-h-[100dvh] overflow-y-auto overscroll-contain pt-4 px-4 sm:px-6 lg:px-10 pb-24"
           >
             {children}
           </main>
