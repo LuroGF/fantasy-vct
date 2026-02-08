@@ -29,37 +29,24 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${oswald.variable}`}>
       <body className="antialiased h-dvh flex flex-col items-center overflow-hidden">
         {/* Main Wrapper to keep mobile feel on desktop */}
-        <div className="relative min-h-[100dvh] w-full bg-v-navy/50 shadow-2xl shadow-black/50 overflow-hidden sm:border-x sm:border-white/5">
+        <div className="relative h-[100dvh] w-full bg-v-navy/50 shadow-2xl shadow-black/50 overflow-hidden sm:border-x sm:border-white/5 flex flex-col">
           <Sidebar />
-          <main
-            className=" min-h-[100dvh] overflow-y-auto overscroll-contain lg:px-10 pb-24"
-          >
-            {children}
+
+          {/* ÚNICO scroll container: necesita altura acotada => flex-1 */}
+          <main className="flex-1 overflow-y-auto overscroll-contain pb-24">
+            <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl px-4 sm:px-6 lg:px-10 py-4">
+              {children}
+            </div>
           </main>
+
           <Navbar />
 
-          {/* App container */}
-          <div className="relative min-h-[100dvh] w-full flex flex-col">
-            {}
-            <div
-              className="relative w-full flex-1 bg-v-navy/50 border-white/5 shadow-2xl shadow-black/50 overflow-hidden
-                          sm:border-x sm:border-white/5"
-            >
-              {/* Main scroll area */}
-              <main className="h-[100dvh] overflow-y-auto overscroll-contain">
-                {children}
-              </main>
-
-              <Navbar />
-
-              {/* Corner accents: ahora ocupan toda la pantalla */}
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-v-red/30" />
-                <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-v-red/30" />
-                <div className="absolute bottom-24 left-4 w-4 h-4 border-b-2 border-l-2 border-v-red/30" />
-                <div className="absolute bottom-24 right-4 w-4 h-4 border-b-2 border-r-2 border-v-red/30" />
-              </div>
-            </div>
+          {/* Corner accents */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-v-red/30" />
+            <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-v-red/30" />
+            <div className="absolute bottom-24 left-4 w-4 h-4 border-b-2 border-l-2 border-v-red/30" />
+            <div className="absolute bottom-24 right-4 w-4 h-4 border-b-2 border-r-2 border-v-red/30" />
           </div>
         </div>
       </body>

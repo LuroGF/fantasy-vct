@@ -29,7 +29,7 @@ export function Challenges({ challenges = [] }: ChallengesProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between px-1">
-        <h2 className="text-2xl italic tracking-tighter uppercase">Protocolo de Desafíos</h2>
+        <h2 className="text-2xl italic tracking-tighter uppercase">Desafíos</h2>
         <span className="text-[8px] font-black uppercase text-v-red tracking-widest mb-1">Actualizado en Tiempo Real</span>
       </div>
 

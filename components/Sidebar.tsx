@@ -15,10 +15,10 @@ function cn(...inputs: ClassValue[]) {
 
 const navItems = [
   { href: "/dashboard", label: "Inicio", icon: Home },
+  { href: "/leagues", label: "Ligas", icon: Trophy },
   { href: "/team", label: "Mi equipo", icon: Users },
   { href: "/market", label: "Mercado", icon: ShoppingCart },
   { href: "/shop", label: "Tienda", icon: ShoppingBag },
-  { href: "/leagues", label: "Ligas", icon: Trophy },
   { href: "/more", label: "Más", icon: MoreHorizontal },
 ];
 
