@@ -106,14 +106,17 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
     return response.text();
   };
 
-  const [upcomingHtml, resultsHtml] = await Promise.all([
+  const [page1, page2, page3, resultsHtml] = await Promise.all([
     fetchPage(VLR_MATCHES_URL),
+    fetchPage(`${VLR_MATCHES_URL}/?page=2`),
+    fetchPage(`${VLR_MATCHES_URL}/?page=3`),
     fetchPage("https://www.vlr.gg/matches/results")
   ]);
 
-  if (!upcomingHtml) throw new Error("VLR upcoming fetch failed");
+  if (!page1) throw new Error("VLR page 1 fetch failed");
   
-  const parseMatches = (html: string) => {
+  const parseMatches = (html: string | null) => {
+    if (!html) return [];
     const $ = cheerio.load(html);
     const results: VlrMatch[] = [];
 
@@ -156,7 +159,11 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
     return results;
   };
 
-  const upcomingResults = parseMatches(upcomingHtml);
+  const upcomingResults = [
+    ...parseMatches(page1),
+    ...parseMatches(page2),
+    ...parseMatches(page3)
+  ];
   const finishedResults = resultsHtml ? parseMatches(resultsHtml) : [];
   
   // Use map to dedup
