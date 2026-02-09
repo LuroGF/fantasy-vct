@@ -2,16 +2,17 @@ import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import webpush from "web-push";
 
-// Configurar web-push
-// Estas claves deben estar en .env.local
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:admin@fantasyvct.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
-  process.env.VAPID_PRIVATE_KEY || ''
-);
-
 export async function POST(req: Request) {
   try {
+    // Configurar web-push dentro del handler para evitar errores en build time
+    if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+      webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT || 'mailto:admin@fantasyvct.com',
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+      );
+    }
+
     const { userId, title, body, url, tag } = await req.json();
 
     if (!userId && !title) {

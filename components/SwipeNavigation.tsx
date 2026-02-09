@@ -12,12 +12,12 @@ interface SwipeNavigationProps {
 
 // Define navigation order (left to right swipe flow)
 const NAV_ORDER = [
-  '/leaderboard',
+  '/leagues',
   '/team',
   '/dashboard',
   '/stats',
   '/market',
-  '/shop'
+  '/more'
 ];
 
 export default function SwipeNavigation({ children }: SwipeNavigationProps) {

@@ -105,7 +105,7 @@ export default function MarketView({
     setLoading(true);
     setStatus({ type: "info", message: `Sincronizando contrato de ${player.nickname}...` });
 
-    const res = await buyPlayer(activeLeagueId, profileId, player.id, player.market_value);
+    const res = await buyPlayer(activeLeagueId, profileId, player.id);
 
     if (res.success) {
       setStatus({ type: "success", message: `¡${player.nickname} se ha unido a tu escuadra!` });
