@@ -2,10 +2,10 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { PlayerCard } from "@/components/PlayerCard";
-import { togglePlayerStatus, getUserFullRoster } from "@/lib/actions/roster";
+import { setStarterStatus, getUserFullRoster } from "@/lib/actions/roster";
 import { sellPlayer } from "@/lib/actions/market";
-import { StatusBadge } from "@/components/StatusBadge";
 import Link from "next/link";
+import { haptic } from "@/lib/utils/haptics";
 
 interface TeamViewProps {
   initialRoster: any[];
@@ -51,8 +51,10 @@ export default function TeamView({
     if (activeLeagueId) loadRoster();
   }, [activeLeagueId, profileId]);
 
-  const activePlayers = useMemo(() => roster.filter(r => r.is_active), [roster]);
-  const inactivePlayers = useMemo(() => roster.filter(r => !r.is_active), [roster]);
+  // Starters are those with is_starter = true
+  const starters = useMemo(() => roster.filter(r => r.is_starter), [roster]);
+  // Bench are those with is_starter = false (but are is_active = true, ensured by query)
+  const bench = useMemo(() => roster.filter(r => !r.is_starter), [roster]);
 
   const isLocked = (playerId: string) => {
     return activePowerUps.some(ap => ap.target_player_id === playerId && ap.powerup_types?.code === 'LOCK');
@@ -63,59 +65,72 @@ export default function TeamView({
   };
 
   async function handleActivate(powerUpTypeId: string, targetPlayerId?: string) {
+    haptic.medium(); // Vibrate on action start
     setLoading(true);
     const { activatePowerUp } = await import("@/lib/actions/inventory");
     const res = await activatePowerUp(activeLeagueId, profileId, powerUpTypeId, targetPlayerId);
 
     if (res.success) {
+      haptic.success(); // Success vibration
       setStatus({ type: "success", message: res.message || "Carta activada" });
-      // Refresh local state (this is simplified, ideally refetch)
       window.location.reload(); 
     } else {
+      haptic.error(); // Error vibration
       setStatus({ type: "error", message: res.error as string });
     }
     setSelectedPowerUp(null);
     setLoading(false);
   }
 
-  async function handleToggle(player_id: string, nickname: string) {
+  async function handleToggleStarter(player_id: string, nickname: string, currentIsStarter: boolean) {
+    haptic.medium(); // Vibrate on toggle
     setLoading(true);
-    const res = await togglePlayerStatus(activeLeagueId, profileId, player_id);
+    const newStatus = !currentIsStarter;
+    const res = await setStarterStatus(activeLeagueId, profileId, player_id, newStatus);
+    
     if (res.success) {
+      haptic.success(); // Success vibration
       setRoster(prev => prev.map(r => 
-        r.player_id === player_id ? { ...r, is_active: res.newStatus } : r
+        r.player_id === player_id ? { ...r, is_starter: newStatus } : r
       ));
       setStatus({ 
         type: "success", 
-        message: res.newStatus ? `${nickname} ahora es titular` : `${nickname} ahora es suplente` 
+        message: newStatus ? `${nickname} sube al Quinteto Titular` : `${nickname} pasa al Banquillo` 
       });
     } else {
+      haptic.error(); // Error vibration
       setStatus({ type: "error", message: res.error as string });
     }
     setLoading(false);
   }
 
   async function handleSell(player: any) {
-    if (!window.confirm(`¿Estás seguro de que quieres vender a ${player.nickname} por $${(player.market_value / 1000000).toFixed(1)}M?`)) {
+    haptic.warning(); // Warning vibration for confirmation
+    if (!window.confirm(`¿Estás seguro de que quieres vender a ${player.nickname} por $${Math.floor(player.market_value * 0.9 / 1000000).toFixed(1)}M (con impuestos)?`)) {
       return;
     }
 
+    haptic.heavy(); // Heavy vibration on confirm
     setLoading(true);
     setStatus({ type: "info", message: `Procesando rescisión de contrato de ${player.nickname}...` });
 
-    const res = await sellPlayer(activeLeagueId, profileId, player.id, player.market_value);
+    const res = await sellPlayer(activeLeagueId, profileId, player.id);
 
     if (res.success) {
+      haptic.success(); // Success vibration
       setRoster(prev => prev.filter(r => r.player_id !== player.id));
+      // Refresh budget locally
+      // Note: We might want to refetch league data to be exact, but this approximation is okay for UI feedback
       setLeagues(prev => prev.map(l => 
         l.leagues.id === activeLeagueId ? { 
           ...l, 
-          current_budget: Number(l.current_budget) + player.market_value,
-          transfers_made_this_week: (l.transfers_made_this_week || 0) + 1
+          current_budget: Number(l.current_budget) + Math.floor(player.market_value * 0.9)
+          // transfers_made_this_week does not change on sell
         } : l
       ));
       setStatus({ type: "success", message: `${player.nickname} ha dejado la escuadra.` });
     } else {
+      haptic.error(); // Error vibration
       setStatus({ type: "error", message: res.error as string });
     }
     setLoading(false);
@@ -208,47 +223,48 @@ export default function TeamView({
       {/* Titulares (Max 5) */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-2xl italic tracking-tighter uppercase">5 Titulares <span className="text-sm font-black text-v-red ml-2">{activePlayers.length}/5</span></h2>
+          <h2 className="text-2xl italic tracking-tighter uppercase">Quinteto Titular <span className="text-sm font-black text-v-red ml-2">{starters.length}/5</span></h2>
         </div>
         
         <div className="grid gap-3">
-          {activePlayers.map((r) => (
-            <PlayerCard 
-              key={r.player_id} 
-              player={{
-                ...r.pro_players,
-                releaseClause: r.release_clause
-              }} 
-              onAction={selectedPowerUp ? () => handleActivate(selectedPowerUp.powerup_types.id, r.player_id) : () => handleToggle(r.player_id, r.pro_players.nickname)}
-              actionLabel={selectedPowerUp ? `Aplicar ${selectedPowerUp.powerup_types.icon}` : "Suplente"}
-              onSecondAction={() => handleSell(r.pro_players)}
-              secondActionLabel="Vender"
-              secondActionClassName="text-v-red hover:bg-v-red/10"
-              isLocked={isLocked(r.player_id)}
-              isCaptain={isCaptain(r.player_id)}
-            />
+          {starters.map((r) => (
+            <div key={r.player_id} className="border-l-4 border-v-red pl-2">
+                <PlayerCard 
+                player={{
+                    ...r.pro_players,
+                    releaseClause: r.release_clause
+                }} 
+                onAction={selectedPowerUp ? () => handleActivate(selectedPowerUp.powerup_types.id, r.player_id) : () => handleToggleStarter(r.player_id, r.pro_players.nickname, true)}
+                actionLabel={selectedPowerUp ? `Aplicar ${selectedPowerUp.powerup_types.icon}` : "Al Banquillo"}
+                onSecondAction={() => handleSell(r.pro_players)}
+                secondActionLabel="Vender"
+                secondActionClassName="text-v-red hover:bg-v-red/10"
+                isLocked={isLocked(r.player_id)}
+                isCaptain={isCaptain(r.player_id)}
+                />
+            </div>
           ))}
 
-          {activePlayers.length < 5 && Array.from({ length: 5 - activePlayers.length }).map((_, i) => (
+          {starters.length < 5 && Array.from({ length: 5 - starters.length }).map((_, i) => (
             <div key={`empty-${i}`} className="v-panel border-dashed border-v-white/10 h-24 flex items-center justify-center opacity-30">
-               <p className="text-[10px] font-black uppercase tracking-[0.3em]">Espacio Vacante</p>
+               <p className="text-[10px] font-black uppercase tracking-[0.3em]">Espacio Disponible</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Suplentes/Plantilla */}
-      <div className="space-y-4 pt-4">
-        <h2 className="text-2xl italic tracking-tighter uppercase px-1 opacity-50">Plantilla Disponible</h2>
+      <div className="space-y-4 pt-4 border-t border-white/5">
+        <h2 className="text-2xl italic tracking-tighter uppercase px-1 opacity-50">Banquillo</h2>
         <div className="grid gap-4">
-          {inactivePlayers.map((r) => (
-            <div key={r.player_id} className="opacity-70 contrast-75 hover:opacity-100 hover:contrast-100 transition-all">
+          {bench.map((r) => (
+            <div key={r.player_id} className="opacity-70 contrast-75 hover:opacity-100 hover:contrast-100 transition-all border-l-4 border-white/20 pl-2">
                 <PlayerCard 
                   player={{
                     ...r.pro_players,
                     releaseClause: r.release_clause
                   }} 
-                  onAction={selectedPowerUp ? () => handleActivate(selectedPowerUp.powerup_types.id, r.player_id) : () => handleToggle(r.player_id, r.pro_players.nickname)}
+                  onAction={selectedPowerUp ? () => handleActivate(selectedPowerUp.powerup_types.id, r.player_id) : () => handleToggleStarter(r.player_id, r.pro_players.nickname, false)}
                   actionLabel={selectedPowerUp ? `Aplicar ${selectedPowerUp.powerup_types.icon}` : "Titular"}
                   onSecondAction={() => handleSell(r.pro_players)}
                   secondActionLabel="Vender"
@@ -259,9 +275,9 @@ export default function TeamView({
             </div>
           ))}
 
-          {inactivePlayers.length === 0 && (
+          {bench.length === 0 && (
              <div className="v-panel border-white/5 py-8 text-center opacity-40">
-               <p className="text-xs italic">No tienes más agentes en reserva.</p>
+               <p className="text-xs italic">No hay jugadores en el banquillo.</p>
                <Link href="/market" className="text-[10px] font-black text-v-red uppercase mt-2 block underline">Ir al Mercado</Link>
              </div>
           )}
@@ -270,3 +286,5 @@ export default function TeamView({
     </div>
   );
 }
+
+

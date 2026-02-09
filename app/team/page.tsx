@@ -6,6 +6,8 @@ import { createClient } from "@/utils/supabase/server";
 export const dynamic = "force-dynamic";
 import TeamView from "./TeamView";
 
+import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+
 export default async function TeamPage() {
   const session = await getSession();
   if (!session) return redirect("/login");
@@ -30,23 +32,25 @@ export default async function TeamPage() {
   const hasScoutActive = (activePowerUps || []).some(ap => ap.powerup_types?.code === 'SCOUT');
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
-      <div className="flex items-end justify-between px-1">
-        <div>
-          <h1 className="text-4xl leading-none italic uppercase">Mi Equipo</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Escuadra Operativa</p>
+    <ClientRefreshWrapper>
+      <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+        <div className="flex items-end justify-between px-1">
+          <div>
+            <h1 className="text-4xl leading-none italic uppercase">Mi Equipo</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Escuadra Operativa</p>
+          </div>
         </div>
-      </div>
 
-      <TeamView 
-        initialRoster={roster} 
-        initialLeagues={leagues as any[]} 
-        profileId={session.user.id}
-        initialInventory={inventory}
-        initialActivePowerUps={activePowerUps || []}
-        activeGameweekId={activeGw?.id}
-        hasScoutActive={hasScoutActive}
-      />
-    </div>
+        <TeamView 
+          initialRoster={roster} 
+          initialLeagues={leagues as any[]} 
+          profileId={session.user.id}
+          initialInventory={inventory}
+          initialActivePowerUps={activePowerUps || []}
+          activeGameweekId={activeGw?.id}
+          hasScoutActive={hasScoutActive}
+        />
+      </div>
+    </ClientRefreshWrapper>
   );
 }

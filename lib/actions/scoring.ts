@@ -58,13 +58,14 @@ export async function calculateGameweekScores(gameweekId: number) {
       playerPointsMap.set(p.player_id, current + (p.fantasy_points || 0));
     });
 
-    // 4. Get Active User Rosters
+    // 4. Get Active User Rosters (STARTERS ONLY)
     // In a real scenario, we need to know the roster state AT THE TIME of the match.
     // For now, simpler logic: Current active roster.
     const { data: rosters, error: rosterError } = await supabaseAdmin
       .from("user_rosters")
       .select("league_id, profile_id, player_id")
       .eq("is_active", true)
+      .eq("is_starter", true) // SOLO TITULARES PUNTÚAN
       .returns<{ league_id: string | null; profile_id: string | null; player_id: string | null }[]>();
 
     if (rosterError) throw rosterError;

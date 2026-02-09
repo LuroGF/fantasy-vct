@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, ShoppingCart, Trophy, MoreHorizontal, ShoppingBag } from "lucide-react";
+import { Home, Users, ShoppingCart, Trophy, MoreHorizontal, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { haptic } from "@/lib/utils/haptics";
 
 import { NotificationBadge } from "./NotificationBadge";
 
@@ -15,9 +16,9 @@ function cn(...inputs: ClassValue[]) {
 
 const navItems = [
     { href: "/dashboard", label: "Inicio", icon: Home },
-    { href: "/team", label: "Mi equipo", icon: Users },
+    { href: "/team", label: "Equipo", icon: Users },
+    { href: "/stats", label: "Stats", icon: Activity },
     { href: "/market", label: "Mercado", icon: ShoppingCart },
-    { href: "/shop", label: "Tienda", icon: ShoppingBag },
     { href: "/leagues", label: "Ligas", icon: Trophy },
     { href: "/more", label: "Más", icon: MoreHorizontal },
 ];
@@ -40,6 +41,7 @@ export default function Navbar() {
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={() => haptic.light()}
                             className="relative flex flex-1 flex-col items-center justify-center gap-1 h-full active:scale-90 transition-transform select-none"
                         >
                             {isActive && (

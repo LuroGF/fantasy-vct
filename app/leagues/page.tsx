@@ -6,6 +6,7 @@ import { getSession } from "@/lib/actions/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import LeagueDetails from "@/components/LeagueDetails";
+import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 
 export default function LeaguesPage() {
   const [leagues, setLeagues] = useState<any[]>([]);
@@ -69,22 +70,23 @@ export default function LeaguesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
-      <div className="flex items-end justify-between px-1">
-        <div>
-          <h1 className="text-4xl leading-none italic uppercase">Ligas</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red mt-1">Gestión de Divisiones VCF</p>
+    <ClientRefreshWrapper>
+      <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+        <div className="flex items-end justify-between px-1">
+          <div>
+            <h1 className="text-4xl leading-none italic uppercase">Ligas</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red mt-1">Gestión de Divisiones VCF</p>
+          </div>
+          <StatusBadge label="S3-ACTIVE" variant="red" />
         </div>
-        <StatusBadge label="S3-ACTIVE" variant="red" />
-      </div>
 
-      {selectedLeagueId ? (
-        <LeagueDetails 
-            leagueId={selectedLeagueId} 
-            onBack={() => setSelectedLeagueId(null)} 
-        />
-      ) : (
-        <>
+        {selectedLeagueId ? (
+          <LeagueDetails 
+              leagueId={selectedLeagueId} 
+              onBack={() => setSelectedLeagueId(null)} 
+          />
+        ) : (
+          <>
           <div className="grid grid-cols-2 gap-3">
         <button 
           onClick={() => { setShowCreate(true); setShowJoin(false); }}
@@ -227,6 +229,7 @@ export default function LeaguesPage() {
       </div>
       </>
       )}
-    </div>
+      </div>
+    </ClientRefreshWrapper>
   );
 }

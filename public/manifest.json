@@ -1,0 +1,58 @@
+{
+  "name": "Valorant Fantasy VCT",
+  "short_name": "VCT Fantasy",
+  "description": "Compite con tus amigos en la mejor liga fantasy de Valorant",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0F1923",
+  "theme_color": "#FF4655",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["sports", "games"],
+  "shortcuts": [
+    {
+      "name": "Mi Equipo",
+      "short_name": "Equipo",
+      "description": "Ver y gestionar tu plantilla",
+      "url": "/team",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mercado",
+      "short_name": "Mercado",
+      "description": "Fichar nuevos jugadores",
+      "url": "/market",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Clasificación",
+      "short_name": "Ranking",
+      "description": "Ver clasificación de tu liga",
+      "url": "/leaderboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

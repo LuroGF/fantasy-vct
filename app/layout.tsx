@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import PWAInstaller from "@/components/PWAInstaller";
+import SwipeNavigation from "@/components/SwipeNavigation";
+import SwipeIndicator from "@/components/SwipeIndicator";
+import PushManager from "@/components/PushManager";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -18,6 +22,29 @@ const oswald = Oswald({
 export const metadata: Metadata = {
   title: "Valorant Fantasy VCT",
   description: "Compite con tus amigos en la mejor liga fantasy de Valorant",
+  manifest: "/manifest.json",
+  themeColor: "#FF4655",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: "cover"
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "VCT Fantasy"
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" }
+    ],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" }
+    ]
+  }
 };
 
 export default function RootLayout({
@@ -28,11 +55,16 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${oswald.variable}`}>
       <body className="antialiased h-dvh flex flex-col items-center overflow-hidden">
+        <PWAInstaller />
+        <PushManager />
         {/* Main Wrapper to keep mobile feel on desktop */}
         <div className="w-full max-w-md h-full bg-v-navy/50 relative flex flex-col border-x border-white/5 shadow-2xl shadow-black/50 overflow-hidden">
-          <main className="flex-1 pb-24 overflow-y-auto pt-4 px-4 overscroll-contain">
-            {children}
-          </main>
+          <SwipeNavigation>
+            <main className="flex-1 pb-24 overflow-y-auto pt-4 px-4 overscroll-contain">
+              {children}
+            </main>
+          </SwipeNavigation>
+          <SwipeIndicator />
           <Navbar />
 
           {/* Subtle Valorant-style corner accents */}

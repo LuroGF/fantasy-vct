@@ -11,6 +11,7 @@ export type VlrMatch = {
   date?: string; 
   rawDate?: string;
   isVctEmea?: boolean;
+  eta?: string;
 };
 
 export type VlrPayload = {
@@ -40,7 +41,7 @@ function cleanText(value: string | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? "";
 }
 
-function parseVlrDate(vlrDate: string, vlrTime: string) {
+function parseVlrDate(vlrDate: string, vlrTime: string): { date: Date, raw: boolean } | null {
   try {
     const months: Record<string, number> = {
       'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Jun': 5,
@@ -49,18 +50,9 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
       'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
     };
     
-    // El formato suele ser "Weekday, Month Day, Year" o "Today, Month Day"
-    // O incluso "Yesterday, Month Day"
     const parts = vlrDate.split(',').map(p => p.trim());
-    if (parts.length < 2) {
-      if (parts[0].toLowerCase().includes("today") || parts[0].toLowerCase().includes("yesterday") || parts[0].toLowerCase().includes("tomorrow")) {
-         // Si es Today/Yesterday, a veces no viene el mes en el label principal o viene distinto
-         // Pero VLR suele poner "Weekday, Month Day"
-      }
-      return null;
-    }
+    if (parts.length < 2) return null;
 
-    // Buscamos el bloque que contiene el mes (ej: "February 5")
     const monthDayPart = parts[1].trim().split(/\s+/);
     const monthName = monthDayPart[0];
     const day = parseInt(monthDayPart[1]);
@@ -71,18 +63,18 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
     const now = new Date();
     let year = now.getFullYear();
 
-    // Si el tercer fragmento es un año, lo usamos
     if (parts.length >= 3 && /^\d{4}$/.test(parts[2])) {
         year = parseInt(parts[2]);
     } else if (now.getMonth() === 11 && month === 0) {
-        year++; // Si estamos en Dic y el partido es en Enero
+        year++; 
     } else if (now.getMonth() === 0 && month === 11) {
-        year--; // Si estamos en Enero y el partido fue en Dic
+        year--; 
     }
 
-    // Crear fecha base en UTC (00:00:00Z) para sumar offset limpiamente
+    // Fecha base UTC sin hora
     const date = new Date(Date.UTC(year, month, day));
     
+    // Parsear hora (texto "10:00 AM" etc)
     if (vlrTime && vlrTime.toLowerCase() !== 'live' && !vlrTime.includes('h')) {
         const timeMatch = vlrTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
         if (timeMatch) {
@@ -92,22 +84,10 @@ function parseVlrDate(vlrDate: string, vlrTime: string) {
             if (ampm === 'PM' && hours < 12) hours += 12;
             if (ampm === 'AM' && hours === 12) hours = 0;
             
-            
-            // CORRECCIÓN V2: El usuario reporta que los partidos de las 17:00 CET aparecen como 11:00 (y 20:00 -> 14:00).
-            // Esto implica una diferencia de +6 horas respecto a la hora local española.
-            // Para guardar correctamente en UTC:
-            // 17:00 CET (Invierno) = 16:00 UTC.
-            // Input: 11:00. Objetivo: 16:00 UTC.
-            // Operación: +5 horas sobre el valor raw de la hora.
-            
-            // Nota: En verano (CEST) esto podría variar si VLR no cambia su offset.
-            const utcHours = hours + 5;
-            
-            // setUTCHours maneja el cambio de día automáticamente si pasa de 24
-            date.setUTCHours(utcHours, minutes, 0, 0);
+            date.setUTCHours(hours, minutes, 0, 0);
         }
     }
-    return date.toISOString();
+    return { date, raw: true };
   } catch (e) {
     return null;
   }
@@ -145,6 +125,7 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
           const card = $(item);
           const id = card.attr("href")?.split("/")[1] || "";
           const time = cleanText(card.find(".match-item-time").first().text());
+          const eta = cleanText(card.find(".match-item-eta").first().text());
           const event = cleanText(card.find(".match-item-event").first().text());
           const teams = card.find(".match-item-vs-team-name").map((__, team) => cleanText($(team).text())).get().filter(Boolean);
           const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
@@ -153,15 +134,17 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
           const isVctEmea = eventUpper.includes("VCT") && eventUpper.includes("EMEA") && !eventUpper.includes("GAME CHANGERS") && !eventUpper.includes("CHALLENGERS");
 
           if (teamsLabel && event) {
-            const parsedDate = parseVlrDate(rawDate, time);
+            const parsed = parseVlrDate(rawDate, time); // Unadjusted
+            
             results.push({ 
               time: time || "LIVE", 
               teams: teamsLabel, 
               event, 
               id, 
-              date: parsedDate || undefined, // Solo ISO o undefined
+              date: parsed ? parsed.date.toISOString() : undefined, 
               rawDate: rawDate,
-              isVctEmea 
+              isVctEmea,
+              eta 
             });
           }
         };
@@ -176,17 +159,62 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
   const upcomingResults = parseMatches(upcomingHtml);
   const finishedResults = resultsHtml ? parseMatches(resultsHtml) : [];
   
-  // MERGE results and dedup
+  // Use map to dedup
   const allMatchesMap = new Map();
   [...upcomingResults, ...finishedResults].forEach(m => {
     if (!allMatchesMap.has(m.id)) allMatchesMap.set(m.id, m);
   });
   
-  const results = Array.from(allMatchesMap.values());
+  let results = Array.from(allMatchesMap.values()) as VlrMatch[];
+
+  // --- DYNAMIC TIMEZONE CORRECTION ---
+  let offsetMs = 0;
+  
+  // Find a reference match: upcoming, with ETA in hours (e.g. "2h" or "2h 30m"), not days
+  // ETA format examples: "2h 30m", "43m", "2d"
+  const referenceMatch = upcomingResults.find(m => 
+    m.eta && m.eta.includes('h') && !m.eta.includes('d') && !m.eta.includes('w') && m.date
+  );
+
+  if (referenceMatch && referenceMatch.date) {
+    // Parse ETA
+    // "2h 30m" -> hours=2, minutes=30
+    const parts = referenceMatch.eta!.match(/(\d+)h\s*(\d+)?m?/);
+    if (parts) {
+        const h = parseInt(parts[1]);
+        const m = parseInt(parts[2] || "0");
+        const etaMs = (h * 60 * 60 * 1000) + (m * 60 * 1000);
+        
+        const now = Date.now();
+        const expectedUtc = now + etaMs; 
+        const scrapedUtc = new Date(referenceMatch.date).getTime();
+        
+        // Offset = Expected - Scraped
+        // Example: Exp=16:00, Scraped=10:00 -> Offset = +6h
+        const diff = expectedUtc - scrapedUtc;
+        
+        // Round to nearest hour
+        const diffHours = Math.round(diff / 3600000);
+        offsetMs = diffHours * 3600000;
+        
+        console.log(`[VLR Sync] Calibrated Timezone Offset: ${diffHours}h (Ref: ${referenceMatch.teams} @ ${referenceMatch.time}, ETA: ${referenceMatch.eta})`);
+    }
+  } else {
+     console.log(`[VLR Sync] Could not calibrate timezone (no suitable ETA found). Defaulting to 0h offset.`);
+  }
+
+  // Apply offset to ALL matches
+  if (offsetMs !== 0) {
+      results = results.map(m => {
+          if (!m.date) return m;
+          const d = new Date(new Date(m.date).getTime() + offsetMs);
+          return { ...m, date: d.toISOString() };
+      });
+  }
+
   const emeaMatches = results.filter((m) => m.isVctEmea);
   
-  // Ordenar: primero los Live, luego los del futuro cercano, luego los pasados
-  emeaMatches.sort((a: any, b: any) => {
+  emeaMatches.sort((a, b) => {
     const isLiveA = a.time === "LIVE";
     const isLiveB = b.time === "LIVE";
     if (isLiveA && !isLiveB) return -1;
@@ -202,21 +230,20 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
     if (isFutureA && !isFutureB) return -1;
     if (isFutureB && !isFutureA) return 1;
 
-    if (isFutureA && isFutureB) return dateA - dateB; // Nearest future first
-    return dateB - dateA; // Newest past first
+    if (isFutureA && isFutureB) return dateA - dateB;
+    return dateB - dateA;
   });
 
   const finalMatches = emeaMatches.length > 0 ? emeaMatches.slice(0, 20) : results.slice(0, 10);
 
-
-  // Sync with DB in background
+  // Sync with DB
   syncMatchesToDb(finalMatches).catch(console.error);
 
   return {
     stats: [],
     upcomingMatches: finalMatches,
     scoring: [
-        { label: "Kill", value: "+2" },
+        { label: "Kill", value: "+2" }, // ... scores
         { label: "Assist", value: "+1" },
         { label: "First blood", value: "+3" },
         { label: "Clutch round", value: "+4" },
@@ -238,7 +265,6 @@ export function calculateFantasyPoints(stats: {
 }, role?: 'Duelista' | 'Iniciador' | 'Controlador' | 'Centinela'): number {
   let points = 0;
 
-  // Si no hay rol, usar sistema estándar (legacy)
   if (!role) {
     points += stats.kills * 2;
     points += stats.assists * 1;
@@ -248,7 +274,6 @@ export function calculateFantasyPoints(stats: {
     return Math.round(points);
   }
 
-  // Sistema por roles
   switch (role) {
     case 'Duelista':
       points += stats.kills * 1;
@@ -301,14 +326,13 @@ async function getOrCreateTeam(name: string) {
     
     if (existing) return (existing as any).id;
 
-    // Crear si no existe
     console.log(`  🆕 Creando equipo faltante: ${name} (${tag})`);
     const { data: created, error } = await (supabaseAdmin
         .from('pro_teams')
         .insert({
             name: name,
             tag: tag,
-            region: 'EMEA' // Default para este proyecto
+            region: 'EMEA'
         } as any) as any)
         .select('id')
         .single();
@@ -340,11 +364,9 @@ export async function scrapeMatchDetails(matchId: string) {
       const html = await response.text();
       const $ = cheerio.load(html);
       
-      // We look for all stats tables
       const tables = $("table.wf-table-inset.mod-overview");
       
       if (!tables.length) {
-        console.error(`VLR stats table not found for ${matchId}. The match might not have started or stats are not yet available.`);
         return null;
       }
       
@@ -355,7 +377,6 @@ export async function scrapeMatchDetails(matchId: string) {
         const headerRow = rows.first();
         const dataRows = rows.slice(1);
         
-        // Dynamic column detection
         const headers = headerRow.find("th").map((_, th) => $(th).text().trim().toUpperCase()).get();
         if (headers.length === 0) return;
 
@@ -370,9 +391,7 @@ export async function scrapeMatchDetails(matchId: string) {
           acs: findIdx(["ACS", "AVERAGE COMBAT SCORE"]),
         };
 
-        // If we can't find basic K/D/A, this table might not be what we want
         if (idx.k === -1 || idx.d === -1) {
-            // console.log(`Table ${i} in ${matchId} skipped: missing K/D headers`);
             return;
         }
 
@@ -384,7 +403,6 @@ export async function scrapeMatchDetails(matchId: string) {
           const playerLink = playerCell.find("a").attr("href") || "";
           const playerId = playerLink.split("/")[2] || "";
           
-          // Better nickname and team tag extraction: VLR sometimes wraps in .mod-player, sometimes not
           const playerInfo = playerCell.find(".mod-player");
           
           let nickname = playerCell.find(".text-of").text().trim();
@@ -405,9 +423,7 @@ export async function scrapeMatchDetails(matchId: string) {
           const getStat = (colIdx: number) => {
               if (colIdx === -1) return 0;
               const col = $(cols[colIdx]);
-              // Prefer .mod-both (total) if it exists, otherwise use raw text
               const val = col.find(".mod-both").first().text().trim() || col.text().trim();
-              // Clean up any weird characters and parse
               return parseInt(val.replace(/[^\d]/g, "")) || 0;
           };
           
@@ -424,7 +440,6 @@ export async function scrapeMatchDetails(matchId: string) {
             clutches: 0
           };
 
-          // If we find the same player in multiple tables, prefer the one with more kills (usually "All Maps")
           const existing = statsMap.get(playerId);
           if (!existing || currentStats.kills > existing.kills) {
             statsMap.set(playerId, currentStats);
@@ -433,9 +448,6 @@ export async function scrapeMatchDetails(matchId: string) {
       });
     
       const result = Array.from(statsMap.values());
-      if (result.length === 0) {
-          console.warn(`VLR: Found tables but extracted 0 players for match ${matchId}`);
-      }
       return result;
     } catch (error) {
       console.error(`Exception scraping match ${matchId}:`, error);
@@ -445,7 +457,6 @@ export async function scrapeMatchDetails(matchId: string) {
 
 async function getOrCreateGameweekByDate(dateStr: string) {
     const date = new Date(dateStr);
-    // Calcular Lunes 00:00 y Domingo 23:59
     const d = new Date(date);
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
@@ -493,7 +504,6 @@ async function getOrCreateGameweekByDate(dateStr: string) {
 export async function syncMatchesToDb(matches: VlrMatch[]) {
     const { data: teamsData } = await (supabaseAdmin.from('pro_teams').select('id, name, tag') as any);
     
-    // De esta forma protegemos los partidos finalizados de ser sobreescritos por error
     const { data: existingMatches } = await (supabaseAdmin.from('matches').select('vlr_id, status') as any);
     const finishedIds = new Set((existingMatches as any[])?.filter((m: any) => m.status === 'finished').map((m: any) => m.vlr_id) || []);
 
@@ -524,7 +534,6 @@ export async function syncMatchesToDb(matches: VlrMatch[]) {
         if (!teamBId) teamBId = await getOrCreateTeam(parts[1]);
         
         if (!teamAId || !teamBId) {
-            console.log(`Sync Skip: teams not found and could not create [${nameA} vs ${nameB}]`);
             continue;
         }
 

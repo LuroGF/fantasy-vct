@@ -48,6 +48,7 @@ async function getDashboardStats(supabase: any) {
 
 import { fetchVlrMatches } from "@/lib/vlr";
 import { getUserLeagues } from "@/lib/actions/leagues";
+import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -97,7 +98,8 @@ export default async function DashboardPage() {
   const activeMatches = (matches as any[]).filter(m => m.time.toLowerCase().includes("live") || m.time === "").length;
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <ClientRefreshWrapper>
+      <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header Info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -197,11 +199,31 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex flex-col items-center px-4 border-x border-white/5 min-w-[100px]">
                   <span className={`text-xs font-black ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
-                    {isLive ? "EN VIVO" : match.time}
+                    {isLive ? "EN VIVO" : (() => {
+                      if (match.date) {
+                         try {
+                           return new Intl.DateTimeFormat('es-ES', { 
+                             timeZone: 'Europe/Madrid', 
+                             hour: '2-digit', 
+                             minute: '2-digit'
+                           }).format(new Date(match.date));
+                         } catch (e) {}
+                      }
+                      return match.time;
+                    })()}
                   </span>
                   <span className="text-[8px] font-black uppercase text-v-white/40 mb-0.5">
                     {(() => {
-                      const d = match.rawDate || match.date || "";
+                      if (match.date) {
+                         try {
+                           return new Intl.DateTimeFormat('es-ES', { 
+                             timeZone: 'Europe/Madrid', 
+                             month: 'short', 
+                             day: 'numeric'
+                           }).format(new Date(match.date));
+                         } catch (e) {}
+                      }
+                      const d = match.rawDate || "";
                       return d.includes(",") ? d.split(",")[1].trim() : d;
                     })()}
                   </span>
@@ -226,7 +248,7 @@ export default async function DashboardPage() {
 
       {/* Protocolo de Desafíos */}
       <Challenges />
-
-    </div>
+      </div>
+    </ClientRefreshWrapper>
   );
 }

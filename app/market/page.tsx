@@ -28,6 +28,8 @@ async function getMarketData(supabase: any): Promise<Player[]> {
   return (players as unknown as Player[]) || [];
 }
 
+import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+
 export default async function MarketPage() {
   const session = await getSession();
   if (!session) return redirect("/login");
@@ -57,22 +59,24 @@ export default async function MarketPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-4xl leading-none italic uppercase">Mercado</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Transferencias VCT EMEA</p>
+    <ClientRefreshWrapper>
+      <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="text-4xl leading-none italic uppercase">Mercado</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Transferencias VCT EMEA</p>
+          </div>
         </div>
-      </div>
 
-      <MarketView 
-        initialPlayers={players} 
-        initialLeagues={leagues as any[]} 
-        profileId={session.user.id}
-        initialLeagueRosters={leagueRosters.data || []}
-        initialShieldedPlayerIds={shieldedPlayerIds}
-        hasScoutActive={hasScoutActive}
-      />
-    </div>
+        <MarketView 
+          initialPlayers={players} 
+          initialLeagues={leagues as any[]} 
+          profileId={session.user.id}
+          initialLeagueRosters={leagueRosters.data || []}
+          initialShieldedPlayerIds={shieldedPlayerIds}
+          hasScoutActive={hasScoutActive}
+        />
+      </div>
+    </ClientRefreshWrapper>
   );
 }

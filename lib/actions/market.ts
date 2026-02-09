@@ -5,10 +5,21 @@ import { revalidatePath } from "next/cache";
 
 const MAX_TRANSFERS_PER_WEEK = 3;
 
-export async function buyPlayer(leagueId: string, profileId: string, playerId: string, price: number) {
+export async function buyPlayer(leagueId: string, profileId: string, playerId: string) {
   const supabase = await createClient();
   try {
-    // 1. Verificar si la jornada está bloqueada
+    // 1. Obtener datos del jugador (Precio real)
+    const { data: playerData, error: plError } = await supabase
+        .from('pro_players')
+        .select('market_value')
+        .eq('id', playerId)
+        .single();
+    
+    if (plError || !playerData) throw new Error("Jugador no encontrado");
+    
+    const price = playerData.market_value;
+
+    // 2. Verificar bloqueo de jornada
     const { data: activeGw } = await supabase
       .from('gameweeks')
       .select('id, is_locked')
@@ -16,10 +27,10 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
       .single();
 
     if (activeGw?.is_locked) {
-      throw new Error("El mercado está cerrado para esta jornada (jornada bloqueada)");
+      throw new Error("El mercado está cerrado (Jornada en curso).");
     }
 
-    // 2. Verificar presupuesto y límite de transferencias
+    // 3. Verificar presupuesto y límite de transferencias
     const { data: participant, error: pError } = await supabase
       .from("league_participants")
       .select("current_budget, transfers_made_this_week")
@@ -29,7 +40,7 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
 
     if (pError || !participant) throw new Error("No se pudo verificar el presupuesto/límites");
     
-    // Check if user has active "SCOUT" power-up (+1 transfer)
+    // Check SCOUT powerup
     let allowedTransfers = MAX_TRANSFERS_PER_WEEK;
     if (activeGw) {
         const { data: scout } = await supabase
@@ -44,13 +55,25 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
         if (scout) allowedTransfers += 1;
     }
 
-    if (participant.transfers_made_this_week >= allowedTransfers) {
-      throw new Error(`Has alcanzado el límite de ${allowedTransfers} transferencias por jornada`);
+    // Check current roster size for emergency rebuild exception
+    const { count: currentRosterSize } = await supabase
+      .from("user_rosters")
+      .select("id", { count: 'exact', head: true })
+      .eq("league_id", leagueId)
+      .eq("profile_id", profileId)
+      .eq("is_active", true);
+
+    // Only enforce transfer limit if user has 5+ players (strategic management)
+    // If < 5 players, allow unlimited purchases (emergency rebuild)
+    if (currentRosterSize !== null && currentRosterSize >= 5) {
+      if (participant.transfers_made_this_week >= allowedTransfers) {
+        throw new Error(`Límite de transferencias alcanzado (${allowedTransfers} movimientos/semana).`);
+      }
     }
     
-    if (participant.current_budget < price) throw new Error("Presupuesto insuficiente");
+    if (participant.current_budget < price) throw new Error(`Presupuesto insuficiente (Necesitas $${(price/1000000).toFixed(1)}M).`);
 
-    // 3. Verificar si el jugador ya pertenece a alguien más en esta liga (Draft cerrado)
+    // 4. Verificar propiedad (Draft cerrado)
     const { data: existingOwner } = await supabase
       .from("user_rosters")
       .select("profile_id")
@@ -58,9 +81,21 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
       .eq("player_id", playerId)
       .single();
 
-    if (existingOwner) throw new Error("Este jugador ya ha sido fichado por otro agente");
+    if (existingOwner) throw new Error("Este jugador ya tiene equipo.");
 
-    // 4. Registrar transacción
+    // 5. Verificar tamaño de la plantilla (Max 6: 5 Titulares + 1 Suplente)
+    const { count: rosterCount } = await supabase
+      .from("user_rosters")
+      .select("id", { count: 'exact', head: true })
+      .eq("league_id", leagueId)
+      .eq("profile_id", profileId)
+      .eq("is_active", true);
+    
+    if (rosterCount !== null && rosterCount >= 6) {
+        throw new Error("Plantilla completa (Máximo 6 agentes). Vende a alguien antes de fichar.");
+    }
+
+    // 5. Registrar transacción
     const { error: tError } = await supabase
       .from("market_transactions")
       .insert({
@@ -73,7 +108,20 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
 
     if (tError) throw tError;
 
-    // 5. Añadir al Roster
+    // 5. Verificar tamaño de la plantilla
+    // ... (el check existente se mantiene)
+
+    // 6. Determinar si entra como Titular (Auto-Start)
+    const { count: starterCount } = await supabase
+      .from("user_rosters")
+      .select("id", { count: 'exact', head: true })
+      .eq("league_id", leagueId)
+      .eq("profile_id", profileId)
+      .eq("is_starter", true);
+    
+    const isStarter = (starterCount || 0) < 5;
+
+    // 7. Añadir al Roster
     const { error: rError } = await supabase
       .from("user_rosters")
       .insert({
@@ -82,12 +130,13 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
         player_id: playerId,
         acquisition_price: price,
         is_active: true,
-        release_clause: price * 2 // Cláusula automática x2
+        is_starter: isStarter,
+        release_clause: Math.floor(price * 1.5)
       });
 
     if (rError) throw rError;
 
-    // 6. Actualizar presupuesto y contador de transferencias
+    // 7. Descontar dinero
     const { error: bError } = await supabase
       .from("league_participants")
       .update({ 
@@ -101,17 +150,29 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
 
     revalidatePath("/market");
     revalidatePath("/team");
-    return { success: true };
+    return { success: true, message: `Has fichado por $${(price/1000000).toFixed(1)}M` };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error al procesar el fichaje";
     return { success: false, error: message };
   }
 }
 
-export async function sellPlayer(leagueId: string, profileId: string, playerId: string, price: number) {
+export async function sellPlayer(leagueId: string, profileId: string, playerId: string) {
   const supabase = await createClient();
   try {
-    // 1. Verificar si la jornada está bloqueada
+    // 1. Obtener precio actual de mercado
+    const { data: playerData, error: plError } = await supabase
+        .from('pro_players')
+        .select('market_value')
+        .eq('id', playerId)
+        .single();
+    
+    if (plError || !playerData) throw new Error("Jugador no encontrado");
+
+    // Sell Tax (10% fee implies receiving 90%)
+    const sellPrice = Math.floor(playerData.market_value * 0.9);
+
+    // 2. Verificar bloqueo
     const { data: activeGw } = await supabase
       .from('gameweeks')
       .select('id, is_locked')
@@ -119,10 +180,10 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
       .single();
 
     if (activeGw?.is_locked) {
-      throw new Error("El mercado está cerrado para esta jornada (jornada bloqueada)");
+      throw new Error("Mercado cerrado por jornada en curso.");
     }
 
-    // 2. Verificar límite de transferencias
+    // 3. Verificar límites de transferencias
     const { data: participant, error: pError } = await supabase
       .from("league_participants")
       .select("current_budget, transfers_made_this_week")
@@ -130,9 +191,9 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
       .eq("profile_id", profileId)
       .single();
 
-    if (pError || !participant) throw new Error("No se pudo verificar los límites");
+    if (pError || !participant) throw new Error("Error verificando usuario.");
     
-    // Check if user has active "SCOUT" power-up (+1 transfer)
+    // Check SCOUT powerup for extra transfer (reuse activeGw from above)
     let allowedTransfers = MAX_TRANSFERS_PER_WEEK;
     if (activeGw) {
         const { data: scout } = await supabase
@@ -147,12 +208,12 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
         if (scout) allowedTransfers += 1;
     }
 
+    // Selling also counts towards transfer limit (combined with buys)
     if (participant.transfers_made_this_week >= allowedTransfers) {
-      throw new Error(`Has alcanzado el límite de ${allowedTransfers} transferencias por jornada`);
+      throw new Error(`Límite de transferencias alcanzado (${allowedTransfers} movimientos/semana).`);
     }
 
-    // 3. Eliminar del Roster (o marcar como inactivo)
-    // En este caso eliminamos para permitir que otro lo fiche de nuevo
+    // 4. Eliminar del Roster
     const { error: rError } = await supabase
       .from("user_rosters")
       .delete()
@@ -162,7 +223,7 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
 
     if (rError) throw rError;
 
-    // 4. Registrar transacción
+    // 5. Transacción
     const { error: tError } = await supabase
       .from("market_transactions")
       .insert({
@@ -170,16 +231,17 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
         profile_id: profileId,
         player_id: playerId,
         type: 'sell',
-        price: price
+        price: sellPrice
       });
 
     if (tError) throw tError;
 
-    // 5. Actualizar presupuesto y contador
+    // 6. Ingresar dinero (90% del valor de mercado) y consumir transferencia
+    // Vender AHORA SÍ consume slot de transferencia (cambio de lógica)
     const { error: bError } = await supabase
       .from("league_participants")
       .update({ 
-        current_budget: Number(participant.current_budget) + price,
+        current_budget: Number(participant.current_budget) + sellPrice,
         transfers_made_this_week: participant.transfers_made_this_week + 1
       })
       .eq("league_id", leagueId)
@@ -189,7 +251,7 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
 
     revalidatePath("/market");
     revalidatePath("/team");
-    return { success: true };
+    return { success: true, message: `Vendido por $${(sellPrice/1000000).toFixed(1)}M` };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error al procesar la venta";
     return { success: false, error: message };
@@ -291,6 +353,18 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
     if (bError || !buyer) throw new Error("Error verificando presupuesto.");
     if (Number(buyer.current_budget) < Number(clausePrice)) throw new Error("Presupuesto insuficiente para pagar la cláusula.");
 
+    // 4. Verificar tamaño de plantilla
+    const { count: rosterCount } = await supabase
+        .from("user_rosters")
+        .select("id", { count: 'exact', head: true })
+        .eq("league_id", leagueId)
+        .eq("profile_id", buyerProfileId)
+        .eq("is_active", true);
+    
+    if (rosterCount !== null && rosterCount >= 6) {
+        throw new Error("Plantilla completa. Debes vender a alguien antes de pagar una cláusula.");
+    }
+
     // 4. EJECUTAR TRANSFERENCIA (Transacción Compleja)
     
     // A. Cobrar al comprador
@@ -327,6 +401,16 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
     // Nueva cláusula automática (200% del pago)
     const newClause = Math.floor(Number(clausePrice) * 2); 
 
+    // Check Auto-Start
+    const { count: starterCount } = await supabase
+      .from("user_rosters")
+      .select("id", { count: 'exact', head: true })
+      .eq("league_id", leagueId)
+      .eq("profile_id", buyerProfileId)
+      .eq("is_starter", true);
+    
+    const isStarter = (starterCount || 0) < 5;
+
     await supabase.from("user_rosters")
         .insert({
             league_id: leagueId,
@@ -334,7 +418,8 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
             player_id: playerId,
             acquisition_price: clausePrice,
             release_clause: newClause,
-            is_active: true
+            is_active: true,
+            is_starter: isStarter
         });
 
     // D. Registrar Transacción (Clause Pay)
