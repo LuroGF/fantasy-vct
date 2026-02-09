@@ -65,11 +65,14 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
 
     // Only enforce transfer limit if user has 5+ players (strategic management)
     // If < 5 players, allow unlimited purchases (emergency rebuild)
+    // Transfer limit removed per user request
+    /*
     if (currentRosterSize !== null && currentRosterSize >= 5) {
       if (participant.transfers_made_this_week >= allowedTransfers) {
         throw new Error(`Límite de transferencias alcanzado (${allowedTransfers} movimientos/semana).`);
       }
     }
+    */
     
     if (participant.current_budget < price) throw new Error(`Presupuesto insuficiente (Necesitas $${(price/1000000).toFixed(1)}M).`);
 
@@ -209,9 +212,13 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
     }
 
     // Selling also counts towards transfer limit (combined with buys)
+    // Transfer limit enforcement removed by user request
+    // Transfer limit removed per user request
+    /*
     if (participant.transfers_made_this_week >= allowedTransfers) {
       throw new Error(`Límite de transferencias alcanzado (${allowedTransfers} movimientos/semana).`);
     }
+    */
 
     // 4. Eliminar del Roster
     const { error: rError } = await supabase

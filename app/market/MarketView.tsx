@@ -97,10 +97,12 @@ export default function MarketView({
       return;
     }
 
+    /* Transfer limit disabled
     if (activeParticipation && activeParticipation.transfers_made_this_week >= weeklyLimit) {
        setStatus({ type: "error", message: `Has alcanzado el límite de ${weeklyLimit} transferencias esta semana.` });
        return;
     }
+    */
 
     setLoading(true);
     setStatus({ type: "info", message: `Sincronizando contrato de ${player.nickname}...` });
@@ -149,12 +151,12 @@ export default function MarketView({
                <p className="text-sm font-black italic">${(activeParticipation.current_budget / 1000000).toFixed(1)}M</p>
             </div>
             <div className="bg-v-navy/30 p-2 border-l-2 border-v-white/20">
-               <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">Transferencias Semana</p>
+               <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">Movimientos Realizados</p>
                <p className="text-sm font-black italic">
-                 <span className={activeParticipation.transfers_made_this_week >= weeklyLimit ? "text-v-red" : "text-green-500"}>
+                 <span className="text-green-500">
                    {activeParticipation.transfers_made_this_week || 0}
                  </span>
-                 <span className="text-v-white/20 text-[10px] ml-1">/ {weeklyLimit}</span>
+                 <span className="text-v-white/20 text-[10px] ml-1">ILIMITADOS</span>
                </p>
             </div>
           </div>
