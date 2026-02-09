@@ -12,11 +12,11 @@ interface SwipeNavigationProps {
 
 // Define navigation order (left to right swipe flow)
 const NAV_ORDER = [
-  '/leagues',
-  '/team',
   '/dashboard',
+  '/team',
   '/stats',
   '/market',
+  '/leagues',
   '/more'
 ];
 

@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react';
 
 // Navigation order for swipe indicator
 const NAV_ORDER = [
-  { path: '/leagues', label: 'Ligas', icon: '🏆' },
-  { path: '/team', label: 'Equipo', icon: '⚔️' },
   { path: '/dashboard', label: 'Inicio', icon: '🏠' },
+  { path: '/team', label: 'Equipo', icon: '⚔️' },
   { path: '/stats', label: 'Estadísticas', icon: '📊' },
   { path: '/market', label: 'Mercado', icon: '💰' },
+  { path: '/leagues', label: 'Ligas', icon: '🏆' },
   { path: '/more', label: 'Más', icon: '➕' }
 ];
 
