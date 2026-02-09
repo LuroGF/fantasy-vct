@@ -27,7 +27,8 @@ async function activateGameweek(gwId) {
   // Desactivar todas las jornadas
   await supabase
     .from('gameweeks')
-    .update({ is_active: false });
+    .update({ is_active: false })
+    .neq('is_active', false); // Dummy filter to affect all active ones
   
   // Activar la jornada especificada
   const { data, error } = await supabase

@@ -35,22 +35,37 @@ export async function GET(request: Request) {
 
     if (!activeGw) {
       console.log("Cron: No hay jornada activa. Buscando próxima...");
-      const { data: upcoming } = await (supabaseAdmin
+      const { data: currentOrUpcoming } = await (supabaseAdmin
         .from('gameweeks')
         .select('*')
-        .gte('start_date', now.toISOString())
+        .lte('start_date', now.toISOString())
+        .gte('end_date', now.toISOString())
         .order('start_date', { ascending: true })
         .limit(1) as any)
         .maybeSingle() as { data: Database['public']['Tables']['gameweeks']['Row']; error: any };
 
-      if (upcoming) {
-          await (supabaseAdmin.from('gameweeks') as any).update({ is_active: true }).eq('id', upcoming.id);
+      let targetGw = currentOrUpcoming;
+
+      if (!targetGw) {
+        // Find the absolute next one starting
+        const { data: nextStart } = await (supabaseAdmin
+          .from('gameweeks')
+          .select('*')
+          .gt('start_date', now.toISOString())
+          .order('start_date', { ascending: true })
+          .limit(1) as any)
+          .maybeSingle();
+        targetGw = nextStart;
+      }
+
+      if (targetGw) {
+          await (supabaseAdmin.from('gameweeks') as any).update({ is_active: true }).eq('id', targetGw.id);
           
           // Reset weekly transfer counter for all participants
-          console.log(`Cron: Primera jornada activada (${upcoming.name}). Reseteando contador de transferencias...`);
+          console.log(`Cron: Jornada activada automáticamente (${targetGw.name}). Reseteando contador de transferencias...`);
           await supabaseAdmin.from('league_participants').update({ transfers_made_this_week: 0 } as any);
           
-          return NextResponse.json({ message: `Jornada ${upcoming.name} activada` });
+          return NextResponse.json({ message: `Jornada ${targetGw.name} activada` });
       }
       return NextResponse.json({ message: "No hay jornadas futuras" });
     }
@@ -61,45 +76,37 @@ export async function GET(request: Request) {
       .select('match_date, status, vlr_id')
       .eq('gameweek_id', activeGw.id) as any);
       
-    let shouldLock = false; // Default Open
-    
+    let shouldLock = false; 
+
     if (gwMatches && gwMatches.length > 0) {
-        // Check if TODAY is a match day (in Madrid time)
-        const todayString = madridTime.toISOString().split('T')[0]; // YYYY-MM-DD
+        const nowMs = now.getTime();
         
-        const matchesToday = gwMatches.filter((m: any) => {
-            if (!m.match_date) return false;
-            // Convert match date to Madrid Date
-            const mDate = new Date(m.match_date);
-            const mMadrid = new Date(mDate.toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
-            return mMadrid.toISOString().split('T')[0] === todayString;
+        // 1. Any LIVE match? -> LOCK
+        const hasLive = gwMatches.some((m: any) => m.status === 'live');
+        
+        // 2. Any UPCOMING match starting soon (< 60 mins)? -> LOCK
+        const startsSoon = gwMatches.some((m: any) => {
+            if (m.status !== 'upcoming' || !m.match_date) return false;
+            const startTime = new Date(m.match_date).getTime();
+            return startTime > nowMs && startTime - nowMs < 3600000; // 1 hour buffer
         });
 
-        if (matchesToday.length > 0) {
-            console.log(`Cron: Hay ${matchesToday.length} partidos hoy (${todayString}).`);
-            
-            // Si es antes de las 11:00 AM -> ABIERTO
-            if (madridHour < 11) {
-                shouldLock = false;
-                console.log("Cron: Es temprano (< 11:00). Mercado ABIERTO.");
-            } else {
-                // Si es >= 11:00 AM ->
-                // BLOQUEADO si queda algún partido por terminar (upcoming o live)
-                // ABIERTO si TODOS han terminado ('finished')
-                
-                const pendingToday = matchesToday.some((m: any) => m.status !== 'finished');
-                
-                if (pendingToday) {
-                    shouldLock = true;
-                    console.log("Cron: >= 11:00 y hay partidos pendientes hoy. Mercado BLOQUEADO.");
-                } else {
-                    shouldLock = false;
-                    console.log("Cron: Todos los partidos de hoy finalizaron. Mercado ABIERTO.");
-                }
-            }
+        // 3. Any match TODAY that is pending/live? (Based on Madrid 11:00 AM cutoff)
+        const todayString = madridTime.toISOString().split('T')[0];
+        const pendingToday = gwMatches.some((m: any) => {
+            if (!m.match_date || m.status === 'finished') return false;
+            const mDate = new Date(m.match_date);
+            const mMadrid = new Date(mDate.toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
+            const isToday = mMadrid.toISOString().split('T')[0] === todayString;
+            return isToday && madridHour >= 11; // Only lock today's matches after 11:00
+        });
+
+        if (hasLive || startsSoon || pendingToday) {
+            shouldLock = true;
+            console.log(`Cron: Mercado BLOQUEADO. Motivo: ${hasLive ? 'PARTIDO EN VIVIDO' : startsSoon ? 'PARTIDO COMIENZA PRONTO' : 'PARTIDOS PENDIENTES HOY'}`);
         } else {
-            console.log("Cron: No hay partidos hoy. Mercado ABIERTO.");
             shouldLock = false;
+            console.log("Cron: Mercado ABIERTO. No hay actividad inmediata.");
         }
     }
 
