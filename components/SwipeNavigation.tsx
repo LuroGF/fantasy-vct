@@ -83,7 +83,7 @@ export default function SwipeNavigation({ children }: SwipeNavigationProps) {
   };
 
   return (
-    <div {...handlers} className="h-full w-full overflow-hidden">
+    <div {...handlers} className="h-full w-full overflow-hidden flex flex-col">
       <AnimatePresence mode="wait" custom={direction}>
         <motion.div
           key={pathname}
@@ -96,7 +96,7 @@ export default function SwipeNavigation({ children }: SwipeNavigationProps) {
             x: { type: 'spring', stiffness: 300, damping: 30 },
             opacity: { duration: 0.2 },
           }}
-          className="h-full w-full"
+          className="flex-1 flex flex-col h-full w-full"
         >
           {children}
         </motion.div>
