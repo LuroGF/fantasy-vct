@@ -124,6 +124,39 @@ export async function calculateGameweekScores(gameweekId: number) {
         .upsert(upserts as any, { onConflict: "league_id,profile_id,gameweek_id" });
 
       if (upsertError) throw upsertError;
+
+      // 6.5. Update cumulative total_points in league_participants
+      // We do this by summing all points in history for each affected (league, profile)
+      for (const p of upserts) {
+        if (!p.league_id || !p.profile_id) continue;
+        
+        const { data: allScores } = await supabaseAdmin
+          .from("participant_scores_history")
+          .select("points_earned")
+          .eq("league_id", p.league_id)
+          .eq("profile_id", p.profile_id);
+        
+        const total = allScores?.reduce((sum, s) => sum + (s.points_earned || 0), 0) || 0;
+        
+        await supabaseAdmin
+          .from("league_participants")
+          .update({ total_points: total } as any)
+          .eq("league_id", p.league_id)
+          .eq("profile_id", p.profile_id);
+
+        // 6.6 Update Global points in profiles
+        const { data: allLeagues } = await supabaseAdmin
+          .from("league_participants")
+          .select("total_points")
+          .eq("profile_id", p.profile_id);
+        
+        const globalTotal = allLeagues?.reduce((sum, l) => sum + (l.total_points || 0), 0) || 0;
+        
+        await supabaseAdmin
+          .from("profiles")
+          .update({ global_points: globalTotal } as any)
+          .eq("id", p.profile_id);
+      }
     }
     
     // 7. Update Ranks (Optional simplified ranking)

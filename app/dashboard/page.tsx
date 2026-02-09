@@ -47,7 +47,7 @@ async function getDashboardStats(supabase: any) {
 }
 
 import { fetchVlrMatches } from "@/lib/vlr";
-import { getUserLeagues } from "@/lib/actions/leagues";
+import { getUserLeagues, getGlobalRank } from "@/lib/actions/leagues";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 
 export default async function DashboardPage() {
@@ -58,7 +58,6 @@ export default async function DashboardPage() {
   const data = await fetchVlrMatches();
   const stats = await getDashboardStats(supabase);
   const matches = data?.upcomingMatches || [];
-  
   
   const now = new Date();
   
@@ -89,12 +88,12 @@ export default async function DashboardPage() {
   });
 
   const userLeagues = user ? await getUserLeagues(user.id) : [];
+  const globalRank = user ? await getGlobalRank(user.id) : 0;
 
   // Obtener puntos reales del usuario (para el resumen del HUD)
   const userStats = userLeagues[0] || { total_points: 0 };
 
   const currentPoints = userStats?.total_points || 0;
-  const rank = 0; // Se podría implementar un ranking global sumando puntuaciones
   const activeMatches = (matches as any[]).filter(m => m.time.toLowerCase().includes("live") || m.time === "").length;
 
   return (
@@ -112,7 +111,7 @@ export default async function DashboardPage() {
       {/* Live HUD Component */}
       <LiveHUD 
         currentPoints={currentPoints} 
-        rank={rank} 
+        rank={globalRank} 
         activeMatches={activeMatches} 
       />
 

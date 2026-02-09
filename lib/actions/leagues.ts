@@ -13,6 +13,27 @@ function generateInviteCode(length = 6) {
   return result;
 }
 
+export async function getGlobalRank(userId: string) {
+  const supabase = await createClient();
+  
+  // 1. Get user points
+  const { data: userProfile } = await supabase
+    .from("profiles")
+    .select("global_points")
+    .eq("id", userId)
+    .single();
+  
+  if (!userProfile) return 0;
+  
+  // 2. Count users with more points
+  const { count } = await supabase
+    .from("profiles")
+    .select("*", { count: 'exact', head: true })
+    .gt("global_points", userProfile.global_points);
+  
+  return (count || 0) + 1;
+}
+
 export async function createLeague(name: string, userId: string) {
   const supabase = await createClient();
   try {
@@ -94,6 +115,7 @@ export async function getUserLeagues(userId: string) {
     .select(`
       current_budget,
       transfers_made_this_week,
+      total_points,
       league_id,
       leagues (
         id,
@@ -108,65 +130,30 @@ export async function getUserLeagues(userId: string) {
     return [];
   }
 
-  // 2. Para cada liga, sumar los puntos desde participant_scores_history
-  const leaguesWithPoints = await Promise.all(
-    participations.map(async (participation: any) => {
-      const { data: scores } = await supabase
-        .from("participant_scores_history")
-        .select("points_earned")
-        .eq("league_id", participation.league_id)
-        .eq("profile_id", userId);
-
-      const total_points = scores?.reduce((sum, s) => sum + (s.points_earned || 0), 0) || 0;
-
-      return {
-        ...participation,
-        total_points
-      };
-    })
-  );
-
-  return leaguesWithPoints;
+  return participations;
 }
 
 export async function getLeagueClassification(leagueId: string) {
   const supabase = await createClient();
   
-  // 1. Obtener participantes
+  // 1. Obtener participantes con puntos directamente de league_participants
   const { data: participants, error: pError } = await supabase
     .from("league_participants")
     .select(`
       profile_id,
+      total_points,
       profiles (
         id,
         username,
         avatar_url
       )
     `)
-    .eq("league_id", leagueId);
+    .eq("league_id", leagueId)
+    .order('total_points', { ascending: false });
 
   if (pError) throw pError;
 
-  // 2. Para cada participante, sumar puntos desde participant_scores_history
-  const participantsWithPoints = await Promise.all(
-    participants.map(async (p: any) => {
-      const { data: scores } = await supabase
-        .from("participant_scores_history")
-        .select("points_earned")
-        .eq("league_id", leagueId)
-        .eq("profile_id", p.profile_id);
-
-      const total_points = scores?.reduce((sum, s) => sum + (s.points_earned || 0), 0) || 0;
-
-      return {
-        ...p,
-        total_points
-      };
-    })
-  );
-
-  // 3. Ordenar por puntos
-  participantsWithPoints.sort((a, b) => b.total_points - a.total_points);
+  const participantsWithPoints = participants;
 
   // 4. Obtener rosters de todos los participantes de esta liga (solo activos)
   const { data: rosters, error: rError } = await supabase
