@@ -156,8 +156,20 @@ export async function calculateGameweekScores(gameweekId: number) {
           .from("profiles")
           .update({ global_points: globalTotal } as any)
           .eq("id", p.profile_id);
+
+        // 6.7 MONETARY REWARDS (Performance Income)
+        // Every fantasy point = $150,000 extra budget
+        const reward = Math.floor(p.points_earned! * 150000);
+        const { data: currentP } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', p.league_id).eq('profile_id', p.profile_id).single();
+        if (currentP) {
+            await supabaseAdmin.from('league_participants')
+                .update({ current_budget: Number(currentP.current_budget) + reward } as any)
+                .eq('league_id', p.league_id)
+                .eq('profile_id', p.profile_id);
+        }
       }
     }
+
     
     // 7. Update Ranks (Optional simplified ranking)
     // We can do this in a separate pass or optimized query
@@ -205,5 +217,24 @@ async function updateGameweekRanks(gameweekId: number) {
 
     if (updates.length > 0) {
         await supabaseAdmin.from('participant_scores_history').upsert(updates as any, { onConflict: 'league_id,profile_id,gameweek_id'});
+        
+        // --- ADD RANK BONUSES ---
+        for (const up of updates) {
+            let bonus = 0;
+            if (up.rank_in_league === 1) bonus = 3000000;
+            else if (up.rank_in_league === 2) bonus = 1500000;
+            else if (up.rank_in_league === 3) bonus = 750000;
+
+            if (bonus > 0) {
+                const { data: current } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', up.league_id!).eq('profile_id', up.profile_id!).single();
+                if (current) {
+                    await supabaseAdmin.from('league_participants')
+                        .update({ current_budget: Number(current.current_budget) + bonus } as any)
+                        .eq('league_id', up.league_id!)
+                        .eq('profile_id', up.profile_id!);
+                }
+            }
+        }
     }
+
 }

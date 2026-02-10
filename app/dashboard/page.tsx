@@ -59,8 +59,10 @@ async function getDashboardStats(supabase: any) {
 import { fetchVlrMatches } from "@/lib/vlr";
 import { getUserLeagues, getGlobalRank } from "@/lib/actions/leagues";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+import BonusManager from "@/components/BonusManager";
 
 export default async function DashboardPage() {
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -113,6 +115,8 @@ export default async function DashboardPage() {
   return (
     <ClientRefreshWrapper>
       <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {user && <BonusManager profileId={user.id} />}
+
       {/* Header Info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

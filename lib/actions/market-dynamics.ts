@@ -9,7 +9,19 @@ import { supabaseAdmin } from "@/utils/supabase/admin";
  */
 export async function updateMarketValues() {
   try {
-    // 1. Obtener todos los jugadores
+    // 1. Ownership & Population Context
+    const { data: totalParticipants } = await supabaseAdmin.from('league_participants').select('id', { count: 'exact', head: true });
+    const totalUserCount = totalParticipants ? 1 : 1; // Fallback
+
+    const { data: ownerships } = await supabaseAdmin
+      .from('user_rosters')
+      .select('player_id')
+      .returns<{ player_id: string }[]>();
+    
+    const ownerCounts = new Map<string, number>();
+    ownerships?.forEach(o => ownerCounts.set(o.player_id, (ownerCounts.get(o.player_id) || 0) + 1));
+
+    // 2. Fetch all players
     const { data: players, error: pError } = await supabaseAdmin
       .from('pro_players')
       .select('id, nickname, market_value');
@@ -17,54 +29,54 @@ export async function updateMarketValues() {
     if (pError) throw pError;
 
     for (const player of players) {
-      // 2. Obtener las últimas 3 actuaciones del jugador
-      const { data: performances, error: perfError } = await supabaseAdmin
+      // 3. Performance Summary (Last 5 matches)
+      const { data: perfs } = await supabaseAdmin
         .from('player_performances')
-        .select('fantasy_points')
+        .select('fantasy_points, created_at')
         .eq('player_id', player.id)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(5);
 
-      if (perfError) {
-        console.error(`Error fetching performances for ${player.nickname}:`, perfError);
+      let avgPoints = 0;
+      let trendMultiplier = 1.0;
+
+      if (perfs && perfs.length > 0) {
+        const points = perfs.map(p => p.fantasy_points || 0);
+        avgPoints = points.reduce((a, b) => a + b, 0) / points.length;
+        
+        // Trend: If the latest game is better than the average, price goes up faster
+        if (points[0] > (avgPoints * 1.2)) trendMultiplier = 1.1;
+        else if (points[0] < (avgPoints * 0.8)) trendMultiplier = 0.9;
+      } else {
+        // Inactive players lose value slowly
+        const newValue = Math.max(8000000, Number(player.market_value) * 0.95);
+        await supabaseAdmin.from('pro_players').update({ market_value: Math.round(newValue / 250000) * 250000 }).eq('id', player.id);
         continue;
       }
 
-      // 3. Calcular la media de puntos
-      let avgPoints = 0;
-      if (performances && performances.length > 0) {
-        const totalPoints = performances.reduce((sum, p) => sum + (p.fantasy_points || 0), 0);
-        avgPoints = totalPoints / performances.length;
-      } else {
-        // Si no tiene partidos, mantener o bajar ligeramente si es muy caro
-        continue; 
-      }
-
-      // 4. Calcular nuevo valor
-      // Fórmula: Base 5M + (Media Puntos * 1.5M)
-      // Limitado entre 5M y 60M
-      const baseValue = 5000000;
-      const performanceMultiplier = 1500000;
-      let newValue = baseValue + (avgPoints * performanceMultiplier);
-
-      // Clamping
-      newValue = Math.max(5000000, Math.min(60000000, newValue));
+      // 4. THE FORMULA
+      // Base: 10M
+      // Points Value: Non-linear (Diminishing returns)
+      // Points contribution = 1.5M * (points ^ 0.85) -> prevents 60M cap from being reached by a single 30pt game
+      const pointsContrib = 1500000 * Math.pow(avgPoints, 0.85);
       
-      // Redondear a cientos de miles para que quede "bonito"
-      newValue = Math.round(newValue / 500000) * 500000;
+      // Ownership contribution (Demand)
+      const count = ownerCounts.get(player.id) || 0;
+      const demandMultiplier = 1 + (count * 0.02); // Every owner in the world adds 2% value
 
-      // 5. Actualizar en BD si el cambio es significativo (evitar updates innecesarios)
+      let newValue = (10000000 + pointsContrib) * trendMultiplier * demandMultiplier;
+
+      // Clamping: 8M to 80M
+      newValue = Math.max(8000000, Math.min(80000000, newValue));
+      
+      // Formatting: Round to nearest 250k
+      newValue = Math.round(newValue / 250000) * 250000;
+
       if (Math.abs(newValue - Number(player.market_value)) > 100000) {
-        const { error: uError } = await supabaseAdmin
-          .from('pro_players')
-          .update({ market_value: newValue })
-          .eq('id', player.id);
-        
-        if (uError) {
-          console.error(`Error updating value for ${player.nickname}:`, uError);
-        }
+        await supabaseAdmin.from('pro_players').update({ market_value: newValue }).eq('id', player.id);
       }
     }
+
 
     return { success: true };
   } catch (error) {

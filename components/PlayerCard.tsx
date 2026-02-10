@@ -20,6 +20,8 @@ interface PlayerCardProps {
   };
   onAction?: () => void;
   actionLabel?: string;
+  actionDisabled?: boolean;
+  actionClassName?: string;
   onSecondAction?: () => void;
   secondActionLabel?: string;
   secondActionClassName?: string;
@@ -31,12 +33,15 @@ export function PlayerCard({
   player, 
   onAction, 
   actionLabel = "Asignar Contrato",
+  actionDisabled = false,
+  actionClassName = "v-btn-primary",
   onSecondAction,
   secondActionLabel,
   secondActionClassName = "bg-v-red text-white",
   isLocked,
   isCaptain
 }: PlayerCardProps) {
+
   const stats = player.stats || {
     acs: 0,
     kd: 0,
@@ -47,7 +52,8 @@ export function PlayerCard({
     player.role === 'Duelista' ? 'border-cyan-400' :
     player.role === 'Iniciador' ? 'border-yellow-400' :
     player.role === 'Controlador' ? 'border-purple-400' :
-    'border-green-400';
+    player.role === 'Centinela' ? 'border-green-400' :
+    'border-pink-500'; // Flex
 
   return (
     <div className="v-panel relative overflow-hidden group hover:border-v-red active:scale-[0.98] transition-all cursor-pointer select-none">
@@ -117,11 +123,13 @@ export function PlayerCard({
                   e.stopPropagation();
                   onAction();
                 }}
-                className="v-btn-primary flex-1 py-3 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-v-red/5 group-hover:shadow-v-red/20 active:scale-95 transition-all opacity-80 group-hover:opacity-100"
+                disabled={actionDisabled}
+                className={`${actionClassName} flex-1 py-3 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-v-red/5 group-hover:shadow-v-red/20 active:scale-95 transition-all opacity-80 group-hover:opacity-100 disabled:opacity-30 disabled:pointer-events-none`}
               >
                 {actionLabel}
               </button>
             )}
+
             
             {onSecondAction && (
               <button 

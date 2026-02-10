@@ -194,8 +194,9 @@ export async function GET(request: Request) {
                  
                  if (teamId) {
                      const { data: newP } = await supabaseAdmin.from('pro_players').insert({
-                         nickname: d.nickname, team_id: teamId, role: 'Duelista', market_value: 5000000 
+                         nickname: d.nickname, team_id: teamId, role: 'Flex', market_value: 5000000 
                      } as any).select().single();
+
                      if (newP) {
                          dbPlayerId = (newP as any).id;
                          playerMap.set(d.nickname.toLowerCase(), dbPlayerId);
@@ -207,10 +208,15 @@ export async function GET(request: Request) {
                 performaceUpserts.push({
                     match_id: match.id,
                     player_id: dbPlayerId,
+                    map_name: d.map_name,
                     kills: d.kills, deaths: d.deaths, assists: d.assists,
                     fb: d.fb, fd: d.fd || 0, acs: d.acs || 0, clutches: d.clutches,
+                    agent_name: d.agent_name,
+                    agent_role: d.agent_role,
                     mvp: false
                 });
+
+
             }
         }
 
@@ -218,7 +224,8 @@ export async function GET(request: Request) {
             const maxAcs = Math.max(...performaceUpserts.map(p => p.acs));
             const finalData = performaceUpserts.map(p => ({ ...p, mvp: p.acs === maxAcs }));
             
-            await supabaseAdmin.from('player_performances').upsert(finalData as any, { onConflict: 'match_id,player_id' });
+            await supabaseAdmin.from('player_performances').upsert(finalData as any, { onConflict: 'match_id,player_id,map_name' });
+
             
             // Ensure status is finished
             if (match.status !== 'finished') {

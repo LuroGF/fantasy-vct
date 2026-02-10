@@ -3,23 +3,168 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
-const MAX_TRANSFERS_PER_WEEK = 3;
+// Personal Market: 4 Daily Random Players
+export async function getPersonalMarket(leagueId: string, profileId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc('get_or_generate_personal_market', { 
+      p_league_id: leagueId, 
+      p_profile_id: profileId 
+    });
 
-export async function buyPlayer(leagueId: string, profileId: string, playerId: string) {
+  if (error) {
+    console.error("Error fetching personal market:", error);
+    return [];
+  }
+
+  // Hydrate player data
+  const playerIds = data.map((d: any) => d.player_id);
+  const { data: players } = await supabase
+    .from('pro_players')
+    .select('*, pro_teams(tag, name)')
+    .in('id', playerIds);
+
+  return data.map((d: any) => ({
+    ...d,
+    player: players?.find(p => p.id === d.player_id)
+  }));
+}
+
+export async function buyFromPersonalMarket(leagueId: string, profileId: string, playerId: string, personalMarketId: string) {
   const supabase = await createClient();
   try {
-    // 1. Obtener datos del jugador (Precio real)
+    // 1. Get market entry
+    const { data: entry, error: eError } = await supabase
+      .from('personal_market')
+      .select('*')
+      .eq('id', personalMarketId)
+      .single();
+    
+    if (eError || !entry || entry.is_purchased) throw new Error("Oferta no válida o ya comprada.");
+
+    // 2. Buy standard logic but from personal market
+    const res = await buyPlayer(leagueId, profileId, playerId, entry.offer_price);
+    
+    if (res.success) {
+      await supabase.from('personal_market').update({ is_purchased: true }).eq('id', personalMarketId);
+    }
+    
+    return res;
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Global Auctions
+export async function getActiveAuctions(leagueId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('market_auctions')
+    .select('*, pro_players(*, pro_teams(tag, name)), profiles!market_auctions_seller_id_fkey(username)')
+    .eq('league_id', leagueId)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString());
+
+  if (error) {
+    console.error("Error fetching auctions:", error);
+    return [];
+  }
+  return data;
+}
+
+export async function createAuction(leagueId: string, profileId: string, playerId: string, startingPrice: number) {
+  const supabase = await createClient();
+  try {
+    // Check if player is owned by user
+    const { data: roster, error: rError } = await supabase
+      .from('user_rosters')
+      .select('id')
+      .eq('league_id', leagueId)
+      .eq('profile_id', profileId)
+      .eq('player_id', playerId)
+      .single();
+    
+    if (rError || !roster) throw new Error("No posees a este jugador.");
+
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // 24h auction
+
+    const { error } = await supabase
+      .from('market_auctions')
+      .insert({
+        league_id: leagueId,
+        seller_id: profileId,
+        player_id: playerId,
+        starting_price: startingPrice,
+        current_bid: startingPrice,
+        expires_at: expiresAt.toISOString(),
+        status: 'active'
+      });
+    
+    if (error) throw error;
+    
+    revalidatePath("/market");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function placeBid(auctionId: string, profileId: string, bidAmount: number) {
+  const supabase = await createClient();
+  try {
+    const { data: auction, error: aError } = await supabase
+      .from('market_auctions')
+      .select('*')
+      .eq('id', auctionId)
+      .single();
+    
+    if (aError || !auction || auction.status !== 'active') throw new Error("Subasta no disponible.");
+    if (bidAmount <= auction.current_bid) throw new Error("Tu puja debe ser superior a la actual.");
+    if (auction.seller_id === profileId) throw new Error("No puedes pujar por tu propio jugador.");
+
+    // Check budget
+    const { data: participant } = await supabase
+      .from('league_participants')
+      .select('current_budget')
+      .eq('league_id', auction.league_id)
+      .eq('profile_id', profileId)
+      .single();
+    
+    if (!participant || participant.current_budget < bidAmount) throw new Error("Presupuesto insuficiente.");
+
+    const { error } = await supabase
+      .from('market_auctions')
+      .update({
+        current_bid: bidAmount,
+        highest_bidder_id: profileId
+      })
+      .eq('id', auctionId);
+    
+    if (error) throw error;
+
+    revalidatePath("/market");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function buyPlayer(leagueId: string, profileId: string, playerId: string, customPrice?: number) {
+  const supabase = await createClient();
+  try {
+    // 1. Get player data
     const { data: playerData, error: plError } = await supabase
         .from('pro_players')
         .select('market_value')
         .eq('id', playerId)
         .single();
     
-    if (plError || !playerData) throw new Error("Jugador no encontrado");
+    if (plError || !playerData) throw new Error("Agente no encontrado.");
     
-    const price = playerData.market_value;
+    const price = customPrice || playerData.market_value;
 
-    // 2. Verificar bloqueo de jornada
+    // 2. Journey block check
     const { data: activeGw } = await supabase
       .from('gameweeks')
       .select('id, is_locked')
@@ -27,104 +172,67 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
       .single();
 
     if (activeGw?.is_locked) {
-      throw new Error("El mercado está cerrado (Jornada en curso).");
+      throw new Error("El mercado operacional está bloqueado (Jornada en curso).");
     }
 
-    // 3. Verificar presupuesto y límite de transferencias
+    // 3. User participant check
     const { data: participant, error: pError } = await supabase
       .from("league_participants")
-      .select("current_budget, transfers_made_this_week")
+      .select("current_budget")
       .eq("league_id", leagueId)
       .eq("profile_id", profileId)
       .single();
 
-    if (pError || !participant) throw new Error("No se pudo verificar el presupuesto/límites");
-    
-    // Check SCOUT powerup
-    let allowedTransfers = MAX_TRANSFERS_PER_WEEK;
-    if (activeGw) {
-        const { data: scout } = await supabase
-            .from('active_powerups')
-            .select('id, powerup_types!inner(code)')
-            .eq('league_id', leagueId)
-            .eq('profile_id', profileId)
-            .eq('gameweek_id', activeGw.id)
-            .eq('powerup_types.code', 'SCOUT')
-            .maybeSingle();
-        
-        if (scout) allowedTransfers += 1;
-    }
+    if (pError || !participant) throw new Error("No se pudo verificar el budget operacional.");
+    if (participant.current_budget < price) throw new Error("Presupuesto insuficiente.");
 
-    // Check current roster size for emergency rebuild exception
-    const { count: currentRosterSize } = await supabase
+    // 4. Ownership check (Now allows multiple owners, just check if I already have him)
+    const { data: myOwner } = await supabase
       .from("user_rosters")
-      .select("id", { count: 'exact', head: true })
+      .select("id")
       .eq("league_id", leagueId)
       .eq("profile_id", profileId)
-      .eq("is_active", true);
-
-    // Only enforce transfer limit if user has 5+ players (strategic management)
-    // If < 5 players, allow unlimited purchases (emergency rebuild)
-    // Transfer limit removed per user request
-    /*
-    if (currentRosterSize !== null && currentRosterSize >= 5) {
-      if (participant.transfers_made_this_week >= allowedTransfers) {
-        throw new Error(`Límite de transferencias alcanzado (${allowedTransfers} movimientos/semana).`);
-      }
-    }
-    */
-    
-    if (participant.current_budget < price) throw new Error(`Presupuesto insuficiente (Necesitas $${(price/1000000).toFixed(1)}M).`);
-
-    // 4. Verificar propiedad (Draft cerrado)
-    const { data: existingOwner } = await supabase
-      .from("user_rosters")
-      .select("profile_id")
-      .eq("league_id", leagueId)
       .eq("player_id", playerId)
       .single();
 
-    if (existingOwner) throw new Error("Este jugador ya tiene equipo.");
+    if (myOwner) throw new Error("Ya tienes a este agente en tu escuadra.");
 
-    // 5. Verificar tamaño de la plantilla (Max 6: 5 Titulares + 1 Suplente)
-    const { count: rosterCount } = await supabase
+
+    // 5. Total Capacity Check (Max 15 players total)
+    const { count: totalCount } = await supabase
       .from("user_rosters")
       .select("id", { count: 'exact', head: true })
       .eq("league_id", leagueId)
-      .eq("profile_id", profileId)
-      .eq("is_active", true);
+      .eq("profile_id", profileId);
     
-    if (rosterCount !== null && rosterCount >= 6) {
-        throw new Error("Plantilla completa (Máximo 6 agentes). Vende a alguien antes de fichar.");
+    if (totalCount !== null && totalCount >= 15) {
+        throw new Error("Capacidad máxima de escuadra alcanzada (15 agentes).");
     }
 
-    // 5. Registrar transacción
-    const { error: tError } = await supabase
-      .from("market_transactions")
-      .insert({
+    // 6. Transaction record
+    await supabase.from("market_transactions").insert({
         league_id: leagueId,
         profile_id: profileId,
         player_id: playerId,
         type: 'buy',
         price: price
-      });
+    });
 
-    if (tError) throw tError;
-
-    // 5. Verificar tamaño de la plantilla
-    // ... (el check existente se mantiene)
-
-    // 6. Determinar si entra como Titular (Auto-Start)
-    const { count: starterCount } = await supabase
+    // 7. Auto-assign slot
+    const { data: slots } = await supabase
       .from("user_rosters")
-      .select("id", { count: 'exact', head: true })
+      .select("slot_type")
       .eq("league_id", leagueId)
-      .eq("profile_id", profileId)
-      .eq("is_starter", true);
+      .eq("profile_id", profileId);
     
-    const isStarter = (starterCount || 0) < 5;
+    const startersCount = slots?.filter(s => s.slot_type === 'starter').length || 0;
+    const subsCount = slots?.filter(s => s.slot_type === 'substitute').length || 0;
 
-    // 7. Añadir al Roster
+    let targetSlot: 'starter' | 'substitute' | 'bench' = 'bench';
+    if (startersCount < 5) targetSlot = 'starter';
+    else if (subsCount < 4) targetSlot = 'substitute';
+
+    // 8. Add to Roster
     const { error: rError } = await supabase
       .from("user_rosters")
       .insert({
@@ -133,330 +241,189 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
         player_id: playerId,
         acquisition_price: price,
         is_active: true,
-        is_starter: isStarter,
+        slot_type: targetSlot,
+        is_starter: targetSlot === 'starter',
         release_clause: Math.floor(price * 1.5)
       });
 
     if (rError) throw rError;
 
-    // 7. Descontar dinero
-    const { error: bError } = await supabase
-      .from("league_participants")
-      .update({ 
-        current_budget: participant.current_budget - price,
-        transfers_made_this_week: participant.transfers_made_this_week + 1
-      })
+    // 9. Update Budget
+    await supabase.from("league_participants")
+      .update({ current_budget: Number(participant.current_budget) - price })
       .eq("league_id", leagueId)
       .eq("profile_id", profileId);
 
-    if (bError) throw bError;
-
     revalidatePath("/market");
     revalidatePath("/team");
-    return { success: true, message: `Has fichado por $${(price/1000000).toFixed(1)}M` };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Error al procesar el fichaje";
-    return { success: false, error: message };
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
 
 export async function sellPlayer(leagueId: string, profileId: string, playerId: string) {
   const supabase = await createClient();
   try {
-    // 1. Obtener precio actual de mercado
-    const { data: playerData, error: plError } = await supabase
+    const { data: playerData } = await supabase
         .from('pro_players')
         .select('market_value')
         .eq('id', playerId)
         .single();
     
-    if (plError || !playerData) throw new Error("Jugador no encontrado");
-
-    // Sell Tax (10% fee implies receiving 90%)
+    if (!playerData) throw new Error("Agente no encontrado.");
     const sellPrice = Math.floor(playerData.market_value * 0.9);
 
-    // 2. Verificar bloqueo
     const { data: activeGw } = await supabase
       .from('gameweeks')
-      .select('id, is_locked')
+      .select('is_locked')
       .eq('is_active', true)
       .single();
 
     if (activeGw?.is_locked) {
-      throw new Error("Mercado cerrado por jornada en curso.");
+      throw new Error("Protocolo de mercado bloqueado durante operación.");
     }
 
-    // 3. Verificar límites de transferencias
-    const { data: participant, error: pError } = await supabase
+    const { data: participant } = await supabase
       .from("league_participants")
-      .select("current_budget, transfers_made_this_week")
+      .select("current_budget")
       .eq("league_id", leagueId)
       .eq("profile_id", profileId)
       .single();
 
-    if (pError || !participant) throw new Error("Error verificando usuario.");
-    
-    // Check SCOUT powerup for extra transfer (reuse activeGw from above)
-    let allowedTransfers = MAX_TRANSFERS_PER_WEEK;
-    if (activeGw) {
-        const { data: scout } = await supabase
-            .from('active_powerups')
-            .select('id, powerup_types!inner(code)')
-            .eq('league_id', leagueId)
-            .eq('profile_id', profileId)
-            .eq('gameweek_id', activeGw.id)
-            .eq('powerup_types.code', 'SCOUT')
-            .maybeSingle();
-        
-        if (scout) allowedTransfers += 1;
-    }
-
-    // Selling also counts towards transfer limit (combined with buys)
-    // Transfer limit enforcement removed by user request
-    // Transfer limit removed per user request
-    /*
-    if (participant.transfers_made_this_week >= allowedTransfers) {
-      throw new Error(`Límite de transferencias alcanzado (${allowedTransfers} movimientos/semana).`);
-    }
-    */
-
-    // 4. Eliminar del Roster
-    const { error: rError } = await supabase
-      .from("user_rosters")
+    // Remove from Roster
+    await supabase.from("user_rosters")
       .delete()
       .eq("league_id", leagueId)
       .eq("profile_id", profileId)
       .eq("player_id", playerId);
 
-    if (rError) throw rError;
-
-    // 5. Transacción
-    const { error: tError } = await supabase
-      .from("market_transactions")
-      .insert({
+    // Register Transaction
+    await supabase.from("market_transactions").insert({
         league_id: leagueId,
         profile_id: profileId,
         player_id: playerId,
         type: 'sell',
         price: sellPrice
-      });
+    });
 
-    if (tError) throw tError;
-
-    // 6. Ingresar dinero (90% del valor de mercado) y consumir transferencia
-    // Vender AHORA SÍ consume slot de transferencia (cambio de lógica)
-    const { error: bError } = await supabase
-      .from("league_participants")
-      .update({ 
-        current_budget: Number(participant.current_budget) + sellPrice,
-        transfers_made_this_week: participant.transfers_made_this_week + 1
-      })
-      .eq("league_id", leagueId)
-      .eq("profile_id", profileId);
-
-    if (bError) throw bError;
+    // Update Budget
+    if (participant) {
+      await supabase.from("league_participants")
+        .update({ current_budget: Number(participant.current_budget) + sellPrice })
+        .eq("league_id", leagueId)
+        .eq("profile_id", profileId);
+    }
 
     revalidatePath("/market");
     revalidatePath("/team");
-    return { success: true, message: `Vendido por $${(sellPrice/1000000).toFixed(1)}M` };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Error al procesar la venta";
-    return { success: false, error: message };
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
 
-export async function getUserRoster(leagueId: string, profileId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("user_rosters")
-    .select(`
-      player_id,
-      acquisition_price,
-      release_clause,
-      pro_players (
-        id,
-        nickname,
-        role,
-        market_value,
-        pro_teams (
-          tag,
-          name
-        )
-      )
-    `)
-    .eq("league_id", leagueId)
-    .eq("profile_id", profileId)
-    .eq("is_active", true);
-
-  if (error) {
-    console.error("Error fetching roster:", error);
-    return [];
-  }
-  return data;
-}
-
-export async function payClause(leagueId: string, buyerProfileId: string, playerId: string) {
+export async function payClause(leagueId: string, buyerProfileId: string, playerId: string, targetProfileId: string) {
   const supabase = await createClient();
   try {
-    // 1. Obtener datos del jugador y su dueño actual
+    // 1. Check if buyer already owns the player
+    const { data: myRoster } = await supabase
+      .from("user_rosters")
+      .select("id")
+      .eq("league_id", leagueId)
+      .eq("profile_id", buyerProfileId)
+      .eq("player_id", playerId)
+      .single();
+    
+    if (myRoster) throw new Error("Ya tienes a este agente en tu escuadra.");
+
+    // 2. Get target's roster entry
     const { data: rosterEntry, error: rError } = await supabase
       .from("user_rosters")
       .select(`
         profile_id,
-        acquisition_price,
         release_clause,
-        pro_players!inner (
-          id,
-          nickname,
-          market_value
-        )
+        pro_players!inner (nickname, market_value, role)
       `)
       .eq("league_id", leagueId)
       .eq("player_id", playerId)
-      .eq("is_active", true)
+      .eq("profile_id", targetProfileId)
       .single();
 
-    if (rError || !rosterEntry) throw new Error("Jugador no encontrado en ningún equipo activo.");
+    if (rError || !rosterEntry) throw new Error("Este agente no pertenece a la escuadra seleccionada.");
+
     
     const ownerId = rosterEntry.profile_id;
-    const clausePrice = rosterEntry.release_clause;
+    const clausePrice = rosterEntry.release_clause || 0;
 
-    if (ownerId === buyerProfileId) throw new Error("Ya posees a este jugador.");
+    const { data: activeGw } = await supabase.from('gameweeks').select('id, is_locked').eq('is_active', true).single();
+    if (activeGw?.is_locked) throw new Error("Mercado bloqueado por operación en curso.");
 
-    // 2. Verificar si el jugador está protegido (LOCK)
-    const { data: activeGw } = await supabase
-        .from('gameweeks')
-        .select('id, is_locked')
-        .eq('is_active', true)
-        .single();
-    
-    // Si hay lock, check powerups
-    if (activeGw) {
-        if (activeGw.is_locked) throw new Error("Mercado cerrado durante la jornada.");
-
-        // Check active 'LOCK' powerups
-        const { data: lock } = await supabase
-            .from('active_powerups')
-            .select('id, powerup_types!inner(code)')
-            .eq('league_id', leagueId)
-            .eq('profile_id', ownerId)
-            .eq('target_player_id', playerId)
-            .eq('gameweek_id', activeGw.id)
-            .single(); // Assuming unique constraint helps here or we take any
-        
-        if (lock && (lock.powerup_types as any)?.code === 'LOCK') {
-             throw new Error("Este jugador está BLINDADO por su equipo actual.");
-        }
-    }
-
-    // 3. Verificar presupuesto del comprador
-    const { data: buyer, error: bError } = await supabase
+    const { data: buyer } = await supabase
         .from("league_participants")
         .select("current_budget")
         .eq("league_id", leagueId)
         .eq("profile_id", buyerProfileId)
         .single();
     
-    if (bError || !buyer) throw new Error("Error verificando presupuesto.");
-    if (Number(buyer.current_budget) < Number(clausePrice)) throw new Error("Presupuesto insuficiente para pagar la cláusula.");
+    if (!buyer || Number(buyer.current_budget) < Number(clausePrice)) throw new Error("Presupuesto insuficiente para rescisión.");
 
-    // 4. Verificar tamaño de plantilla
-    const { count: rosterCount } = await supabase
-        .from("user_rosters")
-        .select("id", { count: 'exact', head: true })
-        .eq("league_id", leagueId)
-        .eq("profile_id", buyerProfileId)
-        .eq("is_active", true);
-    
-    if (rosterCount !== null && rosterCount >= 6) {
-        throw new Error("Plantilla completa. Debes vender a alguien antes de pagar una cláusula.");
-    }
-
-    // 4. EJECUTAR TRANSFERENCIA (Transacción Compleja)
-    
-    // A. Cobrar al comprador
-    const { error: chargeError } = await supabase
-        .from("league_participants")
+    // Execution
+    await supabase.from("league_participants")
         .update({ current_budget: Number(buyer.current_budget) - Number(clausePrice) })
         .eq("league_id", leagueId)
         .eq("profile_id", buyerProfileId);
-    if (chargeError) throw chargeError;
 
-    // B. Pagar al dueño original (Cláusula completa)
-    const { data: owner } = await supabase
-        .from("league_participants")
-        .select("current_budget")
-        .eq("league_id", leagueId)
-        .eq("profile_id", ownerId)
-        .single();
-    
+    const { data: owner } = await supabase.from("league_participants").select("current_budget").eq("league_id", leagueId).eq("profile_id", ownerId).single();
     if (owner) {
-        await supabase
-            .from("league_participants")
+        await supabase.from("league_participants")
             .update({ current_budget: Number(owner.current_budget) + Number(clausePrice) })
             .eq("league_id", leagueId)
             .eq("profile_id", ownerId);
     }
 
-    // C. Transferir propiedad (Eliminar del anterior, crear en nuevo)
-    await supabase.from("user_rosters")
-        .delete()
-        .eq("league_id", leagueId)
-        .eq("player_id", playerId)
-        .eq("profile_id", ownerId);
+    await supabase.from("user_rosters").delete().eq("league_id", leagueId).eq("player_id", playerId).eq("profile_id", ownerId);
     
-    // Nueva cláusula automática (200% del pago)
-    const newClause = Math.floor(Number(clausePrice) * 2); 
+    const { data: slots } = await supabase.from("user_rosters").select("slot_type").eq("league_id", leagueId).eq("profile_id", buyerProfileId);
+    const startersCount = slots?.filter(s => s.slot_type === 'starter').length || 0;
+    const subsCount = slots?.filter(s => s.slot_type === 'substitute').length || 0;
+    let targetSlot: 'starter' | 'substitute' | 'bench' = 'bench';
+    if (startersCount < 5) targetSlot = 'starter';
+    else if (subsCount < 4) targetSlot = 'substitute';
 
-    // Check Auto-Start
-    const { count: starterCount } = await supabase
-      .from("user_rosters")
-      .select("id", { count: 'exact', head: true })
-      .eq("league_id", leagueId)
-      .eq("profile_id", buyerProfileId)
-      .eq("is_starter", true);
-    
-    const isStarter = (starterCount || 0) < 5;
+    await supabase.from("user_rosters").insert({
+        league_id: leagueId,
+        profile_id: buyerProfileId,
+        player_id: playerId,
+        acquisition_price: clausePrice,
+        release_clause: Math.floor(Number(clausePrice) * 1.5),
+        is_active: true,
+        slot_type: targetSlot,
+        is_starter: targetSlot === 'starter'
+    });
 
-    await supabase.from("user_rosters")
-        .insert({
-            league_id: leagueId,
-            profile_id: buyerProfileId,
-            player_id: playerId,
-            acquisition_price: clausePrice,
-            release_clause: newClause,
-            is_active: true,
-            is_starter: isStarter
-        });
+    await supabase.from("market_transactions").insert({
+        league_id: leagueId,
+        profile_id: buyerProfileId,
+        player_id: playerId,
+        type: 'clause_paid',
+        price: clausePrice
+    });
 
-    // D. Registrar Transacción (Clause Pay)
-    await supabase.from("market_transactions")
-        .insert({
-            league_id: leagueId,
-            profile_id: buyerProfileId,
-            player_id: playerId,
-            type: 'clause_paid', // Make sure DB constrains allow this enum or string
-            price: clausePrice
-        });
-
-    // E. Notificar al dueño anterior
     const { createNotification } = await import("./notifications");
-    const playerName = (rosterEntry.pro_players as any).nickname;
     await createNotification({
       profile_id: ownerId,
       league_id: leagueId,
-      title: "⚠️ ¡Cláusula Pagada!",
-      message: `El usuario ha pagado la cláusula de $${(clausePrice / 1000000).toFixed(1)}M por ${playerName}.`,
+      title: "🚨 BAJA POR CLÁUSULA",
+      message: `Han pagado la cláusula de $${(clausePrice / 1000000).toFixed(1)}M por ${(rosterEntry.pro_players as any).nickname}.`,
       type: "hostile_buy"
     });
 
     revalidatePath("/market");
     revalidatePath("/team");
-    return { success: true, message: `Cláusula pagada. Has fichado a ${playerName}` };
-
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Error al pagar cláusula";
-    console.error(error);
-    return { success: false, error: message };
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
+

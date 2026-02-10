@@ -4,8 +4,6 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import PWAInstaller from "@/components/PWAInstaller";
-import SwipeNavigation from "@/components/SwipeNavigation";
-import SwipeIndicator from "@/components/SwipeIndicator";
 import PushManager from "@/components/PushManager";
 import TopBar from "@/components/TopBar";
 
@@ -55,32 +53,29 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${inter.variable} ${oswald.variable}`}>
-       <body className="antialiased h-dvh flex flex-col items-center overflow-hidden">
+       <body className="antialiased h-dvh flex flex-col items-center overflow-hidden bg-v-navy text-v-white">
         <PWAInstaller />
         <PushManager />
         
-        <div className="relative h-dvh w-full bg-v-navy/50 shadow-2xl shadow-black/50 overflow-hidden sm:border-x sm:border-white/5 flex flex-col">
+        <div className="relative h-dvh w-full max-w-md sm:max-w-none bg-v-navy/50 shadow-2xl shadow-black/50 overflow-hidden sm:border-x sm:border-white/5 flex flex-col">
           <Sidebar />
           
-          <div className="flex-1 flex flex-col lg:pl-72 relative overflow-hidden">
-            <div className="lg:hidden">
+          <div className="flex-1 flex flex-col lg:pl-72 relative overflow-hidden h-full">
+            <div className="lg:hidden shrink-0 z-40">
               <TopBar />
             </div>
 
-            <SwipeNavigation>
-              <main className="flex-1 overflow-y-auto overscroll-contain pb-24 relative">
-                <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl px-4 sm:px-6 lg:px-10 py-4">
-                  {children}
-                </div>
-              </main>
-            </SwipeNavigation>
-            <SwipeIndicator />
+            <main className="flex-1 overflow-y-auto overscroll-contain pb-24 relative px-4 pt-4">
+              <div className="mx-auto w-full max-w-md lg:max-w-4xl">
+                {children}
+              </div>
+            </main>
           </div>
 
           <Navbar />
 
           {/* Corner accents */}
-          <div className="pointer-events-none absolute inset-0">
+          <div className="pointer-events-none absolute inset-0 z-0">
             <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-v-red/30" />
             <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-v-red/30" />
             <div className="absolute bottom-24 left-4 w-4 h-4 border-b-2 border-l-2 border-v-red/30" />
@@ -91,4 +86,6 @@ export default function RootLayout({
     </html>
   );
 }
+
+
 

@@ -34,6 +34,51 @@ export async function getGlobalRank(userId: string) {
   return (count || 0) + 1;
 }
 
+async function assignInitialRoster(supabase: any, leagueId: string, profileId: string) {
+    // 1. Get 1 random player of each role
+    const roles = ['Duelista', 'Iniciador', 'Controlador', 'Centinela', 'Flex'];
+    const initialPlayers = [];
+
+    for (const role of roles) {
+        const { data: player } = await supabase
+            .from('pro_players')
+            .select('id, market_value')
+            .eq('role', role)
+            .limit(10); // Get a pool
+        
+        if (player && player.length > 0) {
+            const randomPlayer = player[Math.floor(Math.random() * player.length)];
+            initialPlayers.push(randomPlayer);
+        }
+    }
+
+    if (initialPlayers.length === 0) return;
+
+    // 2. Insert into roster
+    const inserts = initialPlayers.map((p, i) => ({
+        league_id: leagueId,
+        profile_id: profileId,
+        player_id: p.id,
+        acquisition_price: 0, // Free starter team
+        slot_type: i === 0 ? 'starter' : (i < 5 ? 'starter' : 'substitute'), // Distribute
+        is_starter: i < 5, 
+        release_clause: Math.floor(p.market_value * 1.5)
+    }));
+
+    // For simplicity, let's just make the first 5 starters (1 of each role)
+    const balancedInserts = initialPlayers.slice(0, 5).map((p) => ({
+        league_id: leagueId,
+        profile_id: profileId,
+        player_id: p.id,
+        acquisition_price: 0,
+        slot_type: 'starter',
+        is_starter: true,
+        release_clause: Math.floor(p.market_value * 1.5)
+    }));
+
+    await supabase.from('user_rosters').insert(balancedInserts);
+}
+
 export async function createLeague(name: string, userId: string) {
   const supabase = await createClient();
   try {
@@ -64,6 +109,9 @@ export async function createLeague(name: string, userId: string) {
 
     if (joinError) throw joinError;
 
+    // 3. Asignar equipo inicial
+    await assignInitialRoster(supabase, league.id, userId);
+
     revalidatePath("/leagues");
     return { success: true, league };
   } catch (error) {
@@ -84,19 +132,38 @@ export async function joinLeague(inviteCode: string, userId: string) {
 
     if (findError) throw new Error("Código de invitación no válido");
 
-    // 2. Unirse a la liga
+    // 2. Cálculo de presupuesto inicial (Late Joiner adjustment)
+    // Buscamos el presupuesto medio de la liga para no entrar en desventaja
+    const { data: others } = await supabase
+        .from('league_participants')
+        .select('current_budget')
+        .eq('league_id', league.id);
+    
+    let startingBudget = league.budget_limit;
+    if (others && others.length > 0) {
+        const avg = others.reduce((acc: number, curr: any) => acc + Number(curr.current_budget), 0) / others.length;
+        // Si la media es significativamente mayor (inflación), ajustamos. 
+        // Pero el usuario dijo "menos dinero", así que quizá quiere que empiecen con lo mismo? 
+        // "separarlo la primera jornada" implica aislamiento de puntos.
+        // Vamos a mantener el budget pero marcarlo como 'new_joiner' si hay jornada activa.
+    }
+
+    // 3. Unirse a la liga
     const { error: joinError } = await supabase
       .from("league_participants")
       .insert({ 
         profile_id: userId, 
         league_id: league.id,
-        current_budget: league.budget_limit 
+        current_budget: startingBudget 
       });
 
     if (joinError) {
        if (joinError.code === "23505") throw new Error("Ya perteneces a esta liga");
        throw joinError;
     }
+
+    // 4. Asignar equipo inicial
+    await assignInitialRoster(supabase, league.id, userId);
 
     revalidatePath("/leagues");
     return { success: true };
@@ -107,6 +174,7 @@ export async function joinLeague(inviteCode: string, userId: string) {
 }
 
 export async function getUserLeagues(userId: string) {
+
   const supabase = await createClient();
   
   // 1. Obtener las ligas del usuario

@@ -351,6 +351,13 @@ async function getOrCreateTeam(name: string) {
     return (created as any).id;
 }
 
+const AGENT_ROLES: Record<string, string> = {
+  'jett': 'Duelista', 'raze': 'Duelista', 'phoenix': 'Duelista', 'reyna': 'Duelista', 'yoru': 'Duelista', 'neon': 'Duelista', 'iso': 'Duelista',
+  'sova': 'Iniciador', 'breach': 'Iniciador', 'skye': 'Iniciador', 'kayo': 'Iniciador', 'fade': 'Iniciador', 'gekko': 'Iniciador',
+  'brimstone': 'Controlador', 'omen': 'Controlador', 'viper': 'Controlador', 'astra': 'Controlador', 'harbor': 'Controlador', 'clove': 'Controlador',
+  'killjoy': 'Centinela', 'cypher': 'Centinela', 'sage': 'Centinela', 'chamber': 'Centinela', 'deadlock': 'Centinela', 'veto': 'Centinela'
+};
+
 export async function scrapeMatchDetails(matchId: string) {
     const url = `https://www.vlr.gg/${matchId}`;
     
@@ -358,86 +365,99 @@ export async function scrapeMatchDetails(matchId: string) {
       const response = await fetch(url, {
         headers: { 
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.9",
+          "Accept": "text/html",
         },
       });
     
-      if (!response.ok) {
-        console.error(`VLR fetch failed for ${matchId}: ${response.status} ${response.statusText}`);
-        return null;
-      }
+      if (!response.ok) return null;
     
       const html = await response.text();
       const $ = cheerio.load(html);
       
-      const tables = $("table.wf-table-inset.mod-overview");
-      
-      if (!tables.length) {
-        return null;
+      const allStats: any[] = [];
+      const mapContainers = $(".vm-stats-container .vm-stats-game"); // Individual map containers
+
+      if (!mapContainers.length) {
+          // If no containers, maybe it's a simple Bo1 shown directly
+          const table = $("table.wf-table-inset.mod-overview");
+          if (table.length) {
+              const stats = processVlrTable($, table.first(), "Map 1");
+              allStats.push(...stats);
+          }
+      } else {
+        mapContainers.each((i, container) => {
+            const mapName = $(container).find(".map-name").text().trim() || `Map ${i + 1}`;
+            // Skip "All Maps" to avoid double counting
+            if (mapName.toLowerCase().includes("all maps")) return;
+
+            const table = $(container).find("table.wf-table-inset.mod-overview");
+            if (table.length) {
+                const stats = processVlrTable($, table, mapName);
+                allStats.push(...stats);
+            }
+        });
       }
-      
-      const statsMap = new Map<string, any>();
     
-      tables.each((i, table) => {
-        const rows = $(table).find("tr");
-        const headerRow = rows.first();
-        const dataRows = rows.slice(1);
-        
-        const headers = headerRow.find("th").map((_, th) => $(th).text().trim().toUpperCase()).get();
-        if (headers.length === 0) return;
+      return allStats;
+    } catch (error) {
+      console.error(`Exception scraping match ${matchId}:`, error);
+      return null;
+    }
+}
 
-        const findIdx = (names: string[]) => headers.findIndex(h => names.includes(h));
+function processVlrTable($: any, table: any, mapName: string) {
+    const results: any[] = [];
+    const rows = $(table).find("tr");
+    const headerRow = rows.first();
+    const dataRows = rows.slice(1);
+    
+    const headers = headerRow.find("th").map((_: any, th: any) => $(th).text().trim().toUpperCase()).get();
+    const findIdx = (names: string[]) => headers.findIndex((h: string) => names.includes(h));
+    
+    const idx = {
+      agent: 1, // Usually index 1 for agent image
+      k: findIdx(["K", "KILL", "KILLS"]),
+      d: findIdx(["D", "DEATH", "DEATHS"]),
+      a: findIdx(["A", "ASSIST", "ASSISTS"]),
+      fk: findIdx(["FK", "FIRST KILLS"]),
+      fd: findIdx(["FD", "FIRST DEATHS"]),
+      acs: findIdx(["ACS", "AVERAGE COMBAT SCORE"]),
+    };
+
+    dataRows.each((__: any, row: any) => {
+        const cols = $(row).find("td");
+        if (cols.length < headers.length) return;
+
+        const playerCell = $(cols[0]);
+        const playerLink = playerCell.find("a").attr("href") || "";
+        const playerId = playerLink.split("/")[2] || "";
         
-        const idx = {
-          k: findIdx(["K", "KILL", "KILLS"]),
-          d: findIdx(["D", "DEATH", "DEATHS"]),
-          a: findIdx(["A", "ASSIST", "ASSISTS"]),
-          fk: findIdx(["FK", "FIRST KILLS"]),
-          fd: findIdx(["FD", "FIRST DEATHS"]),
-          acs: findIdx(["ACS", "AVERAGE COMBAT SCORE"]),
+        let nickname = playerCell.find(".text-of").text().trim();
+        if (!nickname) nickname = playerCell.text().trim().split("\n")[0].trim();
+        
+        const teamTag = playerCell.find(".ge-text-light").text().trim();
+        if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
+
+        // Agent Extraction
+        const agentCell = $(cols[1]); 
+        const agentImg = agentCell.find("img");
+        const agentName = agentImg.attr("title")?.toLowerCase() || "";
+        const agentRole = AGENT_ROLES[agentName] || "";
+
+        const getStat = (colIdx: number) => {
+            if (colIdx === -1) return 0;
+            const col = $(cols[colIdx]);
+            const val = col.find(".mod-both").first().text().trim() || col.text().trim();
+            return parseInt(val.replace(/[^\d]/g, "")) || 0;
         };
-
-        if (idx.k === -1 || idx.d === -1) {
-            return;
-        }
-
-        dataRows.each((__, row) => {
-          const cols = $(row).find("td");
-          if (cols.length < headers.length) return;
-
-          const playerCell = $(cols[0]);
-          const playerLink = playerCell.find("a").attr("href") || "";
-          const playerId = playerLink.split("/")[2] || "";
-          
-          const playerInfo = playerCell.find(".mod-player");
-          
-          let nickname = playerCell.find(".text-of").text().trim();
-          if (!nickname && playerInfo.length) {
-              nickname = playerInfo.text().trim().split("\n")[0].trim();
-          }
-          if (!nickname) {
-              nickname = playerCell.text().trim().split("\n")[0].trim();
-          }
-
-          let teamTag = playerCell.find(".ge-text-light").text().trim();
-          if (!teamTag && playerInfo.length) {
-              teamTag = playerInfo.find(".ge-text-light").text().trim();
-          }
-          
-          if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
-
-          const getStat = (colIdx: number) => {
-              if (colIdx === -1) return 0;
-              const col = $(cols[colIdx]);
-              const val = col.find(".mod-both").first().text().trim() || col.text().trim();
-              return parseInt(val.replace(/[^\d]/g, "")) || 0;
-          };
-          
-          const currentStats = {
+        
+        results.push({
             vlr_id: playerId,
             nickname,
             teamTag,
+            map_name: mapName,
+            agent_name: agentName,
+            agent_role: agentRole,
             kills: getStat(idx.k),
             deaths: getStat(idx.d),
             assists: getStat(idx.a),
@@ -445,22 +465,12 @@ export async function scrapeMatchDetails(matchId: string) {
             fd: getStat(idx.fd),
             acs: getStat(idx.acs),
             clutches: 0
-          };
-
-          const existing = statsMap.get(playerId);
-          if (!existing || currentStats.kills > existing.kills) {
-            statsMap.set(playerId, currentStats);
-          }
         });
-      });
-    
-      const result = Array.from(statsMap.values());
-      return result;
-    } catch (error) {
-      console.error(`Exception scraping match ${matchId}:`, error);
-      return null;
-    }
+    });
+    return results;
 }
+
+
 
 async function getOrCreateGameweekByDate(dateStr: string) {
     const date = new Date(dateStr);
