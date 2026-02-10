@@ -81,13 +81,6 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
              <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-0.5">Valor de Mercado</p>
              <p className="text-xl font-black italic text-v-red">${(player.market_value / 1000000).toFixed(1)}M</p>
            </div>
-           
-           <div className="flex gap-2">
-             {/* Future: Dynamic Buy/Sell buttons logic can be reused here */}
-             <button className="bg-v-red text-white text-[10px] font-black uppercase px-4 py-2 hover:bg-v-red/80 transition-colors tracking-widest">
-               Fichar
-             </button>
-           </div>
         </div>
       </div>
 

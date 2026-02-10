@@ -12,8 +12,19 @@ export async function setStarterStatus(leagueId: string, profileId: string, play
       .eq('is_active', true)
       .single();
 
+    // Fetch current player to check current slot
+    const { data: currentPlayer } = await supabase
+      .from("user_rosters")
+      .select("slot_type")
+      .eq("league_id", leagueId)
+      .eq("profile_id", profileId)
+      .eq("player_id", playerId)
+      .single();
+
     if (activeGw?.is_locked) {
-      throw new Error("Alineación bloqueada durante la jornada.");
+      if (currentPlayer?.slot_type === 'starter' || newSlot === 'starter') {
+        throw new Error("Alineación titular blindada durante la jornada. Solo puedes operar con suplentes.");
+      }
     }
 
     // Fetch current roster with roles
@@ -30,23 +41,40 @@ export async function setStarterStatus(leagueId: string, profileId: string, play
     if (!playerEntry) throw new Error("Jugador no encontrado en tu plantilla.");
     
     const playerRole = (playerEntry.pro_players as any).role;
+    const currentSlot = playerEntry.slot_type;
+
+    // If moving to same slot, do nothing
+    if (currentSlot === newSlot) {
+      return { success: true };
+    }
 
     // Count roles in target slot (excluding the player being moved)
-    const targetSlotRoles = new Set(
-        roster?.filter(r => r.slot_type === newSlot && r.player_id !== playerId)
-               .map(r => (r.pro_players as any).role) || []
-    );
+    const targetSlotPlayers = roster?.filter(r => r.slot_type === newSlot && r.player_id !== playerId) || [];
+    
+    // Check if there's a player with same role in target slot
+    const conflictingPlayer = targetSlotPlayers.find(r => (r.pro_players as any).role === playerRole);
 
-    // Check limits
-    if (targetSlotRoles.size >= 5) {
+    if (conflictingPlayer) {
+      // SWAP: Move conflicting player to current slot
+      const { error: swapError } = await supabase
+        .from("user_rosters")
+        .update({ 
+          slot_type: currentSlot,
+          is_starter: currentSlot === 'starter' 
+        })
+        .eq("league_id", leagueId)
+        .eq("profile_id", profileId)
+        .eq("player_id", conflictingPlayer.player_id);
+
+      if (swapError) throw swapError;
+    } else {
+      // Check slot limit
+      if (targetSlotPlayers.length >= 5) {
         throw new Error(`Máximo 5 ${newSlot === 'starter' ? 'titulares' : 'suplentes'}.`);
+      }
     }
 
-    // Check role constraint: max 1 per role per slot
-    if (targetSlotRoles.has(playerRole)) {
-        throw new Error(`Ya tienes un ${playerRole} en ${newSlot === 'starter' ? 'titulares' : 'suplentes'}. Máximo 1 por rol por slot.`);
-    }
-
+    // Move the player
     const { error } = await supabase
       .from("user_rosters")
       .update({ 

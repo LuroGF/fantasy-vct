@@ -27,6 +27,7 @@ interface PlayerCardProps {
   secondActionClassName?: string;
   isLocked?: boolean;
   isCaptain?: boolean;
+  inAuction?: boolean;
 }
 
 export function PlayerCard({ 
@@ -39,7 +40,8 @@ export function PlayerCard({
   secondActionLabel,
   secondActionClassName = "bg-v-red text-white",
   isLocked,
-  isCaptain
+  isCaptain,
+  inAuction
 }: PlayerCardProps) {
 
   const stats = player.stats || {
@@ -74,6 +76,7 @@ export function PlayerCard({
                   {player.nickname}
                   {isLocked && <span title="Protegido con Candado" className="text-v-red animate-pulse">🛡️</span>}
                   {isCaptain && <span title="Capitán (X2 Puntos)" className="text-yellow-500">©️</span>}
+                  {inAuction && <span className="text-[8px] bg-v-red text-v-white px-1 py-0.5 rounded ml-1 animate-bounce">SUBASTA</span>}
                 </span>
               </Link>
               <div className="flex items-center gap-2">

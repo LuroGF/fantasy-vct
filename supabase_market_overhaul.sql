@@ -78,7 +78,7 @@ BEGIN
     WHERE league_id = p_league_id AND profile_id = p_profile_id AND created_at = CURRENT_DATE;
 
     IF v_count = 0 THEN
-        -- Generate 4 random players that are NOT already owned by ANYONE in the league
+        -- Generate 5 random players that are NOT already owned by ANYONE in the league
         INSERT INTO public.personal_market (league_id, profile_id, player_id, offer_price)
         SELECT p_league_id, p_profile_id, p.id, p.market_value
         FROM public.pro_players p
@@ -87,10 +87,27 @@ BEGIN
             WHERE ur.league_id = p_league_id AND ur.player_id = p.id
         )
         ORDER BY random()
-        LIMIT 4;
+        LIMIT 5;
     END IF;
 
     RETURN QUERY SELECT * FROM public.personal_market 
     WHERE league_id = p_league_id AND profile_id = p_profile_id AND created_at = CURRENT_DATE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. Transfer Tracking
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='league_participants' AND column_name='transfers_made_this_week') THEN
+        ALTER TABLE public.league_participants ADD COLUMN transfers_made_this_week int DEFAULT 0;
+    END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.increment_transfers(p_league_id uuid, p_profile_id uuid)
+RETURNS void AS $$
+BEGIN
+    UPDATE public.league_participants
+    SET transfers_made_this_week = transfers_made_this_week + 1
+    WHERE league_id = p_league_id AND profile_id = p_profile_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

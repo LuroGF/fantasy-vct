@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { PlayerCard } from "@/components/PlayerCard";
 import { setStarterStatus, getUserFullRoster } from "@/lib/actions/roster";
-import { sellPlayer } from "@/lib/actions/market";
 import Link from "next/link";
 import { haptic } from "@/lib/utils/haptics";
 
@@ -33,21 +32,40 @@ export default function TeamView({
   const [activePowerUps, setActivePowerUps] = useState(initialActivePowerUps);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
+  const [auctions, setAuctions] = useState<any[]>([]);
   const [selectedPowerUp, setSelectedPowerUp] = useState<any>(null);
+  const [auctionDialog, setAuctionDialog] = useState<{ show: boolean; player: any | null; price: string }>({
+    show: false,
+    player: null,
+    price: ""
+  });
+  const [confirmDialog, setConfirmDialog] = useState<{ show: boolean; title: string; message: string; onConfirm: (() => void) | null }>({
+    show: false,
+    title: "",
+    message: "",
+    onConfirm: null
+  });
 
   const activeParticipation = useMemo(() => 
     leagues.find(l => l.leagues.id === activeLeagueId), 
     [activeLeagueId, leagues]
   );
-
   useEffect(() => {
-    async function loadRoster() {
+    async function loadData() {
       setLoading(true);
-      const data = await getUserFullRoster(activeLeagueId, profileId);
-      setRoster(data);
+      const { getUserFullRoster } = await import("@/lib/actions/roster");
+      const { getActiveAuctions } = await import("@/lib/actions/market");
+      
+      const [rosterData, auctionsData] = await Promise.all([
+        getUserFullRoster(activeLeagueId, profileId),
+        getActiveAuctions(activeLeagueId)
+      ]);
+      
+      setRoster(rosterData);
+      setAuctions(auctionsData);
       setLoading(false);
     }
-    if (activeLeagueId) loadRoster();
+    if (activeLeagueId) loadData();
   }, [activeLeagueId, profileId]);
 
   // Grouping by slot type
@@ -63,92 +81,133 @@ export default function TeamView({
   };
 
   async function handleActivate(powerUpTypeId: string, targetPlayerId?: string) {
-    if (!window.confirm("¿Confirmar activación de carta de poder?")) return;
+    setConfirmDialog({
+      show: true,
+      title: "Activar Carta",
+      message: "¿Confirmar activación de carta de poder?",
+      onConfirm: async () => {
+        haptic.medium();
+        setLoading(true);
+        const { activatePowerUp } = await import("@/lib/actions/inventory");
+        const res = await activatePowerUp(activeLeagueId, profileId, powerUpTypeId, targetPlayerId);
 
-    haptic.medium();
-    setLoading(true);
-    const { activatePowerUp } = await import("@/lib/actions/inventory");
-    const res = await activatePowerUp(activeLeagueId, profileId, powerUpTypeId, targetPlayerId);
-
-    if (res.success) {
-      haptic.success();
-      setStatus({ type: "success", message: res.message || "Carta activada" });
-      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-      window.location.reload(); 
-    } else {
-
-      haptic.error();
-      setStatus({ type: "error", message: res.error as string });
-    }
-    setSelectedPowerUp(null);
-    setLoading(false);
+        if (res.success) {
+          haptic.success();
+          setStatus({ type: "success", message: res.message || "Carta activada" });
+          document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+          window.location.reload(); 
+        } else {
+          haptic.error();
+          setStatus({ type: "error", message: res.error as string });
+          document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        setSelectedPowerUp(null);
+        setLoading(false);
+      }
+    });
   }
 
   async function handleSlotChange(player_id: string, nickname: string, newSlot: 'starter' | 'substitute') {
-    const action = newSlot === 'starter' ? 'Ascender a Titular' : 'Mover a Suplentes';
-    if (!window.confirm(`¿${action} a ${nickname}?`)) return;
-
-    haptic.medium();
-    setLoading(true);
-    // Check limits
-    if (newSlot === 'starter' && starters.length >= 5) {
-        setStatus({ type: "error", message: "Máximo 5 titulares." });
-        setLoading(false);
-        return;
-    }
-    if (newSlot === 'substitute' && substitutes.length >= 5) {
-        setStatus({ type: "error", message: "Máximo 5 suplentes." });
-        setLoading(false);
-        return;
-    }
-
-    const { setStarterStatus } = await import("@/lib/actions/roster");
-
-    const res = await setStarterStatus(activeLeagueId, profileId, player_id, newSlot);
+    const actionText = newSlot === 'starter' ? 'Ascender a Titular' : 'Mover a Suplentes';
     
-    if (res.success) {
-      haptic.success();
-      setRoster(prev => prev.map(r => 
-        r.player_id === player_id ? { ...r, slot_type: newSlot, is_starter: newSlot === 'starter' } : r
-      ));
-      setStatus({ 
-        type: "success", 
-        message: `${nickname} movido a ${newSlot === 'starter' ? 'Titulares' : 'Suplentes'}` 
-      });
-      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
+    setConfirmDialog({
+      show: true,
+      title: actionText,
+      message: `¿Deseas mover a ${nickname} a ${newSlot === 'starter' ? 'Titulares' : 'Suplentes'}?`,
+      onConfirm: async () => {
+        haptic.medium();
+        setLoading(true);
+        // Check limits
+        if (newSlot === 'starter' && starters.length >= 5) {
+            setStatus({ type: "error", message: "Máximo 5 titulares." });
+            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+            setLoading(false);
+            return;
+        }
+        if (newSlot === 'substitute' && substitutes.length >= 5) {
+            setStatus({ type: "error", message: "Máximo 5 suplentes." });
+            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+            setLoading(false);
+            return;
+        }
 
-      haptic.error();
-      setStatus({ type: "error", message: res.error as string });
-    }
-    setLoading(false);
+        const { setStarterStatus } = await import("@/lib/actions/roster");
+        const res = await setStarterStatus(activeLeagueId, profileId, player_id, newSlot);
+        
+        if (res.success) {
+          haptic.success();
+          setRoster(prev => prev.map(r => 
+            r.player_id === player_id ? { ...r, slot_type: newSlot, is_starter: newSlot === 'starter' } : r
+          ));
+          setStatus({ 
+            type: "success", 
+            message: `${nickname} movido a ${newSlot === 'starter' ? 'Titulares' : 'Suplentes'}` 
+          });
+          document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          haptic.error();
+          setStatus({ type: "error", message: res.error as string });
+          document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        setLoading(false);
+      }
+    });
   }
 
   async function handleSell(player: any) {
     haptic.warning();
-    if (!window.confirm(`¿Estás seguro de que quieres vender a ${player.nickname}?`)) {
+    setAuctionDialog({
+      show: true,
+      player: player,
+      price: (player.market_value / 1000000).toFixed(1)
+    });
+  }
+
+  async function confirmAuction() {
+    if (!auctionDialog.player) return;
+
+    const player = auctionDialog.player;
+    const minPrice = Math.floor(player.market_value * 0.8);
+    const maxPrice = Math.floor(player.market_value * 1.15);
+    const startingPrice = Math.floor(parseFloat(auctionDialog.price) * 1000000);
+    
+    if (isNaN(startingPrice) || startingPrice <= 0) {
+      haptic.error();
+      setStatus({ type: "error", message: "Precio inválido" });
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
+    if (startingPrice < minPrice) {
+      haptic.error();
+      setStatus({ type: "error", message: `Precio mínimo: $${(minPrice / 1000000).toFixed(2)}M (valor base - 20%)` });
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (startingPrice > maxPrice) {
+      haptic.error();
+      setStatus({ type: "error", message: `Precio máximo: $${(maxPrice / 1000000).toFixed(2)}M (valor base + 15%)` });
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    setAuctionDialog({ show: false, player: null, price: "" });
     haptic.heavy();
     setLoading(true);
-    const res = await sellPlayer(activeLeagueId, profileId, player.id);
+    
+    const { createAuction } = await import("@/lib/actions/market");
+    const res = await createAuction(activeLeagueId, profileId, player.id, startingPrice);
 
     if (res.success) {
       haptic.success();
-      setRoster(prev => prev.filter(r => r.player_id !== player.id));
-      setLeagues(prev => prev.map(l => 
-        l.leagues.id === activeLeagueId ? { 
-          ...l, 
-          current_budget: Number(l.current_budget) + Math.floor(player.market_value * 0.9)
-        } : l
-      ));
-      setStatus({ type: "success", message: `${player.nickname} ha dejado la escuadra.` });
+      setStatus({ type: "success", message: `Subasta de ${player.nickname} creada. Duración: 24h` });
       document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => window.location.reload(), 1500);
     } else {
-
       haptic.error();
       setStatus({ type: "error", message: res.error as string });
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setLoading(false);
   }
@@ -206,9 +265,10 @@ export default function TeamView({
                   actionLabel={selectedPowerUp ? `Aplicar ${selectedPowerUp.powerup_types.icon}` : "A Suplentes"}
                   onSecondAction={() => handleSell(r.pro_players)}
                   secondActionLabel="Vender"
-                  secondActionClassName="text-v-red hover:bg-v-red/10"
+                   secondActionClassName="text-v-red hover:bg-v-red/10"
                   isLocked={isLocked(r.player_id)}
                   isCaptain={isCaptain(r.player_id)}
+                  inAuction={auctions.some(a => a.player_id === r.player_id)}
                 />
             </div>
           ))}
@@ -232,8 +292,9 @@ export default function TeamView({
                   actionLabel={selectedPowerUp ? `Aplicar ${selectedPowerUp.powerup_types.icon}` : "Ascender a Titular"}
                   onSecondAction={() => handleSell(r.pro_players)}
                   secondActionLabel="Vender"
-                  secondActionClassName="text-v-red hover:bg-v-red/10"
+                   secondActionClassName="text-v-red hover:bg-v-red/10"
                   isLocked={isLocked(r.player_id)}
+                  inAuction={auctions.some(a => a.player_id === r.player_id)}
                 />
             </div>
           ))}
@@ -244,6 +305,97 @@ export default function TeamView({
           ))}
         </div>
       </div>
+      {/* Auction Dialog */}
+      {auctionDialog.show && auctionDialog.player && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-v-navy/90 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="v-panel w-full max-w-sm p-6 space-y-6 border-t-4 border-v-red animate-in zoom-in-95 duration-200">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">Crear Subasta</p>
+              <h3 className="text-2xl font-black italic uppercase leading-none">{auctionDialog.player.nickname}</h3>
+              <p className="text-[10px] font-black uppercase text-v-red tracking-widest">{auctionDialog.player.pro_teams?.name}</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-v-white/60">Precio de Salida ($M)</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="number"
+                    step="0.1"
+                    value={auctionDialog.price}
+                    onChange={(e) => setAuctionDialog(prev => ({ ...prev, price: e.target.value }))}
+                    className="flex-1 bg-v-navy/50 border border-white/10 px-4 py-3 text-lg font-black italic focus:border-v-red outline-none transition-colors"
+                  />
+                  <div className="flex flex-col gap-1">
+                    <button 
+                      onClick={() => setAuctionDialog(prev => ({ ...prev, price: (auctionDialog.player!.market_value * 0.8 / 1000000).toFixed(1) }))}
+                      className="px-3 py-1 bg-v-navy/80 border border-white/5 text-[8px] font-black uppercase hover:bg-v-red/20 transition-colors"
+                    >
+                      MIN
+                    </button>
+                    <button 
+                      onClick={() => setAuctionDialog(prev => ({ ...prev, price: (auctionDialog.player!.market_value * 1.15 / 1000000).toFixed(1) }))}
+                      className="px-3 py-1 bg-v-navy/80 border border-white/5 text-[8px] font-black uppercase hover:bg-v-red/20 transition-colors"
+                    >
+                      MAX
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between text-[8px] font-black uppercase text-v-white/30 px-1">
+                  <span>Rango: ${(auctionDialog.player.market_value * 0.8 / 1000000).toFixed(1)}M - ${(auctionDialog.player.market_value * 1.15 / 1000000).toFixed(1)}M</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={() => setAuctionDialog({ show: false, player: null, price: "" })}
+                  className="flex-1 py-3 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-v-white/5 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={confirmAuction}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-v-red text-v-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
+                >
+                  Confirmar Subasta
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Generic Confirmation Dialog */}
+      {confirmDialog.show && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-v-navy/95 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="v-panel w-full max-w-xs p-6 space-y-6 border-t-4 border-v-white animate-in zoom-in-95 duration-200">
+            <div className="space-y-2 text-center">
+              <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">Confirmación</p>
+              <h3 className="text-xl font-black italic uppercase leading-tight">{confirmDialog.title}</h3>
+              <p className="text-xs text-v-white/60 leading-relaxed">{confirmDialog.message}</p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button 
+                onClick={() => {
+                  if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+                  setConfirmDialog({ show: false, title: "", message: "", onConfirm: null });
+                }}
+                disabled={loading}
+                className="w-full py-4 bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10"
+              >
+                Ejecutar Operación
+              </button>
+              <button 
+                onClick={() => setConfirmDialog({ show: false, title: "", message: "", onConfirm: null })}
+                className="w-full py-2 text-[8px] font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest"
+              >
+                Abortar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
