@@ -82,6 +82,34 @@ export default function MarketView({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* League Selector */}
+      <div className="v-panel p-4 space-y-2">
+        <label className="text-[8px] font-black uppercase text-v-white/40 ml-1 tracking-[0.2em]">Operando en Liga:</label>
+        <select 
+          value={activeLeagueId}
+          onChange={(e) => setActiveLeagueId(e.target.value)}
+          className="w-full bg-v-navy/50 border border-white/10 px-4 py-2 text-xs font-black italic focus:border-v-red outline-none transition-colors"
+        >
+          {initialLeagues.map(l => (
+            <option key={l.league_id || l.leagues?.id} value={l.league_id || l.leagues?.id}>
+              {l.leagues?.name || l.name}
+            </option>
+          ))}
+        </select>
+         {activeParticipation && (
+          <div className="flex justify-between items-center pt-2 mt-2 border-t border-white/5">
+             <div>
+                <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Presupuesto</p>
+                <p className="text-sm font-black italic text-v-white">${(activeParticipation.current_budget / 1000000).toFixed(1)}M</p>
+             </div>
+             <div className="text-right">
+                <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Estado</p>
+                <span className="text-[8px] bg-v-red/20 text-v-red px-2 py-0.5 rounded uppercase font-bold tracking-wider">Activo</span>
+             </div>
+          </div>
+        )}
+      </div>
+
       {/* Search & Tabs */}
       <div className="v-panel p-4 space-y-4">
         <div className="flex bg-v-navy/50 p-1 border border-white/5">

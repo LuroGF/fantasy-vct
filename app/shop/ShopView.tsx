@@ -1,30 +1,44 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { PowerUpCard } from "@/components/PowerUpCard";
-import { buyPowerUp } from "@/lib/actions/inventory";
+import { buyPowerUp, getUserInventory } from "@/lib/actions/inventory";
 
 interface ShopViewProps {
-  participant: {
-    league_id: string;
-    profile_id: string;
-    total_points: number;
-  };
+  initialLeagues: any[];
+  userId: string;
   powerUps: any[];
-  inventory: any[];
+  initialInventory: any[];
 }
 
-export function ShopView({ participant, powerUps, inventory }: ShopViewProps) {
+export function ShopView({ initialLeagues, userId, powerUps, initialInventory }: ShopViewProps) {
   const [isPending, startTransition] = useTransition();
+  const [activeLeagueId, setActiveLeagueId] = useState(initialLeagues[0]?.league_id || initialLeagues[0]?.leagues?.id);
+  const [inventory, setInventory] = useState(initialInventory);
+  const [loadingInv, setLoadingInv] = useState(false);
+
+  // Derive active participation to get points and league name
+  const activeParticipation = useMemo(() => 
+    initialLeagues.find(l => (l.league_id || l.leagues?.id) === activeLeagueId), 
+    [activeLeagueId, initialLeagues]
+  );
+  
+  useEffect(() => {
+     async function loadInventory() {
+         setLoadingInv(true);
+         const data = await getUserInventory(activeLeagueId, userId);
+         setInventory(data || []);
+         setLoadingInv(false);
+     }
+     if (activeLeagueId) loadInventory();
+  }, [activeLeagueId, userId]);
 
   const handleBuy = (powerUpCode: string) => {
-    // Basic confirmation
     if (!confirm(`¿Comprar ${powerUpCode}?`)) return;
 
     startTransition(async () => {
-       const res = await buyPowerUp(participant.league_id, participant.profile_id, powerUpCode);
+       const res = await buyPowerUp(activeLeagueId, userId, powerUpCode);
        if (res.success) {
-         // Refreshing the page or state would be better, but alert for now
          alert(res.message);
          window.location.reload();
        } else {
@@ -34,24 +48,39 @@ export function ShopView({ participant, powerUps, inventory }: ShopViewProps) {
   };
 
   const getQuantity = (typeId: string) => {
-      const item = inventory.find(i => i.powerup_types?.id === typeId || i.powerup_type_id === typeId);
+      const item = inventory.find((i: any) => (i.powerup_types?.id === typeId) || (i.powerup_type_id === typeId));
       return item ? item.quantity : 0;
   };
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500 pb-20">
       
-      {/* Header with Budget */}
-      <div className="flex items-center justify-between px-1">
-         <h1 className="text-2xl font-black italic uppercase text-v-white tracking-wider">Tienda de Cartas</h1>
-         <div className="text-right">
-            <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">Puntos Acumulados</p>
-            <p className="text-xl font-black italic text-v-red">{participant.total_points || 0} PTS</p>
-         </div>
+      {/* League Selector */}
+      <div className="v-panel p-4 space-y-2">
+        <label className="text-[8px] font-black uppercase text-v-white/40 ml-1 tracking-[0.2em]">Tienda Operativa en:</label>
+        <select 
+          value={activeLeagueId}
+          onChange={(e) => setActiveLeagueId(e.target.value)}
+          className="w-full bg-v-navy/50 border border-white/10 px-4 py-2 text-xs font-black italic focus:border-v-red outline-none transition-colors"
+        >
+          {initialLeagues.map(l => (
+            <option key={l.league_id || l.leagues?.id} value={l.league_id || l.leagues?.id}>
+              {l.leagues?.name || l.name}
+            </option>
+          ))}
+        </select>
+         {activeParticipation && (
+          <div className="flex justify-between items-center pt-2 mt-2 border-t border-white/5">
+             <div>
+                <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Puntos Totales</p>
+                <p className="text-xl font-black italic text-v-white">{activeParticipation.total_points?.toLocaleString() || 0} PTS</p>
+             </div>
+          </div>
+        )}
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ${loadingInv ? 'opacity-50 pointer-events-none' : ''}`}>
         {powerUps.map((item) => (
           <PowerUpCard 
             key={item.id} 
@@ -71,3 +100,4 @@ export function ShopView({ participant, powerUps, inventory }: ShopViewProps) {
     </div>
   );
 }
+

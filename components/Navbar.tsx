@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, ShoppingCart, Trophy, MoreHorizontal, Activity } from "lucide-react";
+import { Home, Users, ShoppingCart, Trophy, MoreHorizontal, ShoppingBag } from "lucide-react";
 import { motion } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -16,12 +16,13 @@ function cn(...inputs: ClassValue[]) {
 
 const navItems = [
     { href: "/dashboard", label: "Inicio", icon: Home },
-    { href: "/team", label: "Equipo", icon: Users },
-    { href: "/stats", label: "Stats", icon: Activity },
-    { href: "/market", label: "Mercado", icon: ShoppingCart },
     { href: "/leagues", label: "Ligas", icon: Trophy },
+    { href: "/team", label: "Equipo", icon: Users },
+    { href: "/market", label: "Mercado", icon: ShoppingCart },
+    { href: "/shop", label: "Tienda", icon: ShoppingBag },
     { href: "/more", label: "Más", icon: MoreHorizontal },
 ];
+
 
 export default function Navbar() {
     const pathname = usePathname();

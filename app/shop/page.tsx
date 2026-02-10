@@ -11,7 +11,7 @@ export default async function ShopPage() {
   const session = await getSession();
   if (!session) return redirect("/login");
 
-  // Get active league context (assuming user has one for now or taking the first)
+  // Get active league context
   const leagues = await getUserLeagues(session.user.id);
   if (!leagues || leagues.length === 0) {
       return (
@@ -20,25 +20,16 @@ export default async function ShopPage() {
           </div>
       );
   }
-  const activeLeague = leagues[0]; // TODO: League selector context
+  const activeLeague = leagues[0];
   
   const powerUps = await getPowerUpTypes();
   const inventory = await getUserInventory(activeLeague.league_id, session.user.id);
   
-  // We need current points too
-  const supabase = await createClient();
-  const { data: participant } = await supabase
-    .from("league_participants")
-    .select("total_points")
-    .eq("league_id", activeLeague.league_id)
-    .eq("profile_id", session.user.id)
-    .single();
+  return <ShopView 
+    initialLeagues={leagues} 
+    userId={session.user.id}
+    powerUps={powerUps} 
+    initialInventory={inventory || []} 
+  />;
 
-  const participantData = {
-    league_id: activeLeague.league_id,
-    profile_id: session.user.id,
-    total_points: participant?.total_points || 0
-  };
-
-  return <ShopView participant={participantData} powerUps={powerUps} inventory={inventory || []} />;
 }
