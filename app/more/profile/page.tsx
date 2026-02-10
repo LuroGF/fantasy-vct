@@ -15,7 +15,16 @@ export default async function ProfilePage() {
     .single();
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-700 px-4 sm:px-6 py-4">
+    <div
+        className="
+  mx-auto
+  w-full
+  max-w-md sm:max-w-xl lg:max-w-4xl
+  px-4 sm:px-6
+  flex flex-col gap-8
+  animate-in fade-in slide-in-from-bottom-4 duration-700 py-6
+"
+      >
       <div className="flex items-center gap-2">
          <Link href="/more" className="text-v-white/20 hover:text-v-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>

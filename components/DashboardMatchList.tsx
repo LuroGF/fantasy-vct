@@ -82,9 +82,9 @@ export async function DashboardMatchList() {
                                         return d.includes(",") ? d.split(",")[1].trim() : d;
                                     })()}
                                 </span>
-                                <span className="text-[8px] font-black uppercase text-v-white/10 truncate max-w-[80px]">
+                                {/* <span className="text-[8px] font-black uppercase text-v-white/10 truncate max-w-[80px]">
                                     {match.event}
-                                </span>
+                                </span> */}
                             </div>
                             <div className="flex-1 text-sm font-black uppercase italic tracking-tighter text-right">
                                 {match.teams.split(" vs ")[1] ?? "TBD"}

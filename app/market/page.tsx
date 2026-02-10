@@ -26,36 +26,51 @@ export default async function MarketPage() {
   const leaguesRes = await getUserLeagues(session.user.id);
   const leagues = leaguesRes as any[];
   const activeLeagueItem = leagues[0];
-  const activeLeagueId = activeLeagueItem?.league_id || activeLeagueItem?.leagues?.id;
+  const activeLeagueId =
+    activeLeagueItem?.league_id || activeLeagueItem?.leagues?.id;
 
   if (!activeLeagueId) {
-      return (
-          <div className="flex flex-col items-center justify-center py-20 opacity-50 italic">
-              <p>Debes unirte a una liga para acceder al mercado.</p>
-          </div>
-      );
+    return (
+      <div className="flex flex-col items-center justify-center py-20 opacity-50 italic">
+        <p>Debes unirte a una liga para acceder al mercado.</p>
+      </div>
+    );
   }
 
   const [personalMarket, auctions, leagueRosters] = await Promise.all([
     getPersonalMarket(activeLeagueId, session.user.id),
     getActiveAuctions(activeLeagueId),
-    supabase.from('user_rosters').select('*, profiles(username)').eq('league_id', activeLeagueId)
+    supabase
+      .from("user_rosters")
+      .select("*, profiles(username)")
+      .eq("league_id", activeLeagueId),
   ]);
 
   return (
     <ClientRefreshWrapper>
-      <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+      <div
+        className="
+  mx-auto
+  w-full
+  max-w-md sm:max-w-xl lg:max-w-4xl
+  px-4 sm:px-6
+  flex flex-col gap-8
+  animate-in fade-in slide-in-from-bottom-4 duration-700 py-6
+"
+      >
         <div className="flex items-end justify-between">
           <div>
             <h1 className="text-4xl leading-none italic uppercase">Mercado</h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Operaciones VCT EMEA</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">
+              Operaciones VCT EMEA
+            </p>
           </div>
         </div>
 
-        <MarketView 
+        <MarketView
           personalMarket={personalMarket}
           auctions={auctions}
-          initialLeagues={leagues as any[]} 
+          initialLeagues={leagues as any[]}
           profileId={session.user.id}
           initialLeagueRosters={leagueRosters.data || []}
         />
@@ -63,4 +78,3 @@ export default async function MarketPage() {
     </ClientRefreshWrapper>
   );
 }
-

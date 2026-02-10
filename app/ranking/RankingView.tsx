@@ -39,7 +39,16 @@ export function RankingView({ standings, profileId, activeLeagueId }: { standing
     };
 
     return (
-        <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+        <div
+        className="
+  mx-auto
+  w-full
+  max-w-md sm:max-w-xl lg:max-w-4xl
+  px-4 sm:px-6
+  flex flex-col gap-8
+  animate-in fade-in slide-in-from-bottom-4 duration-700 py-6
+"
+      >
             {status && (
                 <div className={`p-4 rounded-none border-l-2 mb-4 font-black uppercase text-xs ${
                     status.type === 'success' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-v-red/10 border-v-red text-v-red'

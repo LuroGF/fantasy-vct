@@ -1,19 +1,21 @@
 
 export default function Loading() {
     return (
-        <div className="flex flex-col gap-6 animate-pulse p-4">
+        <div className="flex flex-col gap-8 animate-pulse p-4 mx-auto
+  w-full
+  max-w-md sm:max-w-xl lg:max-w-4xl">
             {/* Header Skeleton */}
-            <div className="flex items-center justify-between">
+            {/* <div className="flex items-center justify-between">
                 <div className="h-6 w-32 bg-v-white/5 rounded" />
                 <div className="h-6 w-20 bg-v-white/5 rounded" />
-            </div>
+            </div> */}
 
             {/* HUD Skeleton */}
-            <div className="grid grid-cols-3 gap-2 h-24">
+            {/* <div className="grid grid-cols-3 gap-2 h-24">
                 <div className="bg-v-white/5 rounded col-span-1" />
                 <div className="bg-v-white/5 rounded col-span-1" />
                 <div className="bg-v-white/5 rounded col-span-1" />
-            </div>
+            </div> */}
 
             {/* Stats Skeleton */}
             <div className="grid grid-cols-3 gap-2">

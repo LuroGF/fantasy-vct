@@ -61,8 +61,16 @@ export function ShopView({ initialLeagues, userId, powerUps, initialInventory }:
   };
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500 pb-20">
-      
+<div
+        className="
+  mx-auto
+  w-full
+  max-w-md sm:max-w-xl lg:max-w-4xl
+  px-4 sm:px-6
+  flex flex-col gap-8
+  animate-in fade-in slide-in-from-bottom-4 duration-700 py-6
+"
+      >      
       {/* League Selector */}
       <div className="v-panel p-4 space-y-2">
         <label className="text-[8px] font-black uppercase text-v-white/40 ml-1 tracking-[0.2em]">Tienda Operativa en:</label>
