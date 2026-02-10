@@ -17,7 +17,7 @@ export default async function NotificationsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+    <div className="flex flex-col gap-6 animate-in fade-in duration-700 px-4 sm:px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
             <Link href="/more" className="text-v-white/20 hover:text-v-white transition-colors">
@@ -54,7 +54,7 @@ export default async function NotificationsPage() {
 
       {notifications.length === 0 && (
         <div className="v-panel p-12 text-center opacity-40 italic border-dashed border-2 border-white/5">
-           <p className="text-sm">No tienes comunicaciones tácticas pendientes.</p>
+           <p className="text-sm">No tienes comunicaciones pendientes.</p>
         </div>
       )}
     </div>

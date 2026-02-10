@@ -23,12 +23,14 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex flex-col gap-10 py-12 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+    <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-xl flex flex-col gap-10 py-12 animate-in fade-in slide-in-from-bottom-6 duration-1000">
       {/* Header Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-8 bg-v-red" />
-          <h1 className="text-5xl italic tracking-tighter text-v-white uppercase">Reclutamiento</h1>
+          <h1 className="text-5xl italic tracking-tighter text-v-white uppercase">
+            Reclutamiento
+          </h1>
         </div>
         <p className="text-v-white/50 text-[10px] font-black uppercase tracking-[0.3em]">
           Nueva Identidad de Operativo VCF
@@ -39,7 +41,9 @@ export default function RegisterPage() {
       <div className="v-panel p-6 space-y-6">
         <form onSubmit={handleSubmit} className="grid gap-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">Alias de Agente</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
+              Alias de Agente
+            </label>
             <input
               name="username"
               type="text"
@@ -49,7 +53,9 @@ export default function RegisterPage() {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">Protocolo Email</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
+              Protocolo Email
+            </label>
             <input
               name="email"
               type="email"
@@ -59,7 +65,9 @@ export default function RegisterPage() {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">Código de Seguridad</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
+              Código de Seguridad
+            </label>
             <input
               name="password"
               type="password"
@@ -83,7 +91,19 @@ export default function RegisterPage() {
             <span className="flex items-center justify-center gap-2">
               {loading ? "PROCESANDO..." : "Finalizar Registro"}
               {!loading && (
-                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                <svg
+                  className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="3"
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
               )}
             </span>
           </button>
@@ -111,15 +131,18 @@ export default function RegisterPage() {
       {/* Footer Link */}
       <p className="text-center text-xs text-v-white/40 font-medium tracking-tight">
         ¿Ya tienes autorización de acceso?{" "}
-        <Link href="/login" className="text-v-red font-black uppercase hover:underline ml-1">
+        <Link
+          href="/login"
+          className="text-v-red font-black uppercase hover:underline ml-1"
+        >
           Inicia sesión
         </Link>
       </p>
 
       {/* Decorative HUD detail */}
       <div className="flex justify-center opacity-10">
-         <div className="w-4 h-2 bg-v-red/50 skew-x-[-20deg]" />
-         <div className="w-20 h-2 bg-v-red/50 skew-x-[-20deg] ml-2" />
+        <div className="w-4 h-2 bg-v-red/50 skew-x-[-20deg]" />
+        <div className="w-20 h-2 bg-v-red/50 skew-x-[-20deg] ml-2" />
       </div>
     </div>
   );

@@ -71,6 +71,7 @@ export default function LeaguesPage() {
 
   return (
     <ClientRefreshWrapper>
+
       <div className="flex flex-col gap-6 animate-in fade-in duration-700">
         <div className="flex items-end justify-between px-1 shrink-0">
           <div>
@@ -211,5 +212,6 @@ export default function LeaguesPage() {
         )}
       </div>
     </ClientRefreshWrapper>
+
   );
 }

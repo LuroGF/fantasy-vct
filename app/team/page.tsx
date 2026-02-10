@@ -39,6 +39,7 @@ export default async function TeamPage() {
             <h1 className="text-4xl leading-none italic uppercase">Mi Equipo</h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Escuadra Operativa</p>
           </div>
+
         </div>
 
         <TeamView 
