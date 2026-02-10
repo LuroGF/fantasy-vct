@@ -5,6 +5,7 @@ import { createLeague, joinLeague, getUserLeagues } from "@/lib/actions/leagues"
 import { getSession } from "@/lib/actions/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { haptic } from "@/lib/utils/haptics";
 import LeagueDetails from "@/components/LeagueDetails";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 
@@ -45,29 +46,44 @@ export default function LeaguesPage() {
 
   async function handleCreate() {
     if (!newLeagueName || !userId) return;
+    if (!confirm(`¿Confirmar creación de liga: ${newLeagueName}?`)) return;
+
+    haptic.medium();
     const res = await createLeague(newLeagueName, userId);
     if (res.success) {
+      haptic.success();
       setStatus({ type: "success", message: "¡Liga creada con éxito!" });
       setNewLeagueName("");
       setShowCreate(false);
       loadLeagues();
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+
+      haptic.error();
       setStatus({ type: "error", message: "Error al crear la liga" });
     }
   }
 
   async function handleJoin() {
     if (!inviteCode || !userId) return;
+    if (!confirm(`¿Unirse a liga con código: ${inviteCode}?`)) return;
+
+    haptic.medium();
     const res = await joinLeague(inviteCode, userId);
     if (res.success) {
+      haptic.success();
       setStatus({ type: "success", message: "¡Te has unido a la liga!" });
       setInviteCode("");
       setShowJoin(false);
       loadLeagues();
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+
+      haptic.error();
       setStatus({ type: "error", message: typeof res.error === 'string' ? res.error : "Error al unirse" });
     }
   }
+
 
   return (
     <ClientRefreshWrapper>

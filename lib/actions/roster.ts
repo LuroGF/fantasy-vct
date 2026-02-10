@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function setStarterStatus(leagueId: string, profileId: string, playerId: string, newSlot: 'starter' | 'substitute' | 'bench') {
+export async function setStarterStatus(leagueId: string, profileId: string, playerId: string, newSlot: 'starter' | 'substitute') {
   const supabase = await createClient();
   try {
     const { data: activeGw } = await supabase
@@ -16,46 +16,35 @@ export async function setStarterStatus(leagueId: string, profileId: string, play
       throw new Error("Alineación bloqueada durante la jornada.");
     }
 
-    // Check limits and role uniqueness
-    if (newSlot === 'starter') {
-        const { data: currentRoster, error: rosterError } = await supabase
-            .from("user_rosters")
-            .select("player_id, pro_players(role)")
-            .eq("league_id", leagueId)
-            .eq("profile_id", profileId)
-            .eq("slot_type", 'starter');
-        
-        if (rosterError) throw rosterError;
+    // Fetch current roster with roles
+    const { data: roster, error: rosterError } = await supabase
+        .from("user_rosters")
+        .select("player_id, slot_type, pro_players(role)")
+        .eq("league_id", leagueId)
+        .eq("profile_id", profileId);
+    
+    if (rosterError) throw rosterError;
 
-        if (currentRoster && currentRoster.length >= 5) {
-            throw new Error("Ya tienes 5 titulares. Sienta a alguien primero.");
-        }
+    // Get the player's role
+    const playerEntry = roster?.find(r => r.player_id === playerId);
+    if (!playerEntry) throw new Error("Jugador no encontrado en tu plantilla.");
+    
+    const playerRole = (playerEntry.pro_players as any).role;
 
-        // Fetch the role of the player being promoted
-        const { data: player, error: playerError } = await supabase
-            .from("pro_players")
-            .select("role")
-            .eq("id", playerId)
-            .single();
+    // Count roles in target slot (excluding the player being moved)
+    const targetSlotRoles = new Set(
+        roster?.filter(r => r.slot_type === newSlot && r.player_id !== playerId)
+               .map(r => (r.pro_players as any).role) || []
+    );
 
-        if (playerError) throw playerError;
+    // Check limits
+    if (targetSlotRoles.size >= 5) {
+        throw new Error(`Máximo 5 ${newSlot === 'starter' ? 'titulares' : 'suplentes'}.`);
+    }
 
-        const roleTaken = currentRoster?.some(r => (r.pro_players as any).role === player.role);
-        if (roleTaken) {
-            throw new Error(`Ya tienes un ${player.role} en tus titulares. Debes tener uno de cada rol (incluyendo Flex).`);
-        }
-    } else if (newSlot === 'substitute') {
-
-        const { count } = await supabase
-            .from("user_rosters")
-            .select("player_id", { count: 'exact', head: true })
-            .eq("league_id", leagueId)
-            .eq("profile_id", profileId)
-            .eq("slot_type", 'substitute');
-        
-        if (count !== null && count >= 4) {
-            throw new Error("Ya tienes 4 suplentes permitidos.");
-        }
+    // Check role constraint: max 1 per role per slot
+    if (targetSlotRoles.has(playerRole)) {
+        throw new Error(`Ya tienes un ${playerRole} en ${newSlot === 'starter' ? 'titulares' : 'suplentes'}. Máximo 1 por rol por slot.`);
     }
 
     const { error } = await supabase

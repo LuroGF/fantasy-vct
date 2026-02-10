@@ -53,7 +53,6 @@ export default function TeamView({
   // Grouping by slot type
   const starters = useMemo(() => roster.filter(r => r.slot_type === 'starter'), [roster]);
   const substitutes = useMemo(() => roster.filter(r => r.slot_type === 'substitute'), [roster]);
-  const bench = useMemo(() => roster.filter(r => r.slot_type === 'bench'), [roster]);
 
   const isLocked = (playerId: string) => {
     return activePowerUps.some(ap => ap.target_player_id === playerId && ap.powerup_types?.code === 'LOCK');
@@ -64,6 +63,8 @@ export default function TeamView({
   };
 
   async function handleActivate(powerUpTypeId: string, targetPlayerId?: string) {
+    if (!window.confirm("¿Confirmar activación de carta de poder?")) return;
+
     haptic.medium();
     setLoading(true);
     const { activatePowerUp } = await import("@/lib/actions/inventory");
@@ -72,8 +73,10 @@ export default function TeamView({
     if (res.success) {
       haptic.success();
       setStatus({ type: "success", message: res.message || "Carta activada" });
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       window.location.reload(); 
     } else {
+
       haptic.error();
       setStatus({ type: "error", message: res.error as string });
     }
@@ -81,9 +84,26 @@ export default function TeamView({
     setLoading(false);
   }
 
-  async function handleSlotChange(player_id: string, nickname: string, newSlot: 'starter' | 'substitute' | 'bench') {
+  async function handleSlotChange(player_id: string, nickname: string, newSlot: 'starter' | 'substitute') {
+    const action = newSlot === 'starter' ? 'Ascender a Titular' : 'Mover a Suplentes';
+    if (!window.confirm(`¿${action} a ${nickname}?`)) return;
+
     haptic.medium();
     setLoading(true);
+    // Check limits
+    if (newSlot === 'starter' && starters.length >= 5) {
+        setStatus({ type: "error", message: "Máximo 5 titulares." });
+        setLoading(false);
+        return;
+    }
+    if (newSlot === 'substitute' && substitutes.length >= 5) {
+        setStatus({ type: "error", message: "Máximo 5 suplentes." });
+        setLoading(false);
+        return;
+    }
+
+    const { setStarterStatus } = await import("@/lib/actions/roster");
+
     const res = await setStarterStatus(activeLeagueId, profileId, player_id, newSlot);
     
     if (res.success) {
@@ -93,9 +113,11 @@ export default function TeamView({
       ));
       setStatus({ 
         type: "success", 
-        message: `${nickname} movido a ${newSlot === 'starter' ? 'Titulares' : newSlot === 'substitute' ? 'Suplentes' : 'Banquillo'}` 
+        message: `${nickname} movido a ${newSlot === 'starter' ? 'Titulares' : 'Suplentes'}` 
       });
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+
       haptic.error();
       setStatus({ type: "error", message: res.error as string });
     }
@@ -122,7 +144,9 @@ export default function TeamView({
         } : l
       ));
       setStatus({ type: "success", message: `${player.nickname} ha dejado la escuadra.` });
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+
       haptic.error();
       setStatus({ type: "error", message: res.error as string });
     }
@@ -154,7 +178,7 @@ export default function TeamView({
             </div>
             <div className="bg-v-navy/30 p-2 border-l-2 border-v-white/20">
                <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">Agentes Totales</p>
-               <p className="text-sm font-black italic">{roster.length} / 15</p>
+               <p className="text-sm font-black italic">{roster.length} / 10</p>
             </div>
           </div>
         )}
@@ -196,9 +220,9 @@ export default function TeamView({
         </div>
       </div>
 
-      {/* Suplentes (4) */}
+      {/* Suplentes (5) */}
       <div className="space-y-4 pt-4 border-t border-white/5">
-        <h2 className="text-2xl italic tracking-tighter uppercase px-1 text-v-white/70">Suplentes Próx. Jornada <span className="text-sm font-black text-v-red ml-2">{substitutes.length}/4</span></h2>
+        <h2 className="text-2xl italic tracking-tighter uppercase px-1 text-v-white/70">Suplentes Próx. Jornada <span className="text-sm font-black text-v-red ml-2">{substitutes.length}/5</span></h2>
         <div className="grid gap-3">
           {substitutes.map((r) => (
             <div key={r.player_id} className="border-l-4 border-v-white/50 pl-2">
@@ -206,46 +230,24 @@ export default function TeamView({
                   player={{...r.pro_players, releaseClause: r.release_clause}} 
                   onAction={selectedPowerUp ? () => handleActivate(selectedPowerUp.powerup_types.id, r.player_id) : () => handleSlotChange(r.player_id, r.pro_players.nickname, 'starter')}
                   actionLabel={selectedPowerUp ? `Aplicar ${selectedPowerUp.powerup_types.icon}` : "Ascender a Titular"}
-                  onSecondAction={() => handleSlotChange(r.player_id, r.pro_players.nickname, 'bench')}
-                  secondActionLabel="A Banquillo"
+                  onSecondAction={() => handleSell(r.pro_players)}
+                  secondActionLabel="Vender"
+                  secondActionClassName="text-v-red hover:bg-v-red/10"
                   isLocked={isLocked(r.player_id)}
                 />
             </div>
           ))}
-          {substitutes.length < 4 && Array.from({ length: 4 - substitutes.length }).map((_, i) => (
+          {substitutes.length < 5 && Array.from({ length: 5 - substitutes.length }).map((_, i) => (
             <div key={`empty-sub-${i}`} className="v-panel border-dashed border-v-white/10 h-24 flex items-center justify-center opacity-20">
                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Espacio Suplente</p>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Banquillo (Resto) */}
-      <div className="space-y-4 pt-4 border-t border-white/5">
-        <h2 className="text-2xl italic tracking-tighter uppercase px-1 opacity-40">Banquillo General</h2>
-        <div className="grid gap-4">
-          {bench.map((r) => (
-            <div key={r.player_id} className="opacity-70 contrast-75 hover:opacity-100 transition-all border-l-4 border-white/20 pl-2">
-                <PlayerCard 
-                  player={{...r.pro_players, releaseClause: r.release_clause}} 
-                  onAction={() => handleSlotChange(r.player_id, r.pro_players.nickname, 'substitute')}
-                  actionLabel="A Suplentes"
-                  onSecondAction={() => handleSell(r.pro_players)}
-                  secondActionLabel="Vender"
-                  secondActionClassName="text-v-red hover:bg-v-red/10"
-                />
-            </div>
-          ))}
-          {bench.length === 0 && (
-             <div className="v-panel border-white/5 py-4 text-center opacity-30 text-[10px] uppercase font-black tracking-widest">
-               Banquillo Vacío
-             </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
+
 
 
 

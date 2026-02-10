@@ -156,7 +156,7 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     // 1. Get player data
     const { data: playerData, error: plError } = await supabase
         .from('pro_players')
-        .select('market_value')
+        .select('market_value, role')
         .eq('id', playerId)
         .single();
     
@@ -198,15 +198,15 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     if (myOwner) throw new Error("Ya tienes a este agente en tu escuadra.");
 
 
-    // 5. Total Capacity Check (Max 15 players total)
+    // 5. Total Capacity Check (Max 10 players total)
     const { count: totalCount } = await supabase
       .from("user_rosters")
       .select("id", { count: 'exact', head: true })
       .eq("league_id", leagueId)
       .eq("profile_id", profileId);
     
-    if (totalCount !== null && totalCount >= 15) {
-        throw new Error("Capacidad máxima de escuadra alcanzada (15 agentes).");
+    if (totalCount !== null && totalCount >= 10) {
+        throw new Error("Capacidad máxima alcanzada (10 agentes).");
     }
 
     // 6. Transaction record
@@ -218,19 +218,32 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
         price: price
     });
 
-    // 7. Auto-assign slot
-    const { data: slots } = await supabase
+    // 7. Auto-assign slot with Role Logic
+    const { data: roster } = await supabase
       .from("user_rosters")
-      .select("slot_type")
+      .select("slot_type, pro_players(role)")
       .eq("league_id", leagueId)
       .eq("profile_id", profileId);
     
-    const startersCount = slots?.filter(s => s.slot_type === 'starter').length || 0;
-    const subsCount = slots?.filter(s => s.slot_type === 'substitute').length || 0;
+    // Count roles per slot
+    const starterRoles = new Set(roster?.filter(r => r.slot_type === 'starter').map(r => (r.pro_players as any).role) || []);
+    const subRoles = new Set(roster?.filter(r => r.slot_type === 'substitute').map(r => (r.pro_players as any).role) || []);
+    
+    const startersCount = starterRoles.size;
+    const subsCount = subRoles.size;
+    
+    const newPlayerRole = playerData.role;
 
-    let targetSlot: 'starter' | 'substitute' | 'bench' = 'bench';
-    if (startersCount < 5) targetSlot = 'starter';
-    else if (subsCount < 4) targetSlot = 'substitute';
+    let targetSlot: 'starter' | 'substitute';
+    
+    // Simple logic: 1 role per slot max
+    if (startersCount < 5 && !starterRoles.has(newPlayerRole)) {
+        targetSlot = 'starter';
+    } else if (subsCount < 5 && !subRoles.has(newPlayerRole)) {
+        targetSlot = 'substitute';
+    } else {
+        throw new Error(`Ya tienes un ${newPlayerRole} en titulares y suplentes. Máximo 2 por rol (1 titular + 1 suplente).`);
+    }
 
     // 8. Add to Roster
     const { error: rError } = await supabase
@@ -368,6 +381,10 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
     
     if (!buyer || Number(buyer.current_budget) < Number(clausePrice)) throw new Error("Presupuesto insuficiente para rescisión.");
 
+    // Check Capacity
+    const { count: totalCount } = await supabase.from("user_rosters").select("id", { count: 'exact', head: true }).eq("league_id", leagueId).eq("profile_id", buyerProfileId);
+    if (totalCount !== null && totalCount >= 10) throw new Error("Plantilla completa (10 jugadores). Vende antes de clausular.");
+
     // Execution
     await supabase.from("league_participants")
         .update({ current_budget: Number(buyer.current_budget) - Number(clausePrice) })
@@ -384,12 +401,25 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
 
     await supabase.from("user_rosters").delete().eq("league_id", leagueId).eq("player_id", playerId).eq("profile_id", ownerId);
     
-    const { data: slots } = await supabase.from("user_rosters").select("slot_type").eq("league_id", leagueId).eq("profile_id", buyerProfileId);
-    const startersCount = slots?.filter(s => s.slot_type === 'starter').length || 0;
-    const subsCount = slots?.filter(s => s.slot_type === 'substitute').length || 0;
-    let targetSlot: 'starter' | 'substitute' | 'bench' = 'bench';
-    if (startersCount < 5) targetSlot = 'starter';
-    else if (subsCount < 4) targetSlot = 'substitute';
+    // Auto-assign slot with simple role logic
+    const { data: roster } = await supabase.from("user_rosters").select("slot_type, pro_players(role)").eq("league_id", leagueId).eq("profile_id", buyerProfileId);
+    
+    const starterRoles = new Set(roster?.filter(r => r.slot_type === 'starter').map(r => (r.pro_players as any).role) || []);
+    const subRoles = new Set(roster?.filter(r => r.slot_type === 'substitute').map(r => (r.pro_players as any).role) || []);
+    
+    const startersCount = starterRoles.size;
+    const subsCount = subRoles.size;
+    const newPlayerRole = (rosterEntry.pro_players as any).role;
+
+    let targetSlot: 'starter' | 'substitute';
+
+    if (startersCount < 5 && !starterRoles.has(newPlayerRole)) {
+        targetSlot = 'starter';
+    } else if (subsCount < 5 && !subRoles.has(newPlayerRole)) {
+        targetSlot = 'substitute';
+    } else {
+        throw new Error(`Ya tienes un ${newPlayerRole} en ambos slots. Máximo 2 por rol (1 titular + 1 suplente).`);
+    }
 
     await supabase.from("user_rosters").insert({
         league_id: leagueId,

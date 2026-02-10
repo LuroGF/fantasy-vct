@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import PWAInstaller from "@/components/PWAInstaller";
 import PushManager from "@/components/PushManager";
 import TopBar from "@/components/TopBar";
+import { ScrollToTopButton } from "@/components/ScrollToTopButton";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -73,6 +74,7 @@ export default function RootLayout({
           </div>
 
           <Navbar />
+          <ScrollToTopButton />
 
           {/* Corner accents */}
           <div className="pointer-events-none absolute inset-0 z-0">

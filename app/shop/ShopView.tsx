@@ -4,6 +4,8 @@ import { useState, useTransition, useEffect, useMemo } from "react";
 import { PowerUpCard } from "@/components/PowerUpCard";
 import { buyPowerUp, getUserInventory } from "@/lib/actions/inventory";
 
+import { haptic } from "@/lib/utils/haptics";
+
 interface ShopViewProps {
   initialLeagues: any[];
   userId: string;
@@ -16,6 +18,7 @@ export function ShopView({ initialLeagues, userId, powerUps, initialInventory }:
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagues[0]?.league_id || initialLeagues[0]?.leagues?.id);
   const [inventory, setInventory] = useState(initialInventory);
   const [loadingInv, setLoadingInv] = useState(false);
+  const [status, setStatus] = useState({ type: "", message: "" });
 
   // Derive active participation to get points and league name
   const activeParticipation = useMemo(() => 
@@ -34,15 +37,20 @@ export function ShopView({ initialLeagues, userId, powerUps, initialInventory }:
   }, [activeLeagueId, userId]);
 
   const handleBuy = (powerUpCode: string) => {
-    if (!confirm(`¿Comprar ${powerUpCode}?`)) return;
+    if (!confirm(`¿Confirmar compra del Power-Up ${powerUpCode}?`)) return;
 
+    haptic.medium();
     startTransition(async () => {
        const res = await buyPowerUp(activeLeagueId, userId, powerUpCode);
        if (res.success) {
-         alert(res.message);
-         window.location.reload();
+         haptic.success();
+         setStatus({ type: "success", message: res.message || "Compra realizada" });
+         document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+         setTimeout(() => window.location.reload(), 1500);
        } else {
-         alert("Error: " + res.error);
+
+         haptic.error();
+         setStatus({ type: "error", message: res.error as string });
        }
     });
   };
@@ -79,9 +87,20 @@ export function ShopView({ initialLeagues, userId, powerUps, initialInventory }:
         )}
       </div>
 
+      {status.message && (
+        <div className={`v-panel p-3 text-[10px] font-black uppercase text-center tracking-widest animate-in slide-in-from-top-2 duration-300 ${
+          status.type === 'error' ? 'border-v-red text-v-red' : 
+          status.type === 'success' ? 'border-green-500 text-green-500' :
+          'border-v-white/20 text-v-white/50'
+        }`}>
+           {">>>"} {status.message}
+        </div>
+      )}
+
       {/* Grid */}
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ${loadingInv ? 'opacity-50 pointer-events-none' : ''}`}>
         {powerUps.map((item) => (
+
           <PowerUpCard 
             key={item.id} 
             item={item} 

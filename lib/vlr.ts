@@ -93,7 +93,7 @@ function parseVlrDate(vlrDate: string, vlrTime: string): { date: Date, raw: bool
   }
 }
 
-export async function fetchVlrMatches(): Promise<VlrPayload> {
+export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayload> {
   const fetchPage = async (url: string) => {
     const response = await fetch(url, {
       headers: {
@@ -106,12 +106,21 @@ export async function fetchVlrMatches(): Promise<VlrPayload> {
     return response.text();
   };
 
-  const [page1, page2, page3, resultsHtml] = await Promise.all([
-    fetchPage(VLR_MATCHES_URL),
-    fetchPage(`${VLR_MATCHES_URL}/?page=2`),
-    fetchPage(`${VLR_MATCHES_URL}/?page=3`),
-    fetchPage("https://www.vlr.gg/matches/results")
-  ]);
+  const promises = [fetchPage(VLR_MATCHES_URL)];
+  if (limitPages >= 2) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=2`));
+  if (limitPages >= 3) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=3`));
+  
+  // Always fetch results if we are fetching more than 1 page (likely schedule page), otherwise skip for dashboard speed
+  if (limitPages > 1) {
+      promises.push(fetchPage("https://www.vlr.gg/matches/results"));
+  }
+
+  const responses = await Promise.all(promises);
+  const page1 = responses[0];
+  const page2 = limitPages >= 2 ? responses[1] : null;
+  const page3 = limitPages >= 3 ? responses[2] : null;
+  // Results is the last one if added
+  const resultsHtml = limitPages > 1 ? responses[responses.length - 1] : null;
 
   if (!page1) throw new Error("VLR page 1 fetch failed");
   

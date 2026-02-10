@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LiveHUD } from "@/components/LiveHUD";
 import { Challenges } from "@/components/Challenges";
-import { getUserLeagues, getGlobalRank } from "@/lib/actions/leagues";
+import { getUserLeagues } from "@/lib/actions/leagues";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 import BonusManager from "@/components/BonusManager";
 import { DashboardMatchList, DashboardMatchListSkeleton } from "@/components/DashboardMatchList";
@@ -63,8 +63,11 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const userLeagues = user ? await getUserLeagues(user.id) : [];
-  const globalRank = user ? await getGlobalRank(user.id) : 0;
+  let userLeagues: any[] = [];
+
+  if (user) {
+    userLeagues = await getUserLeagues(user.id);
+  }
   const userStats = userLeagues[0] || { total_points: 0 };
   const currentPoints = userStats?.total_points || 0;
 
@@ -93,9 +96,10 @@ export default async function DashboardPage() {
       {/* Live HUD Component */}
       <LiveHUD 
         currentPoints={currentPoints} 
-        rank={globalRank} 
+        activeLeagues={userLeagues.length} 
         activeMatches={activeMatches} 
       />
+
 
       {/* Real-time DB Stats (Suspended) */}
       <Suspense fallback={<StatsSkeleton />}>

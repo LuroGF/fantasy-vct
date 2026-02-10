@@ -35,49 +35,69 @@ export async function getGlobalRank(userId: string) {
 }
 
 async function assignInitialRoster(supabase: any, leagueId: string, profileId: string) {
-    // 1. Get 1 random player of each role
-    const roles = ['Duelista', 'Iniciador', 'Controlador', 'Centinela', 'Flex'];
-    const initialPlayers = [];
+    const targetRoles = ['Duelista', 'Iniciador', 'Controlador', 'Centinela', 'Flex'];
+    const selectedPlayers: any[] = [];
+    const playerIds = new Set<string>();
 
-    for (const role of roles) {
-        const { data: player } = await supabase
-            .from('pro_players')
-            .select('id, market_value')
-            .eq('role', role)
-            .limit(10); // Get a pool
+    for (const role of targetRoles) {
+        let p: any = null;
         
-        if (player && player.length > 0) {
-            const randomPlayer = player[Math.floor(Math.random() * player.length)];
-            initialPlayers.push(randomPlayer);
+        // Try to fetch by role first
+        if (role !== 'Flex') {
+            const { data: players } = await supabase
+                .from('pro_players')
+                .select('id, market_value')
+                .eq('role', role)
+                .limit(20); 
+            
+            if (players && players.length > 0) {
+                 // Filter out already selected
+                 const available = players.filter((pl: any) => !playerIds.has(pl.id));
+                 if (available.length > 0) {
+                     p = available[Math.floor(Math.random() * available.length)];
+                 }
+            }
+        }
+
+        // Fallback: If Flex, or specific role not found/exhausted, pick ANY random player
+        if (!p) {
+             const { data: randomPool } = await supabase
+                .from('pro_players')
+                .select('id, market_value')
+                .limit(50);
+            
+             if (randomPool) {
+                 const available = randomPool.filter((pl: any) => !playerIds.has(pl.id));
+                 if (available.length > 0) {
+                     p = available[Math.floor(Math.random() * available.length)];
+                 }
+             }
+        }
+
+        if (p) {
+            selectedPlayers.push(p);
+            playerIds.add(p.id);
         }
     }
 
-    if (initialPlayers.length === 0) return;
+    if (selectedPlayers.length === 0) return;
 
-    // 2. Insert into roster
-    const inserts = initialPlayers.map((p, i) => ({
-        league_id: leagueId,
-        profile_id: profileId,
-        player_id: p.id,
-        acquisition_price: 0, // Free starter team
-        slot_type: i === 0 ? 'starter' : (i < 5 ? 'starter' : 'substitute'), // Distribute
-        is_starter: i < 5, 
-        release_clause: Math.floor(p.market_value * 1.5)
-    }));
-
-    // For simplicity, let's just make the first 5 starters (1 of each role)
-    const balancedInserts = initialPlayers.slice(0, 5).map((p) => ({
+    // Insert ONLY 5 players as starters. Substitutes start empty.
+    const inserts = selectedPlayers.map((p) => ({
         league_id: leagueId,
         profile_id: profileId,
         player_id: p.id,
         acquisition_price: 0,
         slot_type: 'starter',
         is_starter: true,
+        is_active: true,
         release_clause: Math.floor(p.market_value * 1.5)
     }));
 
-    await supabase.from('user_rosters').insert(balancedInserts);
+    await supabase.from('user_rosters').insert(inserts);
 }
+
+
 
 export async function createLeague(name: string, userId: string) {
   const supabase = await createClient();

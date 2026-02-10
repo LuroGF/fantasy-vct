@@ -36,13 +36,21 @@ export default function MarketView({
 
   useEffect(() => {
     async function fetchPlayers() {
+        if (activeTab !== 'general' || allPlayers.length > 0) return;
+        
         const { createClient } = await import("@/utils/supabase/client");
         const supabase = createClient();
-        const { data } = await supabase.from('pro_players').select('*, pro_teams(tag, name)');
+        // Select only necessary fields for optimization
+        const { data } = await supabase
+            .from('pro_players')
+            .select('id, nickname, role, market_value, image_url, pro_teams(tag, name)');
+            
         if (data) setAllPlayers(data);
     }
     fetchPlayers();
-  }, []);
+  }, [activeTab, allPlayers.length]);
+
+
 
   const handleAction = async (actionFn: () => Promise<any>) => {
     haptic.medium();
@@ -52,6 +60,8 @@ export default function MarketView({
       if (res.success) {
         haptic.success();
         setStatus({ type: "success", message: res.message || "Operación completada" });
+        // Scroll to top to see message
+        document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
         setTimeout(() => window.location.reload(), 1500);
       } else {
         haptic.error();
@@ -178,7 +188,11 @@ export default function MarketView({
                 <PlayerCard 
                   key={offer.id}
                   player={offer.player}
-                  onAction={() => handleAction(() => buyFromPersonalMarket(activeLeagueId, profileId, offer.player_id, offer.id))}
+                  onAction={() => {
+                      if (window.confirm(`¿Confirmar fichaje de ${offer.player.nickname} por $${(offer.offer_price / 1000000).toFixed(1)}M?`)) {
+                          handleAction(() => buyFromPersonalMarket(activeLeagueId, profileId, offer.player_id, offer.id));
+                      }
+                  }}
                   actionLabel={offer.is_purchased ? "Adquirido" : `Fichar $${(offer.offer_price / 1000000).toFixed(1)}M`}
                   actionDisabled={offer.is_purchased}
                 />
@@ -212,12 +226,17 @@ export default function MarketView({
                     <button 
                       onClick={() => {
                         const amount = window.prompt("Introduce tu puja (mayor que puja actual):", (auction.current_bid + 500000).toString());
-                        if (amount) handleAction(() => placeBid(auction.id, profileId, parseInt(amount)));
+                        if (amount) {
+                            if (window.confirm(`¿Confirmar puja de $${(parseInt(amount) / 1000000).toFixed(1)}M por ${auction.pro_players.nickname}?`)) {
+                                handleAction(() => placeBid(auction.id, profileId, parseInt(amount)));
+                            }
+                        }
                       }}
                       className="w-full bg-v-white text-v-navy text-[10px] font-black uppercase py-2 hover:bg-v-red hover:text-v-white transition-all italic"
                     >
                       Pujar Ahora
                     </button>
+
                   </div>
                 ))}
                 {auctions.length === 0 && (

@@ -3,7 +3,8 @@ import Link from "next/link";
 
 export async function DashboardMatchList() {
     // This fetch might take time, so we stream it
-    const data = await fetchVlrMatches();
+    // Fetch only 1 page for dashboard speed
+    const data = await fetchVlrMatches(1);
     const matches = data?.upcomingMatches || [];
 
     const now = new Date();
