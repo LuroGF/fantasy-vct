@@ -12,50 +12,52 @@ export async function setStarterStatus(leagueId: string, profileId: string, play
       .eq('is_active', true)
       .single();
 
+    // 1. Real-time Lock Check (Match Day protection)
+    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+    const lockStatus = await getMarketLockStatus(supabase);
+
     // Fetch current player to check current slot
-    const { data: currentPlayer } = await supabase
+    const { data: currentPlayerEntry } = await supabase
       .from("user_rosters")
-      .select("slot_type")
+      .select("slot_type, pro_players(role)")
       .eq("league_id", leagueId)
       .eq("profile_id", profileId)
       .eq("player_id", playerId)
       .single();
 
-    if (activeGw?.is_locked) {
-      if (currentPlayer?.slot_type === 'starter' || newSlot === 'starter') {
-        throw new Error("Alineación titular blindada durante la jornada. Solo puedes operar con suplentes.");
+    if (lockStatus.locked) {
+      if (currentPlayerEntry?.slot_type === 'starter' || newSlot === 'starter') {
+        throw new Error(`Mercado bloqueado: ${lockStatus.reason}. Solo puedes operar con suplentes.`);
       }
     }
 
-    // Fetch current roster with roles
-    const { data: roster, error: rosterError } = await supabase
+    // 2. Fetch current roster with roles for validation
+    const { data: roster, error: rosterError } = await (supabase
         .from("user_rosters")
         .select("player_id, slot_type, pro_players(role)")
         .eq("league_id", leagueId)
-        .eq("profile_id", profileId);
+        .eq("profile_id", profileId) as any);
     
     if (rosterError) throw rosterError;
 
     // Get the player's role
-    const playerEntry = roster?.find(r => r.player_id === playerId);
+    const playerEntry = roster?.find((r: any) => r.player_id === playerId);
     if (!playerEntry) throw new Error("Jugador no encontrado en tu plantilla.");
     
-    const playerRole = (playerEntry.pro_players as any).role;
+    const playerRole = (playerEntry.pro_players as any)?.role;
     const currentSlot = playerEntry.slot_type;
 
-    // If moving to same slot, do nothing
-    if (currentSlot === newSlot) {
-      return { success: true };
-    }
+    if (currentSlot === newSlot) return { success: true };
 
-    // Count roles in target slot (excluding the player being moved)
-    const targetSlotPlayers = roster?.filter(r => r.slot_type === newSlot && r.player_id !== playerId) || [];
-    
-    // Check if there's a player with same role in target slot
-    const conflictingPlayer = targetSlotPlayers.find(r => (r.pro_players as any).role === playerRole);
+    // 3. ENFORCE ROLE UNIQUENESS PER SLOT
+    // Find if there's ALREADY a player with the same role in the target slot
+    const targetSlotPlayers = roster?.filter((r: any) => r.slot_type === newSlot && r.player_id !== playerId) || [];
+    const conflictingPlayer = targetSlotPlayers.find((r: any) => 
+        (r.pro_players as any)?.role?.trim().toUpperCase() === playerRole?.trim().toUpperCase()
+    );
 
     if (conflictingPlayer) {
-      // SWAP: Move conflicting player to current slot
+      // SWAP: Move the existing player of that role to the slot we are leaving
       const { error: swapError } = await supabase
         .from("user_rosters")
         .update({ 
@@ -68,13 +70,13 @@ export async function setStarterStatus(leagueId: string, profileId: string, play
 
       if (swapError) throw swapError;
     } else {
-      // Check slot limit
+      // If no conflict, just check capacity
       if (targetSlotPlayers.length >= 5) {
-        throw new Error(`Máximo 5 ${newSlot === 'starter' ? 'titulares' : 'suplentes'}.`);
+        throw new Error(`Ya tienes 5 ${newSlot === 'starter' ? 'titulares' : 'suplentes'}. Debes mover a alguien al banquillo primero.`);
       }
     }
 
-    // Move the player
+    // 4. Move the player
     const { error } = await supabase
       .from("user_rosters")
       .update({ 

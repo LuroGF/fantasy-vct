@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { PlayerCard } from "@/components/PlayerCard";
+import { useRouter } from "next/navigation";
+import { haptic} from "@/lib/utils/haptics";
 import { buyPlayer, buyFromPersonalMarket, payClause, placeBid, createAuction } from "@/lib/actions/market";
-import { haptic } from "@/lib/utils/haptics";
+import { PlayerCard } from "@/components/PlayerCard";
+import { useState, useMemo, useEffect } from "react";
 
 interface MarketViewProps {
   personalMarket: any[];
@@ -24,6 +25,7 @@ export default function MarketView({
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [status, setStatus] = useState({ type: "", message: "" });
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [personalMarket, setPersonalMarket] = useState(initialPersonalMarket);
@@ -92,14 +94,14 @@ export default function MarketView({
   const handleAction = async (actionFn: () => Promise<any>) => {
     haptic.medium();
     setLoading(true);
+    setStatus({ type: "", message: "" }); // Clear status before new action
     try {
       const res = await actionFn();
       if (res.success) {
         haptic.success();
-        setStatus({ type: "success", message: res.message || "Operación completada" });
-        // Scroll to top to see message
-        document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(() => window.location.reload(), 1500);
+        setStatus({ type: "success", message: res.message || "Operación completada con éxito" }); // Updated message
+        router.refresh(); // Refresh Server Components
+        // Removed setTimeout(() => window.location.reload(), 1500); for smoother updates
       } else {
         haptic.error();
         setStatus({ type: "error", message: res.error || "Error en la operación" });

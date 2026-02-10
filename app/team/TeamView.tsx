@@ -5,6 +5,7 @@ import { PlayerCard } from "@/components/PlayerCard";
 import { setStarterStatus, getUserFullRoster } from "@/lib/actions/roster";
 import Link from "next/link";
 import { haptic } from "@/lib/utils/haptics";
+import { useRouter } from "next/navigation";
 
 interface TeamViewProps {
   initialRoster: any[];
@@ -28,6 +29,7 @@ export default function TeamView({
   const [roster, setRoster] = useState(initialRoster);
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagues[0]?.leagues.id || "");
   const [leagues, setLeagues] = useState(initialLeagues);
+  const router = useRouter();
   const [inventory, setInventory] = useState(initialInventory);
   const [activePowerUps, setActivePowerUps] = useState(initialActivePowerUps);
   const [status, setStatus] = useState({ type: "", message: "" });
@@ -139,6 +141,7 @@ export default function TeamView({
           setRoster(prev => prev.map(r => 
             r.player_id === player_id ? { ...r, slot_type: newSlot, is_starter: newSlot === 'starter' } : r
           ));
+          router.refresh(); // Sync potential swaps
           setStatus({ 
             type: "success", 
             message: `${nickname} movido a ${newSlot === 'starter' ? 'Titulares' : 'Suplentes'}` 

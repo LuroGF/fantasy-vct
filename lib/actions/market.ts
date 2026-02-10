@@ -75,16 +75,24 @@ export async function getActiveAuctions(leagueId: string) {
 export async function createAuction(leagueId: string, profileId: string, playerId: string, startingPrice: number) {
   const supabase = await createClient();
   try {
-    // Check if player is owned by user
+    // 1. Lock Check: Starters cannot be auctioned if locked
+    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+    const lockStatus = await getMarketLockStatus(supabase);
+    
+    // Check if player is owner and get slot_type
     const { data: roster, error: rError } = await supabase
       .from('user_rosters')
-      .select('id')
+      .select('id, slot_type')
       .eq('league_id', leagueId)
       .eq('profile_id', profileId)
       .eq('player_id', playerId)
       .single();
     
     if (rError || !roster) throw new Error("No posees a este jugador.");
+
+    if (lockStatus.locked && roster.slot_type === 'starter') {
+      throw new Error(`Blindaje operacional: Los titulares no pueden ponerse a la venta durante la jornada (${lockStatus.reason}).`);
+    }
 
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // 24h auction
@@ -134,23 +142,52 @@ export async function placeBid(auctionId: string, profileId: string, bidAmount: 
     
     if (!participant || participant.current_budget < bidAmount) throw new Error("Presupuesto insuficiente.");
 
-    // Check capacity and roles for the bidder
-    const { data: roster } = await supabase
+    // 4. ROLE CAPACITY CHECK
+    const { data: roster } = await (supabase
       .from("user_rosters")
       .select("slot_type, pro_players(role)")
       .eq("league_id", auction.league_id)
-      .eq("profile_id", profileId);
+      .eq("profile_id", profileId) as any);
     
     if (roster && roster.length >= 10) throw new Error("No tienes espacio en tu escuadra para más contratos.");
     
     const { data: auctionPlayer } = await supabase.from('pro_players').select('role').eq('id', auction.player_id).single();
-    const playerRole = auctionPlayer?.role;
+    const playerRole = (auctionPlayer?.role || "").trim().toUpperCase();
     
-    const starterRolesCount = roster?.filter(r => r.slot_type === 'starter' && (r.pro_players as any).role === playerRole).length || 0;
-    const subRolesCount = roster?.filter(r => r.slot_type === 'substitute' && (r.pro_players as any).role === playerRole).length || 0;
+    const starterRolesCount = roster?.filter((r: any) => (r.pro_players as any).role.trim().toUpperCase() === playerRole && r.slot_type === 'starter').length || 0;
+    const subRolesCount = roster?.filter((r: any) => (r.pro_players as any).role.trim().toUpperCase() === playerRole && r.slot_type === 'substitute').length || 0;
     
     if (starterRolesCount >= 1 && subRolesCount >= 1) {
-        throw new Error(`Ya tienes el cupo máximo de ${playerRole}s (1 titular + 1 suplente).`);
+        throw new Error(`Cupo de rol completo: Ya tienes 1 titular y 1 suplente de tipo ${playerRole}.`);
+    }
+
+    // 5. STAKING LOGIC (Anti-Sabotage)
+    const isOverbid = auction.highest_bidder_id === profileId;
+    const stakeRequired = isOverbid ? (bidAmount - auction.current_bid) : bidAmount;
+
+    if (participant.current_budget < stakeRequired) throw new Error("Presupuesto insuficiente.");
+
+    // Operation: 1. Deduct from current bidder
+    await supabase.from("league_participants")
+      .update({ current_budget: participant.current_budget - stakeRequired })
+      .eq("league_id", auction.league_id)
+      .eq("profile_id", profileId);
+
+    // 2. Refund previous bidder (if it's someone else)
+    if (auction.highest_bidder_id && !isOverbid) {
+       const { data: prevBidder } = await supabase
+         .from("league_participants")
+         .select("current_budget")
+         .eq("league_id", auction.league_id)
+         .eq("profile_id", auction.highest_bidder_id)
+         .single();
+       
+       if (prevBidder) {
+         await supabase.from("league_participants")
+           .update({ current_budget: prevBidder.current_budget + auction.current_bid })
+           .eq("league_id", auction.league_id)
+           .eq("profile_id", auction.highest_bidder_id);
+       }
     }
 
     const { error } = await supabase
@@ -182,11 +219,7 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     
     if (plError || !playerData) throw new Error("Agente no encontrado.");
     
-    // Logic for partial lock
-    const { data: activeGw } = await supabase.from('gameweeks').select('id, is_locked').eq('is_active', true).single();
-    const forcedSub = activeGw?.is_locked || false;
-
-    // Check if player is in an active auction
+    // 3. Status Checks
     const { data: activeAuction } = await supabase
       .from('market_auctions')
       .select('id')
@@ -199,7 +232,6 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     
     const price = customPrice || playerData.market_value;
 
-    // 3. User participant check
     const { data: participant, error: pError } = await supabase
       .from("league_participants")
       .select("current_budget")
@@ -210,53 +242,40 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     if (pError || !participant) throw new Error("No se pudo verificar el budget operacional.");
     if (participant.current_budget < price) throw new Error("Presupuesto insuficiente.");
 
-    // 4. Ownership check (Now allows multiple owners, just check if I already have him)
+    // 4. Ownership check
     const { data: myOwner } = await supabase
       .from("user_rosters")
       .select("id")
       .eq("league_id", leagueId)
       .eq("profile_id", profileId)
       .eq("player_id", playerId)
-      .single();
+      .maybeSingle();
 
     if (myOwner) throw new Error("Ya tienes a este agente en tu escuadra.");
 
-
-    // 5. Total Capacity Check (Max 10 players total)
-    const { count: totalCount } = await supabase
-      .from("user_rosters")
-      .select("id", { count: 'exact', head: true })
-      .eq("league_id", leagueId)
-      .eq("profile_id", profileId);
-    
-    if (totalCount !== null && totalCount >= 10) {
-        throw new Error("Capacidad máxima alcanzada (10 agentes).");
-    }
-
-    // 6. Transaction record
-    await supabase.from("market_transactions").insert({
-        league_id: leagueId,
-        profile_id: profileId,
-        player_id: playerId,
-        type: 'buy',
-        price: price
-    });
+    // 6. Real-time Lock Check (Match Day protection)
+    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+    const lockStatus = await getMarketLockStatus(supabase);
+    const forcedSub = lockStatus.locked;
 
     // 7. Auto-assign slot with Role Logic
-    const { data: roster } = await supabase
+    const { data: roster } = await (supabase
       .from("user_rosters")
       .select("slot_type, pro_players(role)")
       .eq("league_id", leagueId)
-      .eq("profile_id", profileId);
+      .eq("profile_id", profileId) as any);
     
-    // Count roles per slot
-    const starterRoles = new Set(roster?.filter(r => r.slot_type === 'starter').map(r => (r.pro_players as any).role) || []);
-    const subRoles = new Set(roster?.filter(r => r.slot_type === 'substitute').map(r => (r.pro_players as any).role) || []);
+    // Count PLAYERS per slot and check ROLES
+    const starterPlayers = roster?.filter((r: any) => r.slot_type === 'starter') || [];
+    const subPlayers = roster?.filter((r: any) => r.slot_type === 'substitute') || [];
     
-    const startersCount = starterRoles.size;
-    const subsCount = subRoles.size;
+    const starterRoles = new Set(starterPlayers.map((r: any) => (r.pro_players as any).role.trim().toUpperCase()));
+    const subRoles = new Set(subPlayers.map((r: any) => (r.pro_players as any).role.trim().toUpperCase()));
     
-    const newPlayerRole = playerData.role;
+    const startersCount = starterPlayers.length;
+    const subsCount = subPlayers.length;
+    
+    const newPlayerRole = playerData.role.trim().toUpperCase();
 
     let targetSlot: 'starter' | 'substitute';
     
@@ -266,8 +285,23 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     } else if (subsCount < 5 && !subRoles.has(newPlayerRole)) {
         targetSlot = 'substitute';
     } else {
-        if (forcedSub) throw new Error(`Mercado bloqueado: Solo puedes fichar para el banquillo y ya tienes un ${newPlayerRole} suplente.`);
-        throw new Error(`Ya tienes un ${newPlayerRole} en titulares y suplentes. Máximo 2 por rol (1 titular + 1 suplente).`);
+        if (forcedSub) {
+           if (subRoles.has(newPlayerRole)) throw new Error(`Mercado bloqueado: Solo puedes fichar para el banquillo y ya tienes un ${playerData.role} suplente.`);
+           if (subsCount >= 5) throw new Error("Mercado bloqueado: Solo puedes fichar para el banquillo y ya tienes 5 suplentes.");
+        }
+        
+        const hasInStarter = starterRoles.has(newPlayerRole);
+        const hasInSub = subRoles.has(newPlayerRole);
+        
+        if (hasInStarter && hasInSub) {
+            throw new Error(`Ya tienes un ${playerData.role} en titulares y suplentes. Máximo 2 por rol (1 titular + 1 suplente).`);
+        }
+        
+        if (startersCount >= 5 && subsCount >= 5) {
+            throw new Error("Plantilla completa (10 jugadores). Debes vender a alguien primero.");
+        }
+
+        throw new Error(`No se puede asignar hueco para ${playerData.role}. Verifica que no tengas ya ese rol en el slot objetivo.`);
     }
 
     // 8. Add to Roster
@@ -315,17 +349,15 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
     if (!playerData) throw new Error("Agente no encontrado.");
     const sellPrice = Math.floor(playerData.market_value * 0.9);
 
-    const { data: activeGw } = await supabase
-      .from('gameweeks')
-      .select('is_locked')
-      .eq('is_active', true)
-      .single();
+    // 1. Lock Check
+    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+    const lockStatus = await getMarketLockStatus(supabase);
 
     // Check if player is starter
     const { data: playerRoster } = await supabase.from('user_rosters').select('slot_type').eq('league_id', leagueId).eq('profile_id', profileId).eq('player_id', playerId).single();
 
-    if (activeGw?.is_locked && playerRoster?.slot_type === 'starter') {
-      throw new Error("Blidaje operacional: No puedes vender a un titular durante la jornada.");
+    if (lockStatus.locked && playerRoster?.slot_type === 'starter') {
+      throw new Error(`Blindaje operacional: Los titulares no se pueden vender durante la jornada (${lockStatus.reason}).`);
     }
 
     const { data: participant } = await supabase
@@ -334,6 +366,27 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
       .eq("league_id", leagueId)
       .eq("profile_id", profileId)
       .single();
+
+    // Cancel active auctions and refund the bidder
+    const { data: activeAuctions } = await supabase.from('market_auctions')
+      .select('id, highest_bidder_id, current_bid')
+      .eq('league_id', leagueId)
+      .eq('player_id', playerId)
+      .eq('seller_id', profileId)
+      .eq('status', 'active');
+
+    if (activeAuctions) {
+      for (const auct of activeAuctions) {
+        if (auct.highest_bidder_id) {
+          // Refund
+          const { data: bidder } = await supabase.from('league_participants').select('current_budget').eq('league_id', leagueId).eq('profile_id', auct.highest_bidder_id).single();
+          if (bidder) {
+            await supabase.from('league_participants').update({ current_budget: bidder.current_budget + auct.current_bid }).eq('league_id', leagueId).eq('profile_id', auct.highest_bidder_id);
+          }
+        }
+        await supabase.from('market_auctions').update({ status: 'canceled' }).eq('id', auct.id);
+      }
+    }
 
     // Remove from Roster
     await supabase.from("user_rosters")
@@ -396,28 +449,32 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
 
     if (rError || !rosterEntry) throw new Error("Este agente no pertenece a la escuadra seleccionada.");
 
-    // Check if player is in an active auction
+    // Check if player is in an active auction BY THIS SELLER
     const { data: activeAuction } = await supabase
       .from('market_auctions')
       .select('id')
       .eq('player_id', playerId)
       .eq('league_id', leagueId)
+      .eq('seller_id', targetProfileId)
       .eq('status', 'active')
       .maybeSingle();
     
-    if (activeAuction) throw new Error("Protocolo de rescisión bloqueado: el agente está en subasta.");
+    if (activeAuction) throw new Error("Protocolo de rescisión bloqueado: el agente está en una subasta activa de este propietario.");
 
     const ownerId = rosterEntry.profile_id;
     const clausePrice = rosterEntry.release_clause || 0;
 
     // --- NEW LOGIC: PROTECTIONS ---
-    const { data: activeGw } = await supabase.from('gameweeks').select('id, is_locked').eq('is_active', true).single();
+    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+    const lockStatus = await getMarketLockStatus(supabase);
     
     // 1. Lineup Lock: If user is starter and market is locked, cannot be clause-snatched
-    if (activeGw?.is_locked && (rosterEntry as any).slot_type === 'starter') {
-        throw new Error("Agente blindado: los titulares no pueden ser clausulados durante la jornada.");
+    if (lockStatus.locked && (rosterEntry as any).slot_type === 'starter') {
+        throw new Error(`Agente blindado: los titulares no pueden ser clausulados durante la jornada (${lockStatus.reason}).`);
     }
 
+    const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).single();
+    
     // 2. Power-up LOCK: Check if protected by item
     const { data: lockActive } = await supabase
         .from('active_powerups')
@@ -464,24 +521,53 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
 
     await supabase.from("user_rosters").delete().eq("league_id", leagueId).eq("player_id", playerId).eq("profile_id", ownerId);
     
-    // Auto-assign slot with simple role logic
-    const { data: roster } = await supabase.from("user_rosters").select("slot_type, pro_players(role)").eq("league_id", leagueId).eq("profile_id", buyerProfileId);
+    // Auto-assign slot with proper role and lock logic
+    const { data: roster } = await (supabase
+        .from("user_rosters")
+        .select("slot_type, pro_players(role)")
+        .eq("league_id", leagueId)
+        .eq("profile_id", buyerProfileId) as any);
     
-    const starterRoles = new Set(roster?.filter(r => r.slot_type === 'starter').map(r => (r.pro_players as any).role) || []);
-    const subRoles = new Set(roster?.filter(r => r.slot_type === 'substitute').map(r => (r.pro_players as any).role) || []);
+    const starterPlayers = roster?.filter((r: any) => r.slot_type === 'starter') || [];
+    const subPlayers = roster?.filter((r: any) => r.slot_type === 'substitute') || [];
     
-    const startersCount = starterRoles.size;
-    const subsCount = subRoles.size;
-    const newPlayerRole = (rosterEntry.pro_players as any).role;
+    const starterRoles = new Set(starterPlayers.map((r: any) => (r.pro_players as any).role.trim().toUpperCase()));
+    const subRoles = new Set(subPlayers.map((r: any) => (r.pro_players as any).role.trim().toUpperCase()));
+    
+    const startersCount = starterPlayers.length;
+    const subsCount = subPlayers.length;
+    const newPlayerRole = (rosterEntry.pro_players as any).role.trim().toUpperCase();
+    const forcedSub = lockStatus.locked;
 
     let targetSlot: 'starter' | 'substitute';
 
-    if (startersCount < 5 && !starterRoles.has(newPlayerRole)) {
+    if (!forcedSub && startersCount < 5 && !starterRoles.has(newPlayerRole)) {
         targetSlot = 'starter';
     } else if (subsCount < 5 && !subRoles.has(newPlayerRole)) {
         targetSlot = 'substitute';
     } else {
-        throw new Error(`Ya tienes un ${newPlayerRole} en ambos slots. Máximo 2 por rol (1 titular + 1 suplente).`);
+        if (forcedSub) throw new Error(`Mercado bloqueado: Solo puedes clausular para el banquillo y ya tienes un ${(rosterEntry.pro_players as any).role} suplente.`);
+        throw new Error(`Configuración de roles no permitida: Ya tienes un ${(rosterEntry.pro_players as any).role} en titulares y suplentes.`);
+    }
+
+    // Cancel any active auctions of this player from this owner and refund bidder
+    const { data: ownerAuctions } = await supabase.from('market_auctions')
+        .select('id, highest_bidder_id, current_bid')
+        .eq('league_id', leagueId)
+        .eq('player_id', playerId)
+        .eq('seller_id', ownerId)
+        .eq('status', 'active');
+
+    if (ownerAuctions) {
+        for (const auct of ownerAuctions) {
+            if (auct.highest_bidder_id) {
+                const { data: bidder } = await supabase.from('league_participants').select('current_budget').eq('league_id', leagueId).eq('profile_id', auct.highest_bidder_id).single();
+                if (bidder) {
+                    await supabase.from('league_participants').update({ current_budget: bidder.current_budget + auct.current_bid }).eq('league_id', leagueId).eq('profile_id', auct.highest_bidder_id);
+                }
+            }
+            await supabase.from('market_auctions').update({ status: 'canceled' }).eq('id', auct.id);
+        }
     }
 
     await supabase.from("user_rosters").insert({
@@ -543,28 +629,50 @@ export async function resolveExpiredAuctions() {
     if (error) throw error;
     if (!expiredAuctions || expiredAuctions.length === 0) return { success: true, count: 0 };
 
-    for (const auct of expiredAuctions) {
+    // Group auctions by player and then by bidder to handle multi-wins
+    // But easier: Sort by price DESC so we process more expensive ones first
+    const sortedAuctions = [...expiredAuctions].sort((a, b) => b.current_bid - a.current_bid);
+    
+    // Track who already got which player in this transaction batch
+    const batchProcessed = new Set<string>(); // "bidderId_playerId"
+
+    for (const auct of sortedAuctions) {
       if (!auct.highest_bidder_id) {
-        // No bids -> Just expire
-        await supabaseAdmin.from('market_auctions').update({ status: 'expired' }).eq('id', auct.id);
-        console.log(`Auction ${auct.id} for ${auct.pro_players.nickname} expired without bids.`);
+        await (supabaseAdmin.from('market_auctions') as any).update({ status: 'expired' }).eq('id', auct.id);
         continue;
       }
 
-      // EXECUTE SALE
-      // 1. Deduct from bidder
-      const { data: bidder } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', auct.league_id).eq('profile_id', auct.highest_bidder_id).single();
-      if (!bidder || bidder.current_budget < auct.current_bid) {
-          // If bidder somehow no longer has money, cancel auction or penalize?
-          // For now, we'll cancel and alert
-          await supabaseAdmin.from('market_auctions').update({ status: 'canceled' }).eq('id', auct.id);
+      const playerKey = `${auct.highest_bidder_id}_${auct.player_id}`;
+
+      // 1. REFUND LOGIC IF CANCELED
+      const cancelAndRefund = async (reason: string) => {
+          console.log(`Auction ${auct.id} canceled: ${reason}`);
+          if (auct.highest_bidder_id) {
+            const { data: bidder } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', auct.league_id).eq('profile_id', auct.highest_bidder_id).single();
+            if (bidder) {
+              await supabaseAdmin.from('league_participants').update({ current_budget: bidder.current_budget + auct.current_bid }).eq('league_id', auct.league_id).eq('profile_id', auct.highest_bidder_id);
+            }
+          }
+          await (supabaseAdmin.from('market_auctions') as any).update({ status: 'canceled' }).eq('id', auct.id);
+      };
+
+      // Check if this bidder already won this player in a more expensive auction in THIS batch
+      if (batchProcessed.has(playerKey)) {
+          await cancelAndRefund("Processing cheaper duplicate entry");
           continue;
       }
 
-      await supabaseAdmin.from('league_participants').update({ current_budget: bidder.current_budget - auct.current_bid }).eq('league_id', auct.league_id).eq('profile_id', auct.highest_bidder_id);
+      // EXECUTE SALE (Money already deducted from bidder during placeBid)
+      
+      // Double check winner doesn't ALREADY own the player (from a previous day or resolve)
+      const { data: existing } = await supabaseAdmin.from('user_rosters').select('id').eq('league_id', auct.league_id).eq('profile_id', auct.highest_bidder_id).eq('player_id', auct.player_id).maybeSingle();
+      if (existing) {
+          await cancelAndRefund("Bidder already owns player");
+          continue;
+      }
 
       // 2. Pay seller
-      const { data: seller } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', auct.league_id).eq('profile_id', auct.seller_id).single();
+      const { data: seller } = await (supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', auct.league_id).eq('profile_id', auct.seller_id) as any).single();
       if (seller) {
           await supabaseAdmin.from('league_participants').update({ current_budget: Number(seller.current_budget) + Number(auct.current_bid) }).eq('league_id', auct.league_id).eq('profile_id', auct.seller_id);
       }
@@ -573,10 +681,17 @@ export async function resolveExpiredAuctions() {
       await supabaseAdmin.from('user_rosters').delete().eq('league_id', auct.league_id).eq('profile_id', auct.seller_id).eq('player_id', auct.player_id);
       
       // Assign slot for bidder
-      const { data: bidderRoster } = await supabaseAdmin.from('user_rosters').select('slot_type, pro_players(role)').eq('league_id', auct.league_id).eq('profile_id', auct.highest_bidder_id);
-      const role = auct.pro_players.role;
-      const starterFull = bidderRoster?.some(r => r.slot_type === 'starter' && (r.pro_players as any).role === role);
-      const targetSlot = starterFull ? 'substitute' : 'starter';
+      const { data: bidderRoster } = await (supabaseAdmin.from('user_rosters').select('slot_type, pro_players(role)').eq('league_id', auct.league_id).eq('profile_id', auct.highest_bidder_id) as any);
+      
+      const role = (auct.pro_players as any).role.trim().toUpperCase();
+      const starterFull = (bidderRoster as any[])?.some(r => r.slot_type === 'starter' && (r.pro_players as any).role.trim().toUpperCase() === role);
+      
+      // Check if market is locked (Auction resolution happens via Cron, which should handle forced slots?)
+      // We'll use getMarketLockStatus helper too
+      const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+      const lockStatus = await getMarketLockStatus(supabaseAdmin);
+      
+      let targetSlot: 'starter' | 'substitute' = (starterFull || lockStatus.locked) ? 'substitute' : 'starter';
 
       await supabaseAdmin.from('user_rosters').insert({
           league_id: auct.league_id,
@@ -589,8 +704,10 @@ export async function resolveExpiredAuctions() {
           is_active: true
       });
 
+      batchProcessed.add(playerKey);
+
       // 4. Update Auction status
-      await supabaseAdmin.from('market_auctions').update({ status: 'sold' }).eq('id', auct.id);
+      await (supabaseAdmin.from('market_auctions') as any).update({ status: 'sold' }).eq('id', auct.id);
 
       // 5. Notifications
       const { createNotification } = await import("./notifications");
@@ -608,8 +725,6 @@ export async function resolveExpiredAuctions() {
           message: `Has ganado la subasta de ${auct.pro_players.nickname} por $${(auct.current_bid / 1000000).toFixed(1)}M.`,
           type: "buy"
       });
-
-      console.log(`Auction ${auct.id} resolved: ${auct.pro_players.nickname} sold for ${auct.current_bid}`);
     }
 
     return { success: true, count: expiredAuctions.length };
