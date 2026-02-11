@@ -256,6 +256,50 @@ export default function TeamView({
         </div>
       )}
 
+      {/* Inventario de Cartas */}
+      <div className="v-panel p-4 space-y-4">
+        <div className="flex justify-between items-end">
+            <div>
+                <h2 className="text-xl italic uppercase text-v-white/80 leading-none">Tu Inventario</h2>
+                <p className="text-[7px] uppercase tracking-[0.2em] text-v-red font-black">Cartas de Poder Disponibles</p>
+            </div>
+            <Link href="/shop" className="text-[8px] font-black uppercase border border-white/10 px-2 py-1 hover:bg-v-white/5 transition-colors">Tienda de Puntos</Link>
+        </div>
+        
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {inventory.length > 0 ? inventory.map((item: any) => (
+                <button 
+                    key={item.id}
+                    onClick={() => {
+                        haptic.light();
+                        setSelectedPowerUp(selectedPowerUp?.id === item.id ? null : item);
+                    }}
+                    className={`flex-shrink-0 relative w-20 h-24 v-panel flex flex-col items-center justify-center gap-1 transition-all border-2 ${selectedPowerUp?.id === item.id ? 'border-v-red bg-v-red/10 scale-105' : 'border-white/5 bg-v-navy/20 hover:border-white/20'}`}
+                >
+                    <span className="text-3xl">{item.powerup_types.icon}</span>
+                    <span className="text-[7px] font-black uppercase text-center px-1 leading-tight">{item.powerup_types.name}</span>
+                    <span className="absolute -top-1 -right-1 bg-v-red text-v-white text-[8px] font-black px-1 rounded-sm shadow-lg">x{item.quantity}</span>
+                </button>
+            )) : (
+                <div className="w-full py-4 text-center border border-dashed border-white/5 opacity-30 italic text-[10px]">No tienes cartas en esta liga</div>
+            )}
+        </div>
+
+        {selectedPowerUp && (
+            <div className="bg-v-red/10 border border-v-red/30 p-2 animate-in slide-in-from-left duration-200">
+                <p className="text-[8px] font-black uppercase text-v-red text-center tracking-widest animate-pulse">
+                    MODO APLICACIÓN: Selecciona un agente para usar "{selectedPowerUp.powerup_types.name}"
+                </p>
+                <button 
+                    onClick={() => setSelectedPowerUp(null)}
+                    className="w-full mt-2 text-[7px] font-black uppercase text-v-white/40 hover:text-v-white transition-colors"
+                >
+                    [ CANCELAR ACTIVACIÓN ]
+                </button>
+            </div>
+        )}
+      </div>
+
       {/* Titulares (5) */}
       <div className="space-y-4">
         <h2 className="text-2xl italic tracking-tighter uppercase px-1">Quinteto Titular <span className="text-sm font-black text-v-red ml-2">{starters.length}/5</span></h2>
@@ -271,7 +315,7 @@ export default function TeamView({
                    secondActionClassName="text-v-red hover:bg-v-red/10"
                   isLocked={isLocked(r.player_id)}
                   isCaptain={isCaptain(r.player_id)}
-                  inAuction={auctions.some(a => a.player_id === r.player_id)}
+                  inAuction={auctions.some(a => a.player_id === r.player_id && a.seller_id === profileId)}
                 />
             </div>
           ))}
@@ -297,7 +341,7 @@ export default function TeamView({
                   secondActionLabel="Vender"
                    secondActionClassName="text-v-red hover:bg-v-red/10"
                   isLocked={isLocked(r.player_id)}
-                  inAuction={auctions.some(a => a.player_id === r.player_id)}
+                  inAuction={auctions.some(a => a.player_id === r.player_id && a.seller_id === profileId)}
                 />
             </div>
           ))}
