@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { signUp } from "@/lib/actions/auth";
+import Image from "next/image";
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export default function RegisterPage() {
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-8 bg-v-red" />
           <h1 className="text-5xl italic tracking-tighter text-v-white uppercase">
-            Reclutamiento
+            Crear cuenta
           </h1>
         </div>
         <p className="text-v-white/50 text-[10px] font-black uppercase tracking-[0.3em]">
@@ -42,31 +43,31 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="grid gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
-              Alias de Agente
+              Nombre de usuario
             </label>
             <input
               name="username"
               type="text"
               required
-              placeholder="Nickname"
+              placeholder="Usuario"
               className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
-              Protocolo Email
+              Correo
             </label>
             <input
               name="email"
               type="email"
               required
-              placeholder="tu@agencia.com"
+              placeholder="tu@correo.com"
               className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
-              Código de Seguridad
+              Contraseña
             </label>
             <input
               name="password"
@@ -114,16 +115,32 @@ export default function RegisterPage() {
             <span className="w-full border-t border-white/5"></span>
           </div>
           <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest text-v-white/20">
-            <span className="bg-[#1f2326] px-4">Enlace de Terceros</span>
+            <span className="bg-[#0b0f12] px-4 text-white">
+              Métodos Alternativos
+            </span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-v-navy/30">
-            RIOT ID
+          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-red-600">
+            <Image
+              src="/logos/RiotLogo.png"
+              alt="Logo Riot"
+              width={20}
+              height={20}
+            />
+            <span className="pl-4 black text-white">Registrarse con Riot</span>
           </button>
-          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-v-navy/30">
-            GOOGLE
+          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-white">
+            <Image
+              src="/logos/GoogleLogo.png"
+              alt="Logo Google"
+              width={20}
+              height={20}
+            />{" "}
+            <span className="pl-4 black text-black">
+              Registrarse con Google
+            </span>
           </button>
         </div>
       </div>

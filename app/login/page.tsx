@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "@/lib/actions/auth";
+import  Image  from "next/image";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -23,12 +24,12 @@ export default function LoginPage() {
   }
 
 return (
-  <div className="min-h-screen w-full bg-[#0b0f12]">
+  <div className="min-h-screen w-full ">
     {/* Fondo decorativo opcional */}
-    <div className="pointer-events-none fixed inset-0 opacity-40">
+    {/* <div className="pointer-events-none fixed inset-0 opacity-40">
       <div className="absolute -top-40 left-1/2 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-v-red/20 blur-3xl" />
       <div className="absolute bottom-0 left-0 h-[400px] w-[500px] bg-v-navy/40 blur-3xl" />
-    </div>
+    </div> */}
 
     {/* Shell responsive */}
     <div className="relative min-h-screen w-full px-4 py-10 sm:px-8 sm:py-12 lg:grid lg:place-items-center">
@@ -39,12 +40,12 @@ return (
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-8 bg-v-red" />
               <h1 className="text-4xl sm:text-5xl italic tracking-tighter uppercase">
-                Identificarse
+                Iniciar sesión
               </h1>
             </div>
-            <p className="text-v-white/50 text-[10px] font-black uppercase tracking-[0.3em]">
+            {/* <p className="text-v-white/50 text-[10px] font-black uppercase tracking-[0.3em]">
               Autorización de Acceso Nivel 05
-            </p>
+            </p> */}
           </div>
 
           {/* Form Container */}
@@ -52,7 +53,7 @@ return (
             <form onSubmit={handleSubmit} className="grid gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
-                  Protocolo Email
+                  Correo
                 </label>
                 <input
                   name="email"
@@ -65,7 +66,7 @@ return (
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
-                  Código de Seguridad
+                  Contraseña
                 </label>
                 <input
                   name="password"
@@ -113,18 +114,30 @@ return (
                 <span className="w-full border-t border-white/5"></span>
               </div>
               <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest text-v-white/20">
-                <span className="bg-[#0b0f12] px-4">Métodos Alternativos</span>
+                <span className="bg-[#0b0f12] px-4 text-white">Métodos Alternativos</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-v-navy/30">
-                RIOT ID
-              </button>
-              <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-v-navy/30">
-                GOOGLE
-              </button>
-            </div>
+<div className="grid grid-cols-2 gap-4">
+          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-red-600">
+            <Image
+              src="/logos/RiotLogo.png"
+              alt="Logo Riot"
+              width={20}
+              height={20}
+            />
+            <span className="pl-4 black text-white">Iniciar con Riot</span>
+          </button>
+          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-white">
+            <Image
+              src="/logos/GoogleLogo.png"
+              alt="Logo Google"
+              width={20}
+              height={20}
+            />{" "}
+              <span className="pl-4 black text-black">Iniciar con Google</span>
+          </button>
+        </div>
           </div>
 
           {/* Footer Link */}

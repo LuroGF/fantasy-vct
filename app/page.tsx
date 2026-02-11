@@ -31,12 +31,18 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <h1 className="text-6xl sm:text-7xl font-black italic tracking-tighter leading-none text-v-white underline-offset-8 decoration-v-red decoration-4">
+        <div className="space-y-2 pt">
+          <h1 className="text-6xl sm:text-7xl pb-8 font-black italic tracking-tighter leading-none text-v-white underline-offset-8 decoration-v-red decoration-4">
             VCF<span className="text-v-red">.</span>
           </h1>
           <p className="text-[10px] font-black uppercase tracking-[0.5em] text-v-white/50">
-            Valorant Champions Fantasy
+            Crea tu equipo de ensueño
+          </p>
+          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-v-white/50">
+            Compite contra amigos
+          </p>
+          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-v-white/50">
+            Gana
           </p>
         </div>
 
