@@ -49,16 +49,24 @@ export default function MarketView({
     [activeLeagueId, initialLeagues]
   );
 
+  const [userBids, setUserBids] = useState<any[]>([]);
+
   useEffect(() => {
     async function loadInitialData() {
       setLoading(true);
+      const { createClient } = await import("@/utils/supabase/client");
+      const supabase = createClient();
       const { getPersonalMarket, getActiveAuctions } = await import("@/lib/actions/market");
-      const [market, aucts] = await Promise.all([
+      
+      const [market, aucts, bidsRes] = await Promise.all([
         getPersonalMarket(activeLeagueId, profileId),
-        getActiveAuctions(activeLeagueId)
+        getActiveAuctions(activeLeagueId, profileId),
+        supabase.from('user_bids').select('auction_id, bid_amount').eq('profile_id', profileId)
       ]);
+      
       setPersonalMarket(market);
       setAuctions(aucts);
+      if (bidsRes.data) setUserBids(bidsRes.data);
       setLoading(false);
     }
     if (activeLeagueId) loadInitialData();
@@ -143,6 +151,22 @@ export default function MarketView({
     return initialLeagueRosters.filter(r => r.player_id === playerId);
   };
 
+  const committedFunds = useMemo(() => {
+    return userBids.reduce((sum, b) => sum + Number(b.bid_amount), 0);
+  }, [userBids]);
+
+  const availableBudget = (activeParticipation?.current_budget || 0) - committedFunds;
+
+  const handleReveal = async (auctionId: string) => {
+    const { revealAuction } = await import("@/lib/actions/market");
+    handleAction(() => revealAuction(activeLeagueId, profileId, auctionId));
+  };
+
+  const handleWithdraw = async (auctionId: string) => {
+    const { withdrawBid } = await import("@/lib/actions/market");
+    handleAction(() => withdrawBid(auctionId, profileId));
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* League Selector */}
@@ -162,16 +186,18 @@ export default function MarketView({
          {activeParticipation && (
           <div className="flex justify-between items-center pt-2 mt-2 border-t border-white/5">
              <div>
-                <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Presupuesto</p>
-                <p className="text-sm font-black italic text-v-white">${(activeParticipation.current_budget / 1000000).toFixed(1)}M</p>
+                <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Presupuesto Disponible</p>
+                <p className="text-sm font-black italic text-v-white">${(availableBudget / 1000000).toFixed(1)}M</p>
              </div>
-             <div className="flex-1 px-4 border-l border-white/5 mx-4">
+             {committedFunds > 0 && (
+                <div className="flex-1 px-4 border-l border-white/5 mx-4">
+                    <p className="text-[7px] font-black uppercase text-v-red/60 mb-0.5">Bloqueado en Pujas</p>
+                    <p className="text-sm font-black italic text-v-red/80">${(committedFunds / 1000000).toFixed(1)}M</p>
+                </div>
+             )}
+             <div className="text-right">
                 <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Fichajes Semana</p>
                 <p className="text-sm font-black italic text-v-white">{activeParticipation.transfers_made_this_week || 0}</p>
-             </div>
-             <div className="text-right">
-                <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Subastas Activas</p>
-                <span className="text-xs font-black italic text-v-red">{auctions.length}</span>
              </div>
           </div>
         )}
@@ -272,33 +298,74 @@ export default function MarketView({
                 <p className="text-[8px] uppercase tracking-widest text-v-red font-black">Pujas de la comunidad</p>
               </div>
               <div className="grid gap-3">
-                {auctions.map((auction) => (
-                  <div key={auction.id} className="v-panel p-3 border-l-4 border-v-red bg-v-red/5">
-                    <div className="flex justify-between items-start mb-2">
-                       <div>
-                          <p className="text-[10px] font-black uppercase text-v-white/40">Vendedor: {auction.profiles?.username}</p>
-                          <h3 className="text-lg font-black italic uppercase">{auction.pro_players.nickname}</h3>
-                       </div>
-                       <div className="text-right">
-                          <p className="text-[8px] font-black uppercase text-v-white/40">Puja Actual</p>
-                          <p className="text-lg font-black italic text-v-red">${(auction.current_bid / 1000000).toFixed(1)}M</p>
-                       </div>
-                    </div>
-                     <button 
-                      onClick={() => {
-                        setBidDialog({
-                          show: true,
-                          auction: auction,
-                          amount: (auction.current_bid + 500000).toString()
-                        });
-                      }}
-                      className="w-full bg-v-white text-v-navy text-[10px] font-black uppercase py-2 hover:bg-v-red hover:text-v-white transition-all italic"
-                    >
-                      Pujar Ahora
-                    </button>
+                {auctions.map((auction) => {
+                  const myBid = userBids.find(b => b.auction_id === auction.id);
+                  const isRevealed = auction.is_revealed;
+                  
+                  return (
+                    <div key={auction.id} className="v-panel p-3 border-l-4 border-v-red bg-v-red/5">
+                      <div className="flex justify-between items-start mb-2">
+                         <div>
+                            <p className="text-[10px] font-black uppercase text-v-white/40">Vendedor: {auction.profiles?.username}</p>
+                            <h3 className="text-lg font-black italic uppercase">{auction.pro_players.nickname}</h3>
+                            {myBid && <span className="text-[8px] font-black uppercase text-v-red tracking-tighter bg-v-red/10 px-1 border border-v-red/20">Tu Puja: ${(myBid.bid_amount / 1000000).toFixed(1)}M</span>}
+                         </div>
+                         <div className="text-right">
+                            <p className="text-[8px] font-black uppercase text-v-white/40">Puja Actual</p>
+                            {isRevealed ? (
+                                <p className="text-lg font-black italic text-green-500">${(auction.current_bid / 1000000).toFixed(1)}M</p>
+                            ) : (
+                                <div className="space-y-1">
+                                    <p className="text-lg font-black italic text-v-white/20">💰 ???</p>
+                                    <button 
+                                        onClick={() => {
+                                            setConfirmDialog({
+                                                show: true,
+                                                title: "Usar Ojo del Espía",
+                                                message: "¿Quieres gastar 1 'Ojo del Espía' para ver la puja más alta actual?",
+                                                onConfirm: () => handleReveal(auction.id)
+                                            });
+                                        }}
+                                        className="text-[7px] font-black flex items-center gap-1 uppercase text-v-red hover:text-v-white transition-colors ml-auto"
+                                    >
+                                        👁️ REVELAR
+                                    </button>
+                                </div>
+                            )}
+                         </div>
+                      </div>
+                       <button 
+                        onClick={() => {
+                          setBidDialog({
+                            show: true,
+                            auction: auction,
+                            amount: (Math.max(auction.current_bid, myBid?.bid_amount || 0) + 500000).toString()
+                          });
+                        }}
+                        className="w-full bg-v-white text-v-navy text-[10px] font-black uppercase py-2 hover:bg-v-red hover:text-v-white transition-all italic"
+                      >
+                        {myBid ? "Actualizar Puja Blind" : "Pujar Blind"}
+                      </button>
 
-                  </div>
-                ))}
+                      {myBid && (
+                        <button 
+                            onClick={() => {
+                                setConfirmDialog({
+                                    show: true,
+                                    title: "Retirar Puja",
+                                    message: "¿Estás seguro de que quieres retirar tu puja? Liberarás el dinero bloqueado.",
+                                    onConfirm: () => handleWithdraw(auction.id)
+                                });
+                            }}
+                            className="w-full mt-2 border border-v-white/10 text-v-white/40 text-[7px] font-black uppercase py-1 hover:border-v-red/40 hover:text-v-red transition-all italic"
+                        >
+                            Retirar Puja y Liberar Fondos
+                        </button>
+                      )}
+
+                    </div>
+                  );
+                })}
                 {auctions.length === 0 && (
                   <div className="py-10 text-center opacity-30 italic text-[10px] uppercase font-black">No hay subastas activas</div>
                 )}
@@ -319,14 +386,14 @@ export default function MarketView({
                     const otherOwners = owners.filter(o => o.profile_id !== profileId);
                     
                     return (
-                        <div key={player.id} className="space-y-1">
+                        <div key={player.id} className="v-panel p-3 bg-v-navy/30 border border-white/5 space-y-4">
                             <PlayerCard 
                                 player={player}
-                                actionLabel={iamOwner ? "Ya en escuadra" : (otherOwners.length > 0 ? `Pagar Cláusula a ${otherOwners[0].profiles.username}` : "No disponible (Tienda)")}
+                                actionLabel={iamOwner ? "Ya en tu Escuadra" : (otherOwners.length === 0 ? "Sin Dueño (Tienda)" : "Ver Propietarios")}
                                 actionDisabled={iamOwner || otherOwners.length === 0}
-                                inAuction={auctions.some(a => a.player_id === player.id)}
-                                 onAction={() => {
-                                    if (otherOwners.length > 0) {
+                                inAuction={auctions.some(a => a.player_id === player.id && a.seller_id === profileId)}
+                                onAction={() => {
+                                    if (otherOwners.length === 1 && !iamOwner) {
                                         const target = otherOwners[0];
                                         setConfirmDialog({
                                           show: true,
@@ -337,8 +404,45 @@ export default function MarketView({
                                     }
                                 }}
                             />
-                            {otherOwners.length > 1 && (
-                                <p className="text-[7px] text-v-white/20 uppercase font-black px-2 italic">Otros {(otherOwners.length - 1)} mánagers también poseen este agente</p>
+                            
+                            {!iamOwner && otherOwners.length > 0 && (
+                                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <div className="h-[1px] flex-1 bg-white/10" />
+                                        <p className="text-[8px] font-black uppercase text-v-white/40 tracking-widest whitespace-nowrap">Contratos en esta Liga</p>
+                                        <div className="h-[1px] flex-1 bg-white/10" />
+                                    </div>
+                                    
+                                    <div className="grid gap-2">
+                                        {otherOwners.map(owner => {
+                                            const ownerInAuction = auctions.some(a => a.player_id === player.id && a.seller_id === owner.profile_id);
+                                            return (
+                                                <div key={owner.profile_id} className="flex items-center justify-between bg-v-navy/50 p-2 border border-white/5 hover:border-v-red/30 transition-all group">
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black uppercase italic text-v-white group-hover:text-v-red transition-colors">{owner.profiles.username}</span>
+                                                            {ownerInAuction && <span className="text-[6px] bg-v-red text-v-white px-1 font-black leading-tight animate-pulse">EN SUBASTA</span>}
+                                                        </div>
+                                                        <span className="text-[8px] text-v-white/40 font-black uppercase tracking-tighter italic">Cláusula: <span className="text-v-white/80">${(owner.release_clause / 1000000).toFixed(1)}M</span></span>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setConfirmDialog({
+                                                                show: true,
+                                                                title: "Ejecutar Cláusula",
+                                                                message: `¿Pagar la rescisión de $${(owner.release_clause / 1000000).toFixed(1)}M a ${owner.profiles.username} por el contrato de ${player.nickname}?`,
+                                                                onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, owner.profile_id))
+                                                            });
+                                                        }}
+                                                        className="px-4 py-2 bg-v-white text-v-navy text-[8px] font-black uppercase hover:bg-v-red hover:text-v-white transition-all italic border border-transparent"
+                                                    >
+                                                        Ejecutar
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             )}
                         </div>
                     );
@@ -371,20 +475,34 @@ export default function MarketView({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-v-navy/90 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="v-panel w-full max-w-sm p-6 space-y-6 border-t-4 border-v-red animate-in zoom-in-95 duration-200">
             <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">Nueva Puja</p>
+              <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">Nueva Puja Anónima</p>
               <h3 className="text-2xl font-black italic uppercase leading-none">{bidDialog.auction.pro_players.nickname}</h3>
-              <p className="text-[10px] font-black uppercase text-v-red tracking-widest">Puja actual: ${(bidDialog.auction.current_bid / 1000000).toFixed(2)}M</p>
+              <p className="text-[10px] font-black uppercase text-v-red tracking-widest">Puja mínima requerida: ${((bidDialog.auction.current_bid + 1) / 1000000).toFixed(2)}M</p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-v-white/60">Tu Puja ($)</label>
+                <label className="text-[10px] font-black uppercase text-v-white/60">Importe de la Puja ($)</label>
                 <input 
                   type="number"
                   value={bidDialog.amount}
                   onChange={(e) => setBidDialog(prev => ({ ...prev, amount: e.target.value }))}
                   className="w-full bg-v-navy/50 border border-white/10 px-4 py-3 text-lg font-black italic focus:border-v-red outline-none transition-colors"
                 />
+                
+                {/* Quick Add Buttons */}
+                <div className="flex gap-2 pt-1 overflow-x-auto pb-2 scrollbar-hide">
+                    {[500000, 1000000, 2000000, 5000000].map(add => (
+                      <button 
+                        key={add}
+                        onClick={() => setBidDialog(prev => ({ ...prev, amount: (parseInt(prev.amount || "0") + add).toString() }))}
+                        className="flex-shrink-0 px-2 py-1 bg-v-white/5 border border-white/10 text-[8px] font-black hover:bg-v-white/10"
+                      >
+                        +{add / 1000000}M
+                      </button>
+                    ))}
+                </div>
+                <p className="text-[7px] text-v-white/30 uppercase italic">El presupuesto se bloqueará hasta que finalice la subasta.</p>
               </div>
 
               <div className="flex gap-3 pt-2">
