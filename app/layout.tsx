@@ -52,12 +52,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${inter.variable} ${oswald.variable}`}>
-      <body className="antialiased h-[100dvh] w-full overflow-hidden bg-v-navy text-v-white">
+      <body className="antialiased h-dvh w-full overflow-hidden bg-v-navy text-v-white">
         <PWAInstaller />
         <PushManager />
 
         {/* FULL WIDTH WRAPPER */}
-        <div className="relative h-[100dvh] w-full overflow-hidden bg-v-navy/50 shadow-2xl shadow-black/50">
+        <div className="relative h-dvh w-full overflow-hidden bg-v-navy/50 shadow-2xl shadow-black/50">
           {/* Sidebar fixed (desktop) */}
           <Sidebar />
 

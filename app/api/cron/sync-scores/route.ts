@@ -66,9 +66,14 @@ export async function GET(request: Request) {
           console.log(`Cron: Activando Jornada: ${currentGw.name} (ID: ${currentGw.id})`);
           await (supabaseAdmin.from('gameweeks') as any).update({ is_active: true }).eq('id', currentGw.id);
           
-          // Reset weekly transfer counter for all participants
-          console.log(`Cron: Reseteando contadores de transferencias...`);
-          await supabaseAdmin.from('league_participants').update({ transfers_made_this_week: 0 } as any);
+          // Reset weekly transfer counter and current week points for all participants
+          console.log(`Cron: Nueva jornada detectada. Reseteando contadores de transferencias...`);
+          await supabaseAdmin.from('league_participants').update({ 
+              transfers_made_this_week: 0,
+              // We don't reset total_points here because total_points is the SEASON CUMULATIVE 
+              // but we might want a 'last_gw_points' field if we had it. 
+              // For now, transfers is the main reset.
+          } as any);
           
           // Mark as active for the rest of this execution
           currentGw.is_active = true;
@@ -92,21 +97,21 @@ export async function GET(request: Request) {
       
     let shouldLock = false; 
     
-    // --- LUNES 24h -> JUEVES 24h LOCK CYCLE ---
-    const dayOfWeek = madridTime.getDay(); // 0=Sun, 1=Mon, ..., 4=Thu, 5=Fri
-    // Base lock for the core days of competition
-    const isMidWeek = (dayOfWeek >= 2 && dayOfWeek <= 4); 
+    // --- WEEKLY CYCLE: LOCK ON TUE-THU (MADRID TIME) ---
+    const dayOfWeek = madridTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    // Core competition days are Tuesday, Wednesday, Thursday
+    const isCoreMatchDays = (dayOfWeek >= 2 && dayOfWeek <= 4); 
     
-    if (isMidWeek || (dayOfWeek === 1 && madridHour >= 23 && madridTime.getMinutes() >= 59)) {
+    if (isCoreMatchDays) {
         shouldLock = true;
     }
 
-    // --- DYNAMIC LOCK (5h before match) ---
+    // --- DYNAMIC LOCK (5h before ANY match start) ---
     if (gwMatches && gwMatches.length > 0) {
         const nowMs = now.getTime();
         const hasLive = gwMatches.some((m: any) => m.status === 'live');
         
-        // Lock if any match starts in less than 5 hours (18,000,000 ms)
+        // Lock if any match starts in less than 5 hours (18,000,000 ms) OR if match is already live
         const startsSoon = gwMatches.some((m: any) => {
             if (m.status !== 'upcoming' || !m.match_date) return false;
             const startTime = new Date(m.match_date).getTime();
@@ -116,20 +121,20 @@ export async function GET(request: Request) {
 
         if (hasLive || startsSoon) {
             shouldLock = true;
-            if (startsSoon && !isMidWeek) {
-                 console.log(`Cron: Bloqueo dinámico activado (Partido en <5h)`);
+            if (startsSoon && !isCoreMatchDays) {
+                 console.log(`Cron: Bloqueo dinámico activado (Partido detectado en <5h)`);
             }
         }
     }
 
-    if (shouldLock) {
-        console.log(`Cron: Mercado BLOQUEADO (Ciclo Semanal o Partido detectado)`);
-    } else {
-        console.log(`Cron: Mercado ABIERTO (Fin de semana / Lunes)`);
+    // --- LATE MONDAY LOCK ---
+    // If it's Monday after 23:59, we lock for Tuesday prep
+    if (dayOfWeek === 1 && madridHour >= 23 && madridTime.getMinutes() >= 55) {
+        shouldLock = true;
     }
 
     if (currentGw.is_locked !== shouldLock) {
-      console.log(`Cron: Actualizando Lock: ${currentGw.is_locked} -> ${shouldLock}`);
+      console.log(`Cron: Transición de Bloqueo: ${currentGw.is_locked ? "CERRADO" : "ABIERTO"} -> ${shouldLock ? "CERRADO" : "ABIERTO"}`);
       await (supabaseAdmin.from('gameweeks') as any).update({ is_locked: shouldLock }).eq('id', currentGw.id);
       (currentGw as any).is_locked = shouldLock;
     }
@@ -270,23 +275,32 @@ export async function GET(request: Request) {
 
     const allFinished = (pendingMatches as any[])?.length === 0;
     
-    // Condition to close: All matches finished AND it's Friday or later (end_date check)
-    if (allFinished && now > new Date(currentGw.end_date)) {
+    // Condition to close: All matches finished AND it's at least the end_date of the GW
+    // Use madridTime to ensure we don't close too early on Sunday
+    const gwEndDate = new Date(currentGw.end_date);
+    
+    if (allFinished && madridTime >= gwEndDate) {
          console.log(`Cron: Finalizando Jornada ${currentGw.name}. Repartiendo recompensas finales...`);
          
-         // FINAL SCORE RUN (With Rewards!)
+         // FINAL SCORE RUN (With Rewards & Budget Bonuses!)
          await calculateGameweekScores(currentGw.id, true);
 
-         // Deactivate current
+         // Deactivate current GW
          await (supabaseAdmin.from('gameweeks') as any).update({ is_active: false, is_locked: false }).eq('id', currentGw.id);
          
-         // Activate next gameweek
-         const { data: nextGw } = await (supabaseAdmin.from('gameweeks').select('*').gt('start_date', currentGw.start_date).order('start_date', { ascending: true }).limit(1) as any).maybeSingle();
+         // Find and Activate next gameweek
+         const { data: nextGw } = await (supabaseAdmin
+            .from('gameweeks')
+            .select('*')
+            .gt('start_date', currentGw.start_date)
+            .order('start_date', { ascending: true })
+            .limit(1) as any).maybeSingle();
+            
          if (nextGw) {
+             console.log(`Cron: Configurando nueva jornada principal: ${nextGw.name}`);
              await (supabaseAdmin.from('gameweeks') as any).update({ is_active: true, is_locked: false }).eq('id', nextGw.id);
              
-             // Reset weekly transfer counter
-             console.log(`Cron: Nueva jornada activada (${nextGw.name}). Reseteando contadores...`);
+             // Reset weekly transfer counter for the new week
              await supabaseAdmin.from('league_participants').update({ transfers_made_this_week: 0 } as any);
          }
     }
@@ -295,10 +309,15 @@ export async function GET(request: Request) {
     const { updateMarketValues } = await import('@/lib/actions/market-dynamics');
     const { resolveExpiredAuctions } = await import('@/lib/actions/market');
     
-    await updateMarketValues();
+    // Solo actualizar valores de mercado una vez al día (4 AM Madrid)
+    if (madridHour === 4) {
+        console.log("Cron: Ejecutando actualización diaria de valores de mercado...");
+        await updateMarketValues();
+    }
+    
     await resolveExpiredAuctions();
 
-    return NextResponse.json({ success: true, locked: activeGw.is_locked, msg: "Synced" });
+    return NextResponse.json({ success: true, locked: currentGw.is_locked, msg: "Synced" });
 
   } catch (error: any) {
     console.error("Cron Error:", error);

@@ -26,7 +26,7 @@ export default async function TeamPage() {
   const supabase = await createClient();
   const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).single();
 
-
+  const hasScoutActive = activePowerUps?.some((ap: any) => ap.powerup_types?.code === 'SCOUT') || false;
 
   return (
     <ClientRefreshWrapper>
@@ -55,6 +55,7 @@ export default async function TeamPage() {
           initialInventory={inventory}
           initialActivePowerUps={activePowerUps || []}
           activeGameweekId={activeGw?.id}
+          hasScoutActive={hasScoutActive}
         />
       </div>
     </ClientRefreshWrapper>

@@ -236,19 +236,24 @@ export default function LeaguesPage() {
                     <div
                       key={ul.leagues.id}
                       onClick={() => setSelectedLeagueId(ul.leagues.id)}
-                      className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98]"
+                      className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98] select-none"
                     >
-                      <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h3 className="text-2xl italic tracking-tighter group-hover:text-v-red transition-colors">
+                      {/* Background accent */}
+                      <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
+                      <div className="absolute -right-4 -top-6 text-6xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase">
+                         {ul.leagues.name.substring(0, 3)}
+                      </div>
+
+                      <div className="flex justify-between items-start mb-6 relative z-10">
+                        <div className="flex-1 min-w-0 pr-4">
+                          <h3 className="text-2xl italic tracking-tighter group-hover:text-v-red transition-colors border-b-2 border-v-red w-fit truncate max-w-full">
                             {ul.leagues.name}
                           </h3>
-                          <p className="text-[10px] font-black uppercase text-v-white/30 tracking-widest mt-1">
-                            CÓDIGO: {ul.leagues.invite_code}
+                          <p className="text-[10px] font-black uppercase text-v-white/30 tracking-widest mt-2">
+                             CÓDIGO: {ul.leagues.invite_code}
                           </p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <p className="text-[8px] font-black uppercase text-v-white/20">
                             Posición
                           </p>
@@ -256,7 +261,7 @@ export default function LeaguesPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4">
+                      <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 relative z-10 group-hover:border-v-red/20 transition-colors">
                         <div>
                           <p className="text-[10px] font-black uppercase text-v-white/30">
                             Puntos
@@ -265,11 +270,11 @@ export default function LeaguesPage() {
                             {ul.total_points}
                           </p>
                         </div>
-                        <div>
+                        <div className="text-right border-l border-white/5 pl-4">
                           <p className="text-[10px] font-black uppercase text-v-white/30">
                             Créditos
                           </p>
-                          <p className="text-lg font-black italic border-b border-v-red/20 w-fit">
+                          <p className="text-lg font-black italic text-v-red">
                             ${(ul.current_budget / 1000000).toFixed(1)}M
                           </p>
                         </div>

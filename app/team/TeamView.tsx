@@ -14,6 +14,7 @@ interface TeamViewProps {
   initialInventory: any[];
   initialActivePowerUps: any[];
   activeGameweekId?: any;
+  hasScoutActive?: boolean;
 }
 
 export default function TeamView({ 
@@ -23,6 +24,7 @@ export default function TeamView({
   initialInventory, 
   initialActivePowerUps, 
   activeGameweekId,
+  hasScoutActive = false,
 }: TeamViewProps) {
   const [roster, setRoster] = useState(initialRoster);
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagues[0]?.leagues.id || "");
@@ -54,12 +56,12 @@ export default function TeamView({
     async function loadData() {
       setLoading(true);
       const { getUserFullRoster } = await import("@/lib/actions/roster");
-      const { getActiveAuctions } = await import("@/lib/actions/market");
+      const { fetchActiveAuctions } = await import("@/lib/actions/market");
       const { getUserInventory, getActivePowerUps } = await import("@/lib/actions/inventory");
       
       const [rosterData, auctionsData, inventoryData, powerUpsData] = await Promise.all([
         getUserFullRoster(activeLeagueId, profileId),
-        getActiveAuctions(activeLeagueId),
+        fetchActiveAuctions(activeLeagueId),
         getUserInventory(activeLeagueId, profileId),
         getActivePowerUps(activeLeagueId, profileId)
       ]);
@@ -270,20 +272,30 @@ export default function TeamView({
         </div>
         
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {inventory.length > 0 ? inventory.map((item: any) => (
-                <button 
-                    key={item.id}
-                    onClick={() => {
-                        haptic.light();
-                        setSelectedPowerUp(selectedPowerUp?.id === item.id ? null : item);
-                    }}
-                    className={`flex-shrink-0 relative w-20 h-24 v-panel flex flex-col items-center justify-center gap-1 transition-all border-2 ${selectedPowerUp?.id === item.id ? 'border-v-red bg-v-red/10 scale-105' : 'border-white/5 bg-v-navy/20 hover:border-white/20'}`}
-                >
-                    <span className="text-3xl">{item.powerup_types.icon}</span>
-                    <span className="text-[7px] font-black uppercase text-center px-1 leading-tight">{item.powerup_types.name}</span>
-                    <span className="absolute -top-1 -right-1 bg-v-red text-v-white text-[8px] font-black px-1 rounded-sm shadow-lg">x{item.quantity}</span>
-                </button>
-            )) : (
+            {inventory.length > 0 ? inventory.map((item: any) => {
+                const isActive = activePowerUps.some(ap => ap.powerup_type_id === item.powerup_types.id);
+                return (
+                    <button 
+                        key={item.id}
+                        onClick={() => {
+                            haptic.light();
+                            setSelectedPowerUp(selectedPowerUp?.id === item.id ? null : item);
+                        }}
+                        className={`shrink-0 relative w-20 h-24 v-panel flex flex-col items-center justify-center gap-1 transition-all border-2 
+                            ${selectedPowerUp?.id === item.id ? 'border-v-red bg-v-red/10 scale-105' : 
+                              isActive ? 'border-green-500/50 bg-green-500/5' : 'border-white/5 bg-v-navy/20 hover:border-white/20'}`}
+                    >
+                        <span className="text-3xl">{item.powerup_types.icon}</span>
+                        <span className={`text-[7px] font-black uppercase text-center px-1 leading-tight ${isActive ? 'text-green-500' : ''}`}>
+                            {item.powerup_types.name}
+                        </span>
+                        {isActive && (
+                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-green-500 text-v-navy text-[6px] font-black px-1 rounded-sm uppercase italic">Activa</span>
+                        )}
+                        <span className="absolute -top-1 -right-1 bg-v-red text-v-white text-[8px] font-black px-1 rounded-sm shadow-lg">x{item.quantity}</span>
+                    </button>
+                );
+            }) : (
                 <div className="w-full py-4 text-center border border-dashed border-white/5 opacity-30 italic text-[10px]">No tienes cartas en esta liga</div>
             )}
         </div>
@@ -298,7 +310,9 @@ export default function TeamView({
                              '🎯 SELECCIONA OBJETIVO'}
                         </p>
                         <p className="text-xs text-v-white/80 leading-tight">
-                            {selectedPowerUp.powerup_types.code === 'MONEY' ? `¿Activar "${selectedPowerUp.powerup_types.name}" para recibir $5M extra ahora?` :
+                            {activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id) 
+                              ? `Ya has activado esta carta en esta jornada. Solo se permite una por tipo.` :
+                             selectedPowerUp.powerup_types.code === 'MONEY' ? `¿Activar "${selectedPowerUp.powerup_types.name}" para recibir $5M extra ahora?` :
                              selectedPowerUp.powerup_types.code === 'SPY' ? `El "${selectedPowerUp.powerup_types.name}" se utiliza directamente en el Mercado sobre las subastas.` :
                              `Selecciona un agente de tu escuadra para aplicar "${selectedPowerUp.powerup_types.name}".`}
                         </p>
@@ -306,9 +320,10 @@ export default function TeamView({
                     {selectedPowerUp.powerup_types.code === 'MONEY' && (
                         <button 
                             onClick={() => handleActivate(selectedPowerUp.powerup_types.id)}
-                            className="bg-v-red text-v-white px-4 py-2 text-[10px] font-black uppercase italic hover:brightness-110 transition-all shadow-lg shadow-v-red/20"
+                            disabled={activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id)}
+                            className="bg-v-red text-v-white px-4 py-2 text-[10px] font-black uppercase italic hover:brightness-110 transition-all shadow-lg shadow-v-red/20 disabled:opacity-50 disabled:grayscale"
                         >
-                            ACTIVAR YA
+                            {activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id) ? 'LÍMITE ALCANZADO' : 'ACTIVAR YA'}
                         </button>
                     )}
                     {selectedPowerUp.powerup_types.code === 'SPY' && (
@@ -338,8 +353,16 @@ export default function TeamView({
             <div key={r.player_id} className="border-l-4 border-v-red pl-2">
                 <PlayerCard 
                   player={{...r.pro_players, releaseClause: r.release_clause}} 
-                  onAction={selectedPowerUp ? () => handleActivate(selectedPowerUp.powerup_types.id, r.player_id) : () => handleSlotChange(r.player_id, r.pro_players.nickname, 'substitute')}
-                  actionLabel={selectedPowerUp ? `Aplicar ${selectedPowerUp.powerup_types.icon}` : "A Suplentes"}
+                  onAction={() => {
+                      if (selectedPowerUp) {
+                          if (activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id)) return;
+                          handleActivate(selectedPowerUp.powerup_types.id, r.player_id);
+                      } else {
+                          handleSlotChange(r.player_id, r.pro_players.nickname, 'substitute');
+                      }
+                  }}
+                  actionLabel={selectedPowerUp ? (activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id) ? "Límite" : `Aplicar ${selectedPowerUp.powerup_types.icon}`) : "A Suplentes"}
+                  actionDisabled={!!selectedPowerUp && activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id)}
                   onSecondAction={() => handleSell(r.pro_players)}
                   secondActionLabel="Vender"
                    secondActionClassName="text-v-red hover:bg-v-red/10"
@@ -365,8 +388,16 @@ export default function TeamView({
             <div key={r.player_id} className="border-l-4 border-v-white/50 pl-2">
                 <PlayerCard 
                   player={{...r.pro_players, releaseClause: r.release_clause}} 
-                  onAction={selectedPowerUp ? () => handleActivate(selectedPowerUp.powerup_types.id, r.player_id) : () => handleSlotChange(r.player_id, r.pro_players.nickname, 'starter')}
-                  actionLabel={selectedPowerUp ? `Aplicar ${selectedPowerUp.powerup_types.icon}` : "Ascender a Titular"}
+                  onAction={() => {
+                        if (selectedPowerUp) {
+                            if (activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id)) return;
+                            handleActivate(selectedPowerUp.powerup_types.id, r.player_id);
+                        } else {
+                            handleSlotChange(r.player_id, r.pro_players.nickname, 'starter');
+                        }
+                  }}
+                  actionLabel={selectedPowerUp ? (activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id) ? "Límite" : `Aplicar ${selectedPowerUp.powerup_types.icon}`) : "Ascender a Titular"}
+                  actionDisabled={!!selectedPowerUp && activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id)}
                   onSecondAction={() => handleSell(r.pro_players)}
                   secondActionLabel="Vender"
                    secondActionClassName="text-v-red hover:bg-v-red/10"
@@ -444,7 +475,7 @@ export default function TeamView({
       )}
       {/* Generic Confirmation Dialog */}
       {confirmDialog.show && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-v-navy/95 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-v-navy/95 backdrop-blur-md animate-in fade-in duration-200">
           <div className="v-panel w-full max-w-xs p-6 space-y-6 border-t-4 border-v-white animate-in zoom-in-95 duration-200">
             <div className="space-y-2 text-center">
               <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">Confirmación</p>

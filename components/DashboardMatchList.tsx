@@ -49,10 +49,10 @@ export async function DashboardMatchList() {
                             key={match.teams}
                             className="bg-v-gray/40 border-l-2 border-v-white/10 p-3 flex items-center justify-between group hover:border-v-red hover:bg-v-gray/60 transition-all"
                         >
-                            <div className="flex-1 text-sm font-black uppercase italic tracking-tighter group-hover:text-v-red transition-colors">
+                            <div className="flex-1 text-sm font-black uppercase italic tracking-tighter group-hover:text-v-red transition-colors truncate min-w-0">
                                 {match.teams.split(" vs ")[0]}
                             </div>
-                            <div className="flex flex-col items-center px-4 border-x border-white/5 min-w-[100px]">
+                            <div className="flex flex-col items-center px-4 border-x border-white/5 shrink-0 min-w-[100px]">
                                 <span className={`text-xs font-black ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
                                     {isLive ? "EN VIVO" : (() => {
                                         if (match.date) {
@@ -82,11 +82,8 @@ export async function DashboardMatchList() {
                                         return d.includes(",") ? d.split(",")[1].trim() : d;
                                     })()}
                                 </span>
-                                {/* <span className="text-[8px] font-black uppercase text-v-white/10 truncate max-w-[80px]">
-                                    {match.event}
-                                </span> */}
                             </div>
-                            <div className="flex-1 text-sm font-black uppercase italic tracking-tighter text-right">
+                            <div className="flex-1 text-sm font-black uppercase italic tracking-tighter text-right truncate min-w-0">
                                 {match.teams.split(" vs ")[1] ?? "TBD"}
                             </div>
                         </div>

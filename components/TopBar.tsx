@@ -8,7 +8,10 @@ import { Bell, CheckCircle, Gift } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from "@/lib/utils/haptics";
 
+import { useRouter } from "next/navigation";
+
 export default function TopBar() {
+    const router = useRouter();
     const [user, setUser] = useState<any>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [bonusStatus, setBonusStatus] = useState<{ canClaim: boolean }>({ canClaim: false });
@@ -42,6 +45,7 @@ export default function TopBar() {
         if (res.success) {
             haptic.success();
             setClaimMessage(res.message || "Claimed!");
+            router.refresh();
 
             // Hide after 2 seconds
             setTimeout(() => {
@@ -62,8 +66,26 @@ export default function TopBar() {
     const hasNotifications = unreadCount > 0 || bonusStatus.canClaim;
 
     return (
-        <header className="sticky top-0 left-0 w-full z-50 bg-v-navy/80 backdrop-blur-md border-b border-white/5 px-4 h-14 flex items-center justify-end">
-            <div className="relative">
+        <header className="sticky top-0 left-0 w-full z-50 bg-v-navy/80 backdrop-blur-md border-b border-white/5 px-4 h-14 flex items-center justify-between">
+            {/* Branding / Term identifier */}
+            <div className="flex items-center gap-3">
+                 <div className="flex flex-col">
+                    <span className="text-[10px] font-black italic text-v-white leading-none tracking-tighter">VCT // FANTASY</span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="w-1 h-1 bg-green-500 animate-pulse rounded-full" />
+                        <span className="text-[7px] font-black uppercase text-green-500/80 tracking-widest">CONNECTED</span>
+                    </div>
+                 </div>
+            </div>
+
+            <div className="relative flex items-center gap-4">
+                <div className="hidden sm:flex flex-col items-end">
+                    <span className="text-[7px] font-black uppercase text-v-white/40 tracking-widest leading-none">Agente</span>
+                    <span className="text-[10px] font-black uppercase italic text-v-white leading-tight">{user.user_metadata?.username || "USER"}</span>
+                </div>
+                
+                <div className="h-4 w-px bg-white/10 hidden sm:block" />
+
                 <button 
                     onClick={() => {
                         haptic.light();

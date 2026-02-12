@@ -168,16 +168,17 @@ export async function activatePowerUp(leagueId: string, profileId: string, power
         if (!activeGw) throw new Error("No hay jornada activa");
         if (activeGw.is_locked) throw new Error("No se pueden usar cartas durante la jornada (mercado cerrado)");
 
-        // 2. CHECK RESTRICTION: One powerup per gameweek per user
+        // 2. CHECK RESTRICTION: One powerup of each type per gameweek per user
         const { count } = await supabase
             .from('active_powerups')
             .select('*', { count: 'exact', head: true })
             .eq('league_id', leagueId)
             .eq('profile_id', profileId)
-            .eq('gameweek_id', activeGw.id);
+            .eq('gameweek_id', activeGw.id)
+            .eq('powerup_type_id', powerUpTypeId);
 
         if (count && count > 0) {
-            throw new Error("Límite alcanzado: Solo puedes usar 1 carta por jornada.");
+            throw new Error("Límite alcanzado: Ya has usado esta carta en esta jornada.");
         }
 
         // 3. Verify Inventory

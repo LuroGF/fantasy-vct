@@ -8,11 +8,9 @@ import { Challenges } from "@/components/Challenges";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 import BonusManager from "@/components/BonusManager";
-import {
-  DashboardMatchList,
-  DashboardMatchListSkeleton,
-} from "@/components/DashboardMatchList";
+import { DashboardMatchList, DashboardMatchListSkeleton } from "@/components/DashboardMatchList";
 import { Suspense } from "react";
+import { Award } from "lucide-react";
 
 // --- Stats Component ---
 async function DashboardStats({ supabase }: { supabase: any }) {
@@ -27,28 +25,28 @@ async function DashboardStats({ supabase }: { supabase: any }) {
     .select("*", { count: "exact", head: true });
 
   return (
-    <div className="grid grid-cols-3 gap-2">
-      <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
-        <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
-          Agentes
+    <div className="grid grid-cols-3 gap-2 sm:gap-4">
+      <Link href="/players" className="v-panel p-2 py-3 sm:p-4 border-l-v-white/20 group hover:border-l-v-red transition-all cursor-pointer">
+        <p className="text-[7px] sm:text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors truncate">
+          Ojeador
         </p>
-        <p className="text-xl font-black italic leading-none">
+        <p className="text-lg sm:text-2xl font-black italic leading-none">
           {playerCount || 0}
         </p>
-      </div>
-      <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
-        <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
+      </Link>
+      <div className="v-panel p-2 py-3 sm:p-4 border-l-v-white/20 group hover:border-l-v-red transition-all">
+        <p className="text-[7px] sm:text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors truncate">
           Equipos
         </p>
-        <p className="text-xl font-black italic leading-none">
+        <p className="text-lg sm:text-2xl font-black italic leading-none">
           {teamCount || 0}
         </p>
       </div>
-      <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
-        <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
+      <div className="v-panel p-2 py-3 sm:p-4 border-l-v-white/20 group hover:border-l-v-red transition-all">
+        <p className="text-[7px] sm:text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors truncate">
           Ligas
         </p>
-        <p className="text-xl font-black italic leading-none">
+        <p className="text-lg sm:text-2xl font-black italic leading-none">
           {leagueCount || 0}
         </p>
       </div>
@@ -155,41 +153,45 @@ export default async function DashboardPage() {
             <Link
               href="/ranking"
               key={ul.leagues.id}
-              className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer"
+              className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98] select-none"
             >
+              {/* Background accent */}
               <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
+              <div className="absolute -right-4 -top-6 text-6xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase">
+                {ul.leagues.name.substring(0, 3)}
+              </div>
 
               <div className="flex justify-between items-start mb-6 relative z-10">
-                <div>
-                  <h3 className="text-3xl italic tracking-tighter border-b-2 border-v-red w-fit">
+                <div className="flex-1 min-w-0 pr-4">
+                  <h3 className="text-2xl sm:text-3xl italic tracking-tighter border-b-2 border-v-red w-fit truncate max-w-full">
                     {ul.leagues.name}
                   </h3>
-                  <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest mt-1">
-                    {"ID: "}
-                    {ul.leagues.invite_code}
-                    {" // Activa"}
-                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">
+                       ID: {ul.leagues.invite_code}
+                    </span>
+                    <span className="text-[8px] text-v-red/50 animate-pulse font-black uppercase tracking-tighter bg-v-red/5 px-1 border border-v-red/10 rounded-xs">
+                       ACTIVA
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 relative z-10">
+              <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 relative z-10 group-hover:border-v-red/20 transition-colors">
                 <div>
-                  <p className="text-[10px] font-black uppercase text-v-white/30">
-                    Puntuación
+                  <p className="text-[8px] sm:text-[10px] font-black uppercase text-v-white/30 tracking-widest">
+                    Puntuación Global
                   </p>
-                  <p className="text-xl font-black italic">
-                    {ul.total_points.toLocaleString()}{" "}
-                    <span className="text-v-red text-[8px] not-italic pl-1">
-                      ACTIVA
-                    </span>
+                  <p className="text-lg sm:text-xl font-black italic text-v-white">
+                    {ul.total_points.toLocaleString()}
                   </p>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-v-white/30">
-                    VP Disp.
+                <div className="text-right border-l border-white/5 pl-4">
+                  <p className="text-[8px] sm:text-[10px] font-black uppercase text-v-white/30 tracking-widest">
+                    VP Disponible
                   </p>
-                  <p className="text-xl font-black italic">
-                    {(Number(ul.current_budget || 0) / 1000000).toFixed(1)}M VP
+                  <p className="text-lg sm:text-xl font-black italic text-v-red">
+                    {(Number(ul.current_budget || 0) / 1000000).toFixed(1)}M
                   </p>
                 </div>
               </div>
@@ -210,27 +212,37 @@ export default async function DashboardPage() {
             </div>
           )}
 
-          <Link
-            href="/team"
-            className="v-btn-primary w-full shadow-xl shadow-v-red/20 group"
-          >
-            <span className="flex items-center justify-center gap-2">
-              Editar equipo
-              <svg
-                className="w-4 h-4 group-hover:translate-x-1 transition-transform"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <div className="flex gap-3">
+              <Link
+                href="/team"
+                className="v-btn-primary flex-1 shadow-xl shadow-v-red/20 group"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="3"
-                  d="M14 5l7 7m0 0l-7 7m7-7H3"
-                />
-              </svg>
-            </span>
-          </Link>
+                <span className="flex items-center justify-center gap-2">
+                  Editar equipo
+                  <svg
+                    className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="3"
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    />
+                  </svg>
+                </span>
+              </Link>
+              <Link
+                href="/players"
+                className="v-panel flex-1 flex items-center justify-center gap-2 bg-v-white/5 border-white/10 hover:border-v-white transition-all group"
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest text-v-white italic group-hover:text-v-red transition-colors flex items-center gap-2">
+                   <Award className="w-3 h-3" /> Ojeador
+                </span>
+              </Link>
+          </div>
         </div>
 
         {/* Upcoming Matches (Streaming) */}

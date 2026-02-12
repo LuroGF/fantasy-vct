@@ -19,7 +19,7 @@ export default function Home() {
         </video>
 
         {/* Overlay para contraste */}
-        <div className="absolute inset-0 bg-gradient-to-b from-v-navy/30 via-v-navy/70 to-v-navy" />
+        <div className="absolute inset-0 bg-linear-to-b from-v-navy/30 via-v-navy/70 to-v-navy" />
       </div>
 
       {/* Content */}

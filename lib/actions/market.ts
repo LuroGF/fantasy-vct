@@ -26,7 +26,7 @@ export async function getPersonalMarket(leagueId: string, profileId: string) {
 
   return data.map((d: any) => ({
     ...d,
-    player: players?.find(p => p.id === d.player_id)
+    player: players?.find((p: any) => p.id === d.player_id)
   }));
 }
 
@@ -56,7 +56,7 @@ export async function buyFromPersonalMarket(leagueId: string, profileId: string,
 }
 
 // Global Auctions
-export async function getActiveAuctions(leagueId: string, profileId?: string) {
+export async function fetchActiveAuctions(leagueId: string, profileId?: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('market_auctions')
@@ -77,10 +77,10 @@ export async function getActiveAuctions(leagueId: string, profileId?: string) {
       .select('auction_id')
       .eq('profile_id', profileId);
     
-    const revealSet = new Set(reveals?.map(r => r.auction_id));
-    return data.map(a => ({
+    const revealSet = new Set(reveals?.map((r: any) => r.auction_id));
+    return data.map((a: { id: unknown; }) => ({
       ...a,
-      is_revealed: revealSet.has(a.id)
+      is_revealed: revealSet.has(a.id) as any
     }));
   }
 
@@ -244,7 +244,7 @@ export async function placeBid(auctionId: string, profileId: string, bidAmount: 
       .eq('market_auctions.status', 'active')
       .neq('auction_id', auctionId);
     
-    const committedFunds = committedBids?.reduce((sum, b) => sum + Number(b.bid_amount), 0) || 0;
+    const committedFunds = committedBids?.reduce((sum: number, b: { bid_amount: any; }) => sum + Number(b.bid_amount), 0) || 0;
     const availableBudget = Number(participant.current_budget) - committedFunds;
 
     if (availableBudget < bidAmount) {
@@ -393,7 +393,7 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
       .eq('profile_id', profileId)
       .eq('market_auctions.status', 'active');
     
-    const committedFunds = committedBids?.reduce((sum, b) => sum + Number(b.bid_amount), 0) || 0;
+    const committedFunds = committedBids?.reduce((sum: number, b: { bid_amount: any; }) => sum + Number(b.bid_amount), 0) || 0;
     const availableBudget = Number(participant.current_budget) - committedFunds;
 
     if (availableBudget < price) {
@@ -486,6 +486,15 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
 
     // 10. Increment Transfers
     await supabase.rpc('increment_transfers', { p_league_id: leagueId, p_profile_id: profileId });
+
+    // 11. Log Transaction
+    await supabase.from("market_transactions").insert({
+        league_id: leagueId,
+        profile_id: profileId,
+        player_id: playerId,
+        type: 'buy',
+        price: price
+    });
 
     revalidatePath("/market");
     revalidatePath("/team");
@@ -668,7 +677,7 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
       .eq('profile_id', buyerProfileId)
       .eq('market_auctions.status', 'active');
     
-    const committedFunds = committedBids?.reduce((sum, b) => sum + Number(b.bid_amount), 0) || 0;
+    const committedFunds = committedBids?.reduce((sum: number, b: { bid_amount: any; }) => sum + Number(b.bid_amount), 0) || 0;
     const availableBudget = Number(buyer.current_budget) - committedFunds;
 
     if (availableBudget < Number(clausePrice)) {
@@ -918,6 +927,15 @@ export async function resolveExpiredAuctions() {
           const { data: sPart } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', auct.league_id).eq('profile_id', auct.seller_id).single();
           if (sPart) {
               await supabaseAdmin.from('league_participants').update({ current_budget: Number(sPart.current_budget) + bankPrice }).eq('league_id', auct.league_id).eq('profile_id', auct.seller_id);
+              
+              // Log Transaction for History
+              await supabaseAdmin.from('market_transactions').insert({ 
+                  league_id: auct.league_id, 
+                  profile_id: auct.seller_id, 
+                  player_id: auct.player_id, 
+                  type: 'sell_bank', 
+                  price: bankPrice 
+              });
           }
           const { createNotification } = await import("./notifications");
           await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "🏦 VENTA A LA BANCA", message: `Sin pujas válidas por ${auct.pro_players.nickname}. Pago banca: $${(bankPrice / 1000000).toFixed(1)}M.`, type: "sale" });

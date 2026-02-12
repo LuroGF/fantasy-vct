@@ -3,7 +3,7 @@ import MarketView from "./MarketView";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { getSession } from "@/lib/actions/auth";
 import { redirect } from "next/navigation";
-import { getPersonalMarket, getActiveAuctions } from "@/lib/actions/market";
+import { getPersonalMarket, fetchActiveAuctions } from "@/lib/actions/market";
 
 interface Player {
   id: string;
@@ -39,7 +39,7 @@ export default async function MarketPage() {
 
   const [personalMarket, auctions, leagueRosters, activePowerUps] = await Promise.all([
     getPersonalMarket(activeLeagueId, session.user.id),
-    getActiveAuctions(activeLeagueId),
+    fetchActiveAuctions(activeLeagueId),
     supabase
       .from("user_rosters")
       .select("*, profiles(username)")
