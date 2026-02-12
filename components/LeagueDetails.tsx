@@ -16,8 +16,8 @@ export default function LeagueDetails({ leagueId, onBack }: LeagueDetailsProps) 
         async function load() {
             setLoading(true);
             try {
-                const classification = await getLeagueClassification(leagueId);
-                setData(classification);
+                const { standings } = await getLeagueClassification(leagueId);
+                setData(standings);
             } catch (err) {
                 console.error(err);
             }
