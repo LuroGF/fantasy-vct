@@ -26,34 +26,34 @@ async function DashboardStats({ supabase }: { supabase: any }) {
     .from("leagues")
     .select("*", { count: "exact", head: true });
 
-  // return (
-  //   <div className="grid grid-cols-3 gap-2">
-  //     <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
-  //       <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
-  //         Agentes
-  //       </p>
-  //       <p className="text-xl font-black italic leading-none">
-  //         {playerCount || 0}
-  //       </p>
-  //     </div>
-  //     <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
-  //       <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
-  //         Equipos
-  //       </p>
-  //       <p className="text-xl font-black italic leading-none">
-  //         {teamCount || 0}
-  //       </p>
-  //     </div>
-  //     <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
-  //       <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
-  //         Ligas
-  //       </p>
-  //       <p className="text-xl font-black italic leading-none">
-  //         {leagueCount || 0}
-  //       </p>
-  //     </div>
-  //   </div>
-  // );
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
+        <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
+          Agentes
+        </p>
+        <p className="text-xl font-black italic leading-none">
+          {playerCount || 0}
+        </p>
+      </div>
+      <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
+        <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
+          Equipos
+        </p>
+        <p className="text-xl font-black italic leading-none">
+          {teamCount || 0}
+        </p>
+      </div>
+      <div className="v-panel p-2 py-3 border-l-v-white/20 group hover:border-l-v-red transition-all">
+        <p className="text-[8px] font-black uppercase text-v-white/30 leading-none mb-1 group-hover:text-v-red transition-colors">
+          Ligas
+        </p>
+        <p className="text-xl font-black italic leading-none">
+          {leagueCount || 0}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function StatsSkeleton() {
