@@ -323,8 +323,7 @@ CREATE POLICY "Users can manage own subscriptions" ON public.push_subscriptions 
 INSERT INTO public.powerup_types (code, name, description, base_price, icon) VALUES
 ('LOCK', 'El Candado', 'Protege a un jugador de ser robado por cláusula durante esta jornada.', 3000, '🛡️'),
 ('MONEY', 'Inversor', 'Recibe 5M de presupuesto extra inmediatamente.', 5000, '💰'),
-('CAPTAIN', 'Capitán', 'El jugador seleccionado puntuará DOBLE en esta jornada.', 4000, '©️'),
-('SCOUT', 'Ojeador', 'Permite realizar una transferencia extra (+1) durante esta semana.', 2000, '🕵️')
+('CAPTAIN', 'Capitán', 'El jugador seleccionado puntuará DOBLE en esta jornada.', 4000, '©️')
 ON CONFLICT (code) DO UPDATE SET 
     base_price = EXCLUDED.base_price,
     description = EXCLUDED.description,

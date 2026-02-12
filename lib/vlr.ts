@@ -143,7 +143,11 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
           const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
           
           const eventUpper = event.toUpperCase();
-          const isVctEmea = eventUpper.includes("VCT") && eventUpper.includes("EMEA") && !eventUpper.includes("GAME CHANGERS") && !eventUpper.includes("CHALLENGERS");
+          const isVctEmea = eventUpper.includes("VCT") && 
+                           eventUpper.includes("EMEA") && 
+                           !eventUpper.includes("GAME CHANGERS") && 
+                           !eventUpper.includes("CHALLENGERS") &&
+                           !eventUpper.includes("ASCENSION");
 
           if (teamsLabel && event) {
             const parsed = parseVlrDate(rawDate, time); // Unadjusted
@@ -542,6 +546,7 @@ export async function syncMatchesToDb(matches: VlrMatch[]) {
     const matchUpserts = [];
 
     for (const m of matches) {
+        if (!m.isVctEmea) continue;
         if (finishedIds.has(m.id)) continue;
 
         const parts = m.teams.split(" vs ");

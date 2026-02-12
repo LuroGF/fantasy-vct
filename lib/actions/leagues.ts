@@ -249,9 +249,11 @@ export async function getLeagueClassification(leagueId: string) {
     .select(`
       profile_id,
       player_id,
+      release_clause,
       pro_players (
         id,
         nickname,
+        role,
         pro_teams (tag)
       )
     `)
@@ -264,11 +266,31 @@ export async function getLeagueClassification(leagueId: string) {
   const rosterMap = new Map();
   rosters.forEach((r: any) => {
     if (!rosterMap.has(r.profile_id)) rosterMap.set(r.profile_id, []);
-    rosterMap.get(r.profile_id).push(r.pro_players);
+    rosterMap.get(r.profile_id).push({
+        ...r.pro_players,
+        release_clause: r.release_clause
+    });
   });
 
-  return participantsWithPoints.map((p: any) => ({
-    ...p,
-    roster: rosterMap.get(p.profiles.id) || []
-  }));
+  // 5. Obtener bloqueos (LOCK) activos en esta liga/semana
+  const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).single();
+  let activeLocks: string[] = [];
+  if (activeGw) {
+      const { data: locks } = await supabase
+        .from('active_powerups')
+        .select('target_player_id, powerup_types!inner(code)')
+        .eq('league_id', leagueId)
+        .eq('gameweek_id', activeGw.id)
+        .eq('powerup_types.code', 'LOCK');
+      
+      activeLocks = (locks || []).map((l: any) => l.target_player_id);
+  }
+
+  return {
+      standings: participantsWithPoints.map((p: any) => ({
+        ...p,
+        roster: rosterMap.get(p.profiles.id) || []
+      })),
+      activeLocks
+  };
 }

@@ -377,13 +377,15 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
 
     const { data: participant, error: pError } = await supabase
       .from("league_participants")
-      .select("current_budget")
+      .select("current_budget, transfers_made_this_week")
       .eq("league_id", leagueId)
       .eq("profile_id", profileId)
       .single();
 
     if (pError || !participant) throw new Error("No se pudo verificar el budget operacional.");
     
+
+
     // NEW: Check Committed Funds (money blocked in active auctions)
     const { data: committedBids } = await supabase
       .from('user_bids')
@@ -650,12 +652,14 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
 
     const { data: buyer } = await supabase
         .from("league_participants")
-        .select("current_budget")
+        .select("current_budget, transfers_made_this_week")
         .eq("league_id", leagueId)
         .eq("profile_id", buyerProfileId)
         .single();
     
     if (!buyer || Number(buyer.current_budget) < Number(clausePrice)) throw new Error("Presupuesto insuficiente para rescisión.");
+
+
 
     // NEW: Check Committed Funds (money blocked in active auctions)
     const { data: committedBids } = await supabase
@@ -763,6 +767,9 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
         slot_type: targetSlot,
         is_starter: targetSlot === 'starter'
     });
+    
+    // Increment Transfers
+    await supabase.rpc('increment_transfers', { p_league_id: leagueId, p_profile_id: buyerProfileId });
 
     await supabase.from("market_transactions").insert({
         league_id: leagueId,

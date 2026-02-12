@@ -14,7 +14,6 @@ interface TeamViewProps {
   initialInventory: any[];
   initialActivePowerUps: any[];
   activeGameweekId?: any;
-  hasScoutActive?: boolean;
 }
 
 export default function TeamView({ 
@@ -24,7 +23,6 @@ export default function TeamView({
   initialInventory, 
   initialActivePowerUps, 
   activeGameweekId,
-  hasScoutActive = false
 }: TeamViewProps) {
   const [roster, setRoster] = useState(initialRoster);
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagues[0]?.leagues.id || "");
@@ -57,14 +55,19 @@ export default function TeamView({
       setLoading(true);
       const { getUserFullRoster } = await import("@/lib/actions/roster");
       const { getActiveAuctions } = await import("@/lib/actions/market");
+      const { getUserInventory, getActivePowerUps } = await import("@/lib/actions/inventory");
       
-      const [rosterData, auctionsData] = await Promise.all([
+      const [rosterData, auctionsData, inventoryData, powerUpsData] = await Promise.all([
         getUserFullRoster(activeLeagueId, profileId),
-        getActiveAuctions(activeLeagueId)
+        getActiveAuctions(activeLeagueId),
+        getUserInventory(activeLeagueId, profileId),
+        getActivePowerUps(activeLeagueId, profileId)
       ]);
       
       setRoster(rosterData);
       setAuctions(auctionsData);
+      setInventory(inventoryData);
+      setActivePowerUps(powerUpsData);
       setLoading(false);
     }
     if (activeLeagueId) loadData();
@@ -286,15 +289,42 @@ export default function TeamView({
         </div>
 
         {selectedPowerUp && (
-            <div className="bg-v-red/10 border border-v-red/30 p-2 animate-in slide-in-from-left duration-200">
-                <p className="text-[8px] font-black uppercase text-v-red text-center tracking-widest animate-pulse">
-                    MODO APLICACIÓN: Selecciona un agente para usar "{selectedPowerUp.powerup_types.name}"
-                </p>
+            <div className="bg-v-red/10 border border-v-red/30 p-3 animate-in slide-in-from-left duration-200">
+                <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1">
+                        <p className="text-[10px] font-black uppercase text-v-red tracking-widest mb-1">
+                            {selectedPowerUp.powerup_types.code === 'MONEY' ? '💡 ACCIÓN DIRECTA' : 
+                             selectedPowerUp.powerup_types.code === 'SPY' ? '🛒 USO EN MERCADO' : 
+                             '🎯 SELECCIONA OBJETIVO'}
+                        </p>
+                        <p className="text-xs text-v-white/80 leading-tight">
+                            {selectedPowerUp.powerup_types.code === 'MONEY' ? `¿Activar "${selectedPowerUp.powerup_types.name}" para recibir $5M extra ahora?` :
+                             selectedPowerUp.powerup_types.code === 'SPY' ? `El "${selectedPowerUp.powerup_types.name}" se utiliza directamente en el Mercado sobre las subastas.` :
+                             `Selecciona un agente de tu escuadra para aplicar "${selectedPowerUp.powerup_types.name}".`}
+                        </p>
+                    </div>
+                    {selectedPowerUp.powerup_types.code === 'MONEY' && (
+                        <button 
+                            onClick={() => handleActivate(selectedPowerUp.powerup_types.id)}
+                            className="bg-v-red text-v-white px-4 py-2 text-[10px] font-black uppercase italic hover:brightness-110 transition-all shadow-lg shadow-v-red/20"
+                        >
+                            ACTIVAR YA
+                        </button>
+                    )}
+                    {selectedPowerUp.powerup_types.code === 'SPY' && (
+                         <Link 
+                            href="/market"
+                            className="bg-v-white text-v-navy px-4 py-2 text-[10px] font-black uppercase italic hover:bg-v-red hover:text-v-white transition-all"
+                        >
+                            IR AL MERCADO
+                        </Link>
+                    )}
+                </div>
                 <button 
                     onClick={() => setSelectedPowerUp(null)}
-                    className="w-full mt-2 text-[7px] font-black uppercase text-v-white/40 hover:text-v-white transition-colors"
+                    className="w-full mt-3 pt-2 border-t border-v-red/20 text-[7px] font-black uppercase text-v-white/40 hover:text-v-white transition-colors"
                 >
-                    [ CANCELAR ACTIVACIÓN ]
+                    [ CANCELAR ]
                 </button>
             </div>
         )}

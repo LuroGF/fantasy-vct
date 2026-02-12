@@ -41,6 +41,26 @@ export async function getUserInventory(leagueId: string, profileId: string) {
   return data;
 }
 
+export async function getActivePowerUps(leagueId: string, profileId: string) {
+  const supabase = await createClient();
+  const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).single();
+  
+  if (!activeGw) return [];
+
+  const { data, error } = await supabase
+    .from('active_powerups')
+    .select('*, powerup_types(code)')
+    .eq('league_id', leagueId)
+    .eq('profile_id', profileId)
+    .eq('gameweek_id', activeGw.id);
+
+  if (error) {
+    console.error("Error fetching active powerups:", error);
+    return [];
+  }
+  return data;
+}
+
 export async function buyPowerUp(leagueId: string, profileId: string, powerUpCode: string) {
   const supabase = await createClient();
   try {
@@ -123,8 +143,9 @@ export async function buyPowerUp(leagueId: string, profileId: string, powerUpCod
            player_id: null // Items are not player specific transactions usually
        });
 
-    revalidatePath("/shop"); // Future route
+    revalidatePath("/shop");
     revalidatePath("/market");
+    revalidatePath("/team");
     
     return { success: true, message: `Compra exitosa: ${item.name}` };
 

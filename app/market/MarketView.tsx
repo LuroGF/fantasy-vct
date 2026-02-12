@@ -12,6 +12,7 @@ interface MarketViewProps {
   initialLeagues: any[];
   profileId: string;
   initialLeagueRosters: any[];
+  activePowerUps: any[];
 }
 
 export default function MarketView({ 
@@ -20,6 +21,7 @@ export default function MarketView({
   initialLeagues, 
   profileId,
   initialLeagueRosters,
+  activePowerUps: initialActivePowerUps,
 }: MarketViewProps) {
   const [activeTab, setActiveTab] = useState<'personal' | 'general'>('personal');
   const [search, setSearch] = useState("");
@@ -30,6 +32,7 @@ export default function MarketView({
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [personalMarket, setPersonalMarket] = useState(initialPersonalMarket);
   const [auctions, setAuctions] = useState(initialAuctions);
+  const [activePowerUps, setActivePowerUps] = useState(initialActivePowerUps);
   const [bidDialog, setBidDialog] = useState<{ show: boolean; auction: any | null; amount: string }>({
     show: false,
     auction: null,
@@ -147,6 +150,12 @@ export default function MarketView({
     });
   }, [allPlayers, search, activeFilter, activeTab]);
 
+
+
+  const isPlayerLocked = (playerId: string) => {
+    return activePowerUps.some(ap => ap.target_player_id === playerId && ap.powerup_types?.code === 'LOCK');
+  };
+
   const getPlayerOwners = (playerId: string) => {
     return initialLeagueRosters.filter(r => r.player_id === playerId);
   };
@@ -195,10 +204,7 @@ export default function MarketView({
                     <p className="text-sm font-black italic text-v-red/80">${(committedFunds / 1000000).toFixed(1)}M</p>
                 </div>
              )}
-             <div className="text-right">
-                <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Fichajes Semana</p>
-                <p className="text-sm font-black italic text-v-white">{activeParticipation.transfers_made_this_week || 0}</p>
-             </div>
+
           </div>
         )}
       </div>
@@ -206,13 +212,13 @@ export default function MarketView({
       {/* Search & Tabs */}
       <div className="v-panel p-4 space-y-4">
         <div className="flex bg-v-navy/50 p-1 border border-white/5">
-          <button 
+          <button
             onClick={() => setActiveTab('personal')}
             className={`flex-1 py-2 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'personal' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
           >
             Mercado Diario
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('general')}
             className={`flex-1 py-2 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'general' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
           >
@@ -230,14 +236,14 @@ export default function MarketView({
               className="w-full bg-v-navy/50 border border-white/10 px-4 py-3 text-xs font-black italic focus:border-v-red outline-none transition-colors"
             />
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              <button 
+              <button
                 onClick={() => setActiveFilter(null)}
                 className={`flex-shrink-0 px-3 py-1 text-[8px] font-black uppercase border transition-all ${!activeFilter ? 'border-v-red bg-v-red/10 text-v-red' : 'border-white/10 text-v-white/40'}`}
               >
                 TODOS
               </button>
               {roles.map(role => (
-                <button 
+                <button
                   key={role}
                   onClick={() => setActiveFilter(role === activeFilter ? null : role)}
                   className={`flex-shrink-0 px-3 py-1 text-[8px] font-black uppercase border transition-all ${role === activeFilter ? 'border-v-red bg-v-red/10 text-v-red' : 'border-white/10 text-v-white/40'}`}
@@ -268,7 +274,7 @@ export default function MarketView({
             </div>
             <div className="grid gap-3">
               {personalMarket.map((offer) => (
-                <PlayerCard 
+                <PlayerCard
                   key={offer.id}
                   player={offer.player}
                   inAuction={auctions.some(a => a.player_id === offer.player_id)}
@@ -301,7 +307,7 @@ export default function MarketView({
                 {auctions.map((auction) => {
                   const myBid = userBids.find(b => b.auction_id === auction.id);
                   const isRevealed = auction.is_revealed;
-                  
+
                   return (
                     <div key={auction.id} className="v-panel p-3 border-l-4 border-v-red bg-v-red/5">
                       <div className="flex justify-between items-start mb-2">
@@ -317,7 +323,7 @@ export default function MarketView({
                             ) : (
                                 <div className="space-y-1">
                                     <p className="text-lg font-black italic text-v-white/20">💰 ???</p>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setConfirmDialog({
                                                 show: true,
@@ -334,7 +340,7 @@ export default function MarketView({
                             )}
                          </div>
                       </div>
-                       <button 
+                       <button
                         onClick={() => {
                           setBidDialog({
                             show: true,
@@ -348,7 +354,7 @@ export default function MarketView({
                       </button>
 
                       {myBid && (
-                        <button 
+                        <button
                             onClick={() => {
                                 setConfirmDialog({
                                     show: true,
@@ -378,16 +384,16 @@ export default function MarketView({
                 <h2 className="text-xl italic uppercase text-v-white/80">Buscador Operativo</h2>
                 <p className="text-[8px] uppercase tracking-widest text-v-white/40 font-black">Localización de talento y activaciones de cláusula</p>
               </div>
-              
+
               <div className="grid gap-3">
                 {search.length > 2 && filteredPlayers.map((player) => {
                     const owners = getPlayerOwners(player.id);
                     const iamOwner = owners.some(o => o.profile_id === profileId);
                     const otherOwners = owners.filter(o => o.profile_id !== profileId);
-                    
+
                     return (
                         <div key={player.id} className="v-panel p-3 bg-v-navy/30 border border-white/5 space-y-4">
-                            <PlayerCard 
+                            <PlayerCard
                                 player={player}
                                 actionLabel={iamOwner ? "Ya en tu Escuadra" : (otherOwners.length === 0 ? "Sin Dueño (Tienda)" : "Ver Propietarios")}
                                 actionDisabled={iamOwner || otherOwners.length === 0}
@@ -404,7 +410,7 @@ export default function MarketView({
                                     }
                                 }}
                             />
-                            
+
                             {!iamOwner && otherOwners.length > 0 && (
                                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
                                     <div className="flex items-center gap-2 px-1">
@@ -412,32 +418,35 @@ export default function MarketView({
                                         <p className="text-[8px] font-black uppercase text-v-white/40 tracking-widest whitespace-nowrap">Contratos en esta Liga</p>
                                         <div className="h-[1px] flex-1 bg-white/10" />
                                     </div>
-                                    
+
                                     <div className="grid gap-2">
                                         {otherOwners.map(owner => {
                                             const ownerInAuction = auctions.some(a => a.player_id === player.id && a.seller_id === owner.profile_id);
-                                            return (
-                                                <div key={owner.profile_id} className="flex items-center justify-between bg-v-navy/50 p-2 border border-white/5 hover:border-v-red/30 transition-all group">
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-black uppercase italic text-v-white group-hover:text-v-red transition-colors">{owner.profiles.username}</span>
-                                                            {ownerInAuction && <span className="text-[6px] bg-v-red text-v-white px-1 font-black leading-tight animate-pulse">EN SUBASTA</span>}
-                                                        </div>
-                                                        <span className="text-[8px] text-v-white/40 font-black uppercase tracking-tighter italic">Cláusula: <span className="text-v-white/80">${(owner.release_clause / 1000000).toFixed(1)}M</span></span>
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => {
-                                                            setConfirmDialog({
-                                                                show: true,
-                                                                title: "Ejecutar Cláusula",
-                                                                message: `¿Pagar la rescisión de $${(owner.release_clause / 1000000).toFixed(1)}M a ${owner.profiles.username} por el contrato de ${player.nickname}?`,
-                                                                onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, owner.profile_id))
-                                                            });
-                                                        }}
-                                                        className="px-4 py-2 bg-v-white text-v-navy text-[8px] font-black uppercase hover:bg-v-red hover:text-v-white transition-all italic border border-transparent"
-                                                    >
-                                                        Ejecutar
-                                                    </button>
+                                             const locked = isPlayerLocked(player.id);
+                                             return (
+                                                 <div key={owner.profile_id} className="flex items-center justify-between bg-v-navy/50 p-2 border border-white/5 hover:border-v-red/30 transition-all group">
+                                                     <div className="flex flex-col">
+                                                         <div className="flex items-center gap-2">
+                                                             <span className="text-[10px] font-black uppercase italic text-v-white group-hover:text-v-red transition-colors">{owner.profiles.username}</span>
+                                                             {ownerInAuction && <span className="text-[6px] bg-v-red text-v-white px-1 font-black leading-tight animate-pulse">EN SUBASTA</span>}
+                                                             {locked && <span className="text-[6px] bg-v-navy text-v-white px-1 font-black leading-tight border border-v-white/20">🛡️ BLINDADO</span>}
+                                                         </div>
+                                                         <span className="text-[8px] text-v-white/40 font-black uppercase tracking-tighter italic">Cláusula: <span className="text-v-white/80">${(owner.release_clause / 1000000).toFixed(1)}M</span></span>
+                                                     </div>
+                                                     <button
+                                                         disabled={locked}
+                                                         onClick={() => {
+                                                             setConfirmDialog({
+                                                                 show: true,
+                                                                 title: "Ejecutar Cláusula",
+                                                                 message: `¿Pagar la rescisión de $${(owner.release_clause / 1000000).toFixed(1)}M a ${owner.profiles.username} por el contrato de ${player.nickname}?`,
+                                                                 onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, owner.profile_id))
+                                                             });
+                                                         }}
+                                                         className={`px-4 py-2 text-[8px] font-black uppercase transition-all italic border border-transparent ${locked ? 'bg-v-white/5 text-v-white/20 cursor-not-allowed' : 'bg-v-white text-v-navy hover:bg-v-red hover:text-v-white'}`}
+                                                     >
+                                                         {locked ? 'Protegido' : 'Ejecutar'}
+                                                     </button>
                                                 </div>
                                             );
                                         })}

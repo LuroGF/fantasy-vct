@@ -52,8 +52,7 @@ CREATE TABLE IF NOT EXISTS public.active_powerups (
 INSERT INTO public.powerup_types (code, name, description, base_price, icon) VALUES
 ('LOCK', 'El Candado', 'Protege a un jugador de ser robado por cláusula durante esta jornada.', 60, '🛡️'),
 ('MONEY', 'Inversor', 'Recibe 5M de presupuesto extra inmediatamente.', 80, '💰'),
-('CAPTAIN', 'Capitán', 'El jugador seleccionado puntuará DOBLE en esta jornada.', 100, '©️'),
-('SCOUT', 'Ojeador', 'Permite realizar una transferencia extra (+1) durante esta semana.', 50, '🕵️')
+('CAPTAIN', 'Capitán', 'El jugador seleccionado puntuará DOBLE en esta jornada.', 100, '©️')
 ON CONFLICT (code) DO UPDATE SET 
     base_price = EXCLUDED.base_price,
     description = EXCLUDED.description,

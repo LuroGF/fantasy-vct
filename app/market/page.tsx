@@ -37,13 +37,17 @@ export default async function MarketPage() {
     );
   }
 
-  const [personalMarket, auctions, leagueRosters] = await Promise.all([
+  const [personalMarket, auctions, leagueRosters, activePowerUps] = await Promise.all([
     getPersonalMarket(activeLeagueId, session.user.id),
     getActiveAuctions(activeLeagueId),
     supabase
       .from("user_rosters")
       .select("*, profiles(username)")
       .eq("league_id", activeLeagueId),
+    supabase
+      .from("active_powerups")
+      .select("*, powerup_types(code)")
+      .eq("league_id", activeLeagueId)
   ]);
 
   return (
@@ -73,6 +77,7 @@ export default async function MarketPage() {
           initialLeagues={leagues as any[]}
           profileId={session.user.id}
           initialLeagueRosters={leagueRosters.data || []}
+          activePowerUps={activePowerUps.data || []}
         />
       </div>
     </ClientRefreshWrapper>

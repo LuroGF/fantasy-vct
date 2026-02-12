@@ -20,7 +20,7 @@ export default async function RankingPage() {
     );
   }
 
-  const standings = await getLeagueClassification(activeLeagueId);
+  const { standings, activeLocks } = await getLeagueClassification(activeLeagueId);
 
   return (
     <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl py-4 flex flex-col gap-6">
@@ -33,6 +33,7 @@ export default async function RankingPage() {
 
       <RankingView 
         standings={standings} 
+        initialLocks={activeLocks}
         profileId={session.user.id} 
         activeLeagueId={activeLeagueId} 
       />
