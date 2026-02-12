@@ -810,7 +810,7 @@ export async function resolveExpiredAuctions() {
       .select(`
         *,
         seller:profiles!market_auctions_seller_id_fkey(username),
-        bidder:profiles!highest_bidder_id_fkey(username),
+        bidder:profiles!market_auctions_highest_bidder_id_fkey(username),
         pro_players(nickname, role)
       `)
       .eq('status', 'active')

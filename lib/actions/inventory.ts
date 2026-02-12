@@ -246,13 +246,18 @@ export async function activatePowerUp(leagueId: string, profileId: string, power
         }
 
         // 6. Consume Item (Decrement quantity)
-        await supabase
+        const { error: consumeError } = await supabase
             .from("user_inventory")
             .update({ quantity: inventoryItem.quantity - 1 })
             .eq("id", inventoryItem.id);
 
+        if (consumeError) {
+          console.error("Error consuming item:", consumeError);
+          throw new Error("Error al consumir la carta del inventario.");
+        }
+
         // 7. Register Active Powerup
-        await supabase
+        const { error: activeError } = await supabase
             .from("active_powerups")
             .insert({
                 league_id: leagueId,
@@ -261,6 +266,15 @@ export async function activatePowerUp(leagueId: string, profileId: string, power
                 powerup_type_id: powerUpTypeId,
                 target_player_id: targetPlayerId || null
             });
+
+        if (activeError) {
+            console.error("Error registering active powerup:", activeError);
+             // Safety: if it failed because it already exists (limit of 1 pk)
+            if (activeError.code === '23505') {
+                 throw new Error("Ya tienes una carta activa en esta jornada.");
+            }
+            throw new Error("Fallo al activar el Protocolo de Poder.");
+        }
 
         revalidatePath("/team");
         return { success: true, message: "Carta activada correctamente" };

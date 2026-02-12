@@ -55,8 +55,7 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
     const { data: rosters, error: rosterError } = await supabaseAdmin
       .from("user_rosters")
       .select("league_id, profile_id, player_id")
-      .eq("is_active", true)
-      .eq("is_starter", true)
+      .eq("slot_type", "starter")
       .returns<{ league_id: string | null; profile_id: string | null; player_id: string | null }[]>();
 
     if (rosterError) throw rosterError;
@@ -114,8 +113,19 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
           .select("points_earned")
           .eq("league_id", p.league_id)
           .eq("profile_id", p.profile_id);
+
+        const totalEarned = allScores?.reduce((sum: number, s: any) => sum + (s.points_earned || 0), 0) || 0;
         
-        const total = allScores?.reduce((sum, s) => sum + (s.points_earned || 0), 0) || 0;
+        // --- NEW: Subtract spent points from shop ---
+        const { data: transactions } = await supabaseAdmin
+          .from("market_transactions")
+          .select("price")
+          .eq("league_id", p.league_id)
+          .eq("profile_id", p.profile_id)
+          .eq("type", "buy_item");
+          
+        const totalSpent = transactions?.reduce((sum, t) => sum + Number(t.price || 0), 0) || 0;
+        const total = Math.max(0, totalEarned - totalSpent);
         
         await supabaseAdmin
           .from("league_participants")

@@ -142,9 +142,14 @@ export default function MarketView({
 
   const filteredPlayers = useMemo(() => {
     if (activeTab === 'personal') return [];
+    if (search.length < 2 && !activeFilter) return [];
+    
     return allPlayers.filter((player) => {
-      const matchesSearch = player.nickname.toLowerCase().includes(search.toLowerCase()) ||
-                           player.pro_teams?.tag.toLowerCase().includes(search.toLowerCase());
+      const searchLower = search.toLowerCase();
+      const nicknameMatch = player.nickname.toLowerCase().includes(searchLower);
+      const teamMatch = player.pro_teams?.tag?.toLowerCase().includes(searchLower) || false;
+      
+      const matchesSearch = search.length < 2 || nicknameMatch || teamMatch;
       const matchesFilter = !activeFilter || player.role === activeFilter;
       return matchesSearch && matchesFilter;
     });
@@ -297,6 +302,93 @@ export default function MarketView({
           </div>
         ) : (
           <div className="space-y-8">
+            {/* General Search (Exclusive Clause or Direct search) */}
+            <div className="space-y-4">
+               <div className="px-1">
+                <h2 className="text-xl italic uppercase text-v-white/80">Buscador Operativo</h2>
+                <p className="text-[8px] uppercase tracking-widest text-v-white/40 font-black">Localización de talento y activaciones de cláusula</p>
+              </div>
+
+              <div className="grid gap-3">
+                {search.length > 2 && filteredPlayers.map((player) => {
+                    const owners = getPlayerOwners(player.id);
+                    const iamOwner = owners.some(o => o.profile_id === profileId);
+                    const otherOwners = owners.filter(o => o.profile_id !== profileId);
+
+                    return (
+                        <div key={player.id} className="v-panel p-3 bg-v-navy/30 border border-white/5 space-y-4">
+                            <PlayerCard
+                                player={player}
+                                actionLabel={iamOwner ? "Ya en tu Escuadra" : (otherOwners.length === 0 ? "Sin Dueño (Tienda)" : "Ver Propietarios")}
+                                actionDisabled={iamOwner || otherOwners.length === 0}
+                                inAuction={auctions.some(a => a.player_id === player.id && a.seller_id === profileId)}
+                                onAction={() => {
+                                    if (otherOwners.length === 1 && !iamOwner) {
+                                        const target = otherOwners[0];
+                                        setConfirmDialog({
+                                          show: true,
+                                          title: "Ejecutar Cláusula",
+                                          message: `¿Ejecutar cláusula de $${(target.release_clause / 1000000).toFixed(1)}M a la escuadra de ${target.profiles.username}?`,
+                                          onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, target.profile_id))
+                                        });
+                                    }
+                                }}
+                            />
+
+                            {!iamOwner && otherOwners.length > 0 && (
+                                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <div className="h-[1px] flex-1 bg-white/10" />
+                                        <p className="text-[8px] font-black uppercase text-v-white/40 tracking-widest whitespace-nowrap">Contratos en esta Liga</p>
+                                        <div className="h-[1px] flex-1 bg-white/10" />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        {otherOwners.map(owner => {
+                                            const ownerInAuction = auctions.some(a => a.player_id === player.id && a.seller_id === owner.profile_id);
+                                             const locked = isPlayerLocked(player.id);
+                                             return (
+                                                 <div key={owner.profile_id} className="flex items-center justify-between bg-v-navy/50 p-2 border border-white/5 hover:border-v-red/30 transition-all group">
+                                                     <div className="flex flex-col">
+                                                         <div className="flex items-center gap-2">
+                                                             <span className="text-[10px] font-black uppercase italic text-v-white group-hover:text-v-red transition-colors">{owner.profiles.username}</span>
+                                                             {ownerInAuction && <span className="text-[6px] bg-v-red text-v-white px-1 font-black leading-tight animate-pulse">EN SUBASTA</span>}
+                                                             {locked && <span className="text-[6px] bg-v-navy text-v-white px-1 font-black leading-tight border border-v-white/20">🛡️ BLINDADO</span>}
+                                                         </div>
+                                                         <span className="text-[8px] text-v-white/40 font-black uppercase tracking-tighter italic">Cláusula: <span className="text-v-white/80">${(owner.release_clause / 1000000).toFixed(1)}M</span></span>
+                                                     </div>
+                                                     <button
+                                                         disabled={locked}
+                                                         onClick={() => {
+                                                             setConfirmDialog({
+                                                                 show: true,
+                                                                 title: "Ejecutar Cláusula",
+                                                                 message: `¿Pagar la rescisión de $${(owner.release_clause / 1000000).toFixed(1)}M a ${owner.profiles.username} por el contrato de ${player.nickname}?`,
+                                                                 onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, owner.profile_id))
+                                                             });
+                                                         }}
+                                                         className={`px-4 py-2 text-[8px] font-black uppercase transition-all italic border border-transparent ${locked ? 'bg-v-white/5 text-v-white/20 cursor-not-allowed' : 'bg-v-white text-v-navy hover:bg-v-red hover:text-v-white'}`}
+                                                     >
+                                                         {locked ? 'Protegido' : 'Ejecutar'}
+                                                     </button>
+                                                </div>
+                                             );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                {search.length > 2 && filteredPlayers.length === 0 && (
+                    <p className="text-center py-10 opacity-30 text-[10px] uppercase font-black italic">No se han encontrado agentes con ese nombre.</p>
+                )}
+                {search.length > 0 && search.length <= 2 && (
+                    <p className="text-center py-10 opacity-30 text-[10px] uppercase font-black italic">Escribe al menos 3 caracteres...</p>
+                )}
+              </div>
+            </div>
+
             {/* Auctions */}
             <div className="space-y-4">
               <div className="px-1">
@@ -374,90 +466,6 @@ export default function MarketView({
                 })}
                 {auctions.length === 0 && (
                   <div className="py-10 text-center opacity-30 italic text-[10px] uppercase font-black">No hay subastas activas</div>
-                )}
-              </div>
-            </div>
-
-            {/* General Search (Exclusive Clause or Direct search) */}
-            <div className="space-y-4">
-               <div className="px-1">
-                <h2 className="text-xl italic uppercase text-v-white/80">Buscador Operativo</h2>
-                <p className="text-[8px] uppercase tracking-widest text-v-white/40 font-black">Localización de talento y activaciones de cláusula</p>
-              </div>
-
-              <div className="grid gap-3">
-                {search.length > 2 && filteredPlayers.map((player) => {
-                    const owners = getPlayerOwners(player.id);
-                    const iamOwner = owners.some(o => o.profile_id === profileId);
-                    const otherOwners = owners.filter(o => o.profile_id !== profileId);
-
-                    return (
-                        <div key={player.id} className="v-panel p-3 bg-v-navy/30 border border-white/5 space-y-4">
-                            <PlayerCard
-                                player={player}
-                                actionLabel={iamOwner ? "Ya en tu Escuadra" : (otherOwners.length === 0 ? "Sin Dueño (Tienda)" : "Ver Propietarios")}
-                                actionDisabled={iamOwner || otherOwners.length === 0}
-                                inAuction={auctions.some(a => a.player_id === player.id && a.seller_id === profileId)}
-                                onAction={() => {
-                                    if (otherOwners.length === 1 && !iamOwner) {
-                                        const target = otherOwners[0];
-                                        setConfirmDialog({
-                                          show: true,
-                                          title: "Ejecutar Cláusula",
-                                          message: `¿Ejecutar cláusula de $${(target.release_clause / 1000000).toFixed(1)}M a la escuadra de ${target.profiles.username}?`,
-                                          onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, target.profile_id))
-                                        });
-                                    }
-                                }}
-                            />
-
-                            {!iamOwner && otherOwners.length > 0 && (
-                                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <div className="h-[1px] flex-1 bg-white/10" />
-                                        <p className="text-[8px] font-black uppercase text-v-white/40 tracking-widest whitespace-nowrap">Contratos en esta Liga</p>
-                                        <div className="h-[1px] flex-1 bg-white/10" />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        {otherOwners.map(owner => {
-                                            const ownerInAuction = auctions.some(a => a.player_id === player.id && a.seller_id === owner.profile_id);
-                                             const locked = isPlayerLocked(player.id);
-                                             return (
-                                                 <div key={owner.profile_id} className="flex items-center justify-between bg-v-navy/50 p-2 border border-white/5 hover:border-v-red/30 transition-all group">
-                                                     <div className="flex flex-col">
-                                                         <div className="flex items-center gap-2">
-                                                             <span className="text-[10px] font-black uppercase italic text-v-white group-hover:text-v-red transition-colors">{owner.profiles.username}</span>
-                                                             {ownerInAuction && <span className="text-[6px] bg-v-red text-v-white px-1 font-black leading-tight animate-pulse">EN SUBASTA</span>}
-                                                             {locked && <span className="text-[6px] bg-v-navy text-v-white px-1 font-black leading-tight border border-v-white/20">🛡️ BLINDADO</span>}
-                                                         </div>
-                                                         <span className="text-[8px] text-v-white/40 font-black uppercase tracking-tighter italic">Cláusula: <span className="text-v-white/80">${(owner.release_clause / 1000000).toFixed(1)}M</span></span>
-                                                     </div>
-                                                     <button
-                                                         disabled={locked}
-                                                         onClick={() => {
-                                                             setConfirmDialog({
-                                                                 show: true,
-                                                                 title: "Ejecutar Cláusula",
-                                                                 message: `¿Pagar la rescisión de $${(owner.release_clause / 1000000).toFixed(1)}M a ${owner.profiles.username} por el contrato de ${player.nickname}?`,
-                                                                 onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, owner.profile_id))
-                                                             });
-                                                         }}
-                                                         className={`px-4 py-2 text-[8px] font-black uppercase transition-all italic border border-transparent ${locked ? 'bg-v-white/5 text-v-white/20 cursor-not-allowed' : 'bg-v-white text-v-navy hover:bg-v-red hover:text-v-white'}`}
-                                                     >
-                                                         {locked ? 'Protegido' : 'Ejecutar'}
-                                                     </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-                {search.length > 0 && search.length <= 2 && (
-                    <p className="text-center py-10 opacity-30 text-[10px] uppercase font-black italic">Escribe al menos 3 caracteres...</p>
                 )}
               </div>
             </div>
