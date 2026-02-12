@@ -54,9 +54,9 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
     // 4. Get Active User Rosters (STARTERS ONLY)
     const { data: rosters, error: rosterError } = await supabaseAdmin
       .from("user_rosters")
-      .select("league_id, profile_id, player_id")
+      .select("league_id, profile_id, player_id, pro_players!inner(is_legend)")
       .eq("slot_type", "starter")
-      .returns<{ league_id: string | null; profile_id: string | null; player_id: string | null }[]>();
+      .returns<{ league_id: string | null; profile_id: string | null; player_id: string | null; pro_players: { is_legend: boolean } }[]>();
 
     if (rosterError) throw rosterError;
 
@@ -77,10 +77,21 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
     // 6. Aggregate Score per Participant
     const participantScores = new Map<string, { leagueId: string; profileId: string; points: number }>();
 
-    rosters?.forEach((r) => {
-      if (!r.league_id || !r.profile_id) return;
+    for (const r of rosters || []) {
+      if (!r.league_id || !r.profile_id) continue;
       const key = `${r.league_id}-${r.profile_id}`;
-      let points = playerPointsMap.get(r.player_id!) || 0;
+      let points = 0;
+
+      if (r.pro_players.is_legend) {
+        // Legendary Scoring: Call RPC for first match in GW (the Final)
+        const { data: legendPoints } = await supabaseAdmin.rpc('calculate_legend_points', { 
+            match_id: matchIds[0], 
+            legend_id: r.player_id 
+        });
+        points = Number(legendPoints || 0);
+      } else {
+        points = playerPointsMap.get(r.player_id!) || 0;
+      }
       
       const captainPlayerId = captainMap.get(r.profile_id);
       if (captainPlayerId === r.player_id) points *= 2;
@@ -89,7 +100,7 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
         participantScores.set(key, { leagueId: r.league_id!, profileId: r.profile_id!, points: 0 });
       }
       participantScores.get(key)!.points += points;
-    });
+    }
 
     // 7. Upsert Scores
     const upserts: ParticipantScoreInsert[] = Array.from(participantScores.values()).map((p) => ({

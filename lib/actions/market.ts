@@ -30,6 +30,47 @@ export async function getPersonalMarket(leagueId: string, profileId: string) {
   }));
 }
 
+// Legendary Players: Only for Finals
+export async function getLegendaryPlayers() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('pro_players')
+    .select('*, pro_teams(tag, name)')
+    .eq('is_legend', true);
+
+  if (error) {
+    console.error("Error fetching legendary players:", error);
+    return [];
+  }
+  return data;
+}
+
+export async function checkIsFinal(leagueId: string) {
+  const supabase = await createClient();
+  
+  // 1. Check if ANY gameweek is marked as is_final
+  const { data: finalGw } = await supabase
+    .from('gameweeks')
+    .select('id')
+    .eq('is_active', true)
+    .eq('is_final', true)
+    .maybeSingle();
+  
+  if (finalGw) return true;
+
+  // 2. Logic fallback: more than 1 match this week?
+  const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).maybeSingle();
+  if (!activeGw) return false;
+
+  const { count } = await supabase
+    .from('matches')
+    .select('*', { count: 'exact', head: true })
+    .eq('gameweek_id', activeGw.id);
+
+  return count === 1;
+}
+
+
 export async function buyFromPersonalMarket(leagueId: string, profileId: string, playerId: string, personalMarketId: string) {
   const supabase = await createClient();
   try {

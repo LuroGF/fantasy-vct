@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { haptic} from "@/lib/utils/haptics";
+import { haptic } from "@/lib/utils/haptics";
 import { buyPlayer, buyFromPersonalMarket, payClause, placeBid, createAuction, getPersonalMarket, fetchActiveAuctions, revealAuction, withdrawBid } from "@/lib/actions/market";
 import { PlayerCard } from "@/components/PlayerCard";
 import { useState, useMemo, useEffect } from "react";
@@ -23,9 +23,11 @@ export default function MarketView({
   initialLeagueRosters,
   activePowerUps: initialActivePowerUps,
 }: MarketViewProps) {
-  const [activeTab, setActiveTab] = useState<'personal' | 'general' | 'rivals'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'general' | 'rivals' | 'legends'>('personal');
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [isFinal, setIsFinal] = useState(false);
+  const [legends, setLegends] = useState<any[]>([]);
   const [status, setStatus] = useState({ type: "", message: "" });
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -57,44 +59,52 @@ export default function MarketView({
 
   useEffect(() => {
     async function loadInitialData() {
+      if (!activeLeagueId) return;
       setLoading(true);
-      const { createClient } = await import("@/utils/supabase/client");
-      const supabase = createClient();
-      
-      const { getLeagueClassification } = await import("@/lib/actions/leagues");
-      
-      const [market, aucts, bidsRes, classification] = await Promise.all([
-        getPersonalMarket(activeLeagueId, profileId),
-        fetchActiveAuctions(activeLeagueId, profileId),
-        supabase.from('user_bids').select('auction_id, bid_amount').eq('profile_id', profileId),
-        getLeagueClassification(activeLeagueId)
-      ]);
-      
-      setPersonalMarket(market);
-      setAuctions(aucts);
-      setRivals(classification.standings.filter((p: any) => p.profile_id !== profileId));
-      if (bidsRes.data) setUserBids(bidsRes.data);
+      try {
+        const { createClient } = await import("@/utils/supabase/client");
+        const supabase = createClient();
+        
+        const { getLeagueClassification } = await import("@/lib/actions/leagues");
+        const { getLegendaryPlayers, checkIsFinal } = await import("@/lib/actions/market");
+        
+        const [market, aucts, bidsRes, classification, legendsData, finalStatus] = await Promise.all([
+          getPersonalMarket(activeLeagueId, profileId),
+          fetchActiveAuctions(activeLeagueId, profileId),
+          supabase.from('user_bids').select('auction_id, bid_amount').eq('profile_id', profileId),
+          getLeagueClassification(activeLeagueId),
+          getLegendaryPlayers(),
+          checkIsFinal(activeLeagueId)
+        ]);
+        
+        setPersonalMarket(market);
+        setAuctions(aucts);
+        setRivals(classification.standings.filter((p: any) => p.profile_id !== profileId));
+        setLegends(legendsData);
+        setIsFinal(finalStatus);
+        if (bidsRes.data) setUserBids(bidsRes.data);
+      } catch (err) {
+        console.error("Error loading market data:", err);
+      }
       setLoading(false);
     }
-    if (activeLeagueId) loadInitialData();
+    loadInitialData();
 
-    // Polling for auctions
     const timer = setInterval(async () => {
-        const aucts = await fetchActiveAuctions(activeLeagueId);
-        setAuctions(aucts);
+        if (!activeLeagueId) return;
+        try {
+          const aucts = await fetchActiveAuctions(activeLeagueId);
+          setAuctions(aucts);
+        } catch (e) {}
     }, 30000);
 
     return () => clearInterval(timer);
   }, [activeLeagueId, profileId, refreshTrigger]);
 
-
-
-
-
   const handleAction = async (actionFn: () => Promise<any>) => {
     haptic.medium();
     setLoading(true);
-    setStatus({ type: "", message: "" }); // Clear status before new action
+    setStatus({ type: "", message: "" });
     try {
       const res = await actionFn();
       if (res.success) {
@@ -129,27 +139,16 @@ export default function MarketView({
 
   const roles = ["Duelista", "Iniciador", "Controlador", "Centinela"];
 
-
-
-
-  const isPlayerLocked = (playerId: string) => {
-    return activePowerUps.some(ap => ap.target_player_id === playerId && ap.powerup_types?.code === 'LOCK');
-  };
-
-  const getPlayerOwners = (playerId: string) => {
-    return initialLeagueRosters.filter(r => r.player_id === playerId);
-  };
-
   // Filtering Logic
   const filteredPersonalMarket = useMemo(() => 
-    personalMarket.filter(item => item.pro_players.nickname.toLowerCase().includes(searchTerm.toLowerCase())),
+    personalMarket.filter(item => item.player?.nickname?.toLowerCase().includes(searchTerm.toLowerCase())),
     [personalMarket, searchTerm]
   );
 
   const filteredAuctions = useMemo(() => 
     auctions.filter(item => {
-        const matchesSearch = item.pro_players.nickname.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesRole = !activeFilter || item.pro_players.role === activeFilter;
+        const matchesSearch = item.pro_players?.nickname?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesRole = !activeFilter || item.pro_players?.role === activeFilter;
         return matchesSearch && matchesRole;
     }),
     [auctions, searchTerm, activeFilter]
@@ -158,7 +157,7 @@ export default function MarketView({
   const filteredRivals = useMemo(() => 
     rivals.map(r => ({
         ...r,
-        roster: r.roster.filter((p: any) => p.nickname.toLowerCase().includes(searchTerm.toLowerCase()))
+        roster: r.roster.filter((p: any) => p.nickname?.toLowerCase().includes(searchTerm.toLowerCase()))
     })).filter(r => r.roster.length > 0 || searchTerm === ""),
     [rivals, searchTerm]
   );
@@ -205,14 +204,12 @@ export default function MarketView({
                     <p className="text-sm font-black italic text-v-red/80">${(committedFunds / 1000000).toFixed(1)}M</p>
                 </div>
              )}
-
           </div>
         )}
       </div>
 
       {/* Search & Tabs */}
       <div className="v-panel p-4 space-y-4">
-        {/* Search Bar */}
         <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-v-white/20 group-focus-within:text-v-red transition-colors">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -226,25 +223,34 @@ export default function MarketView({
             />
         </div>
 
-        <div className="flex bg-v-navy/50 p-1 border border-white/5">
+        <div className="flex bg-v-navy/50 p-1 border border-white/5 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('personal')}
-            className={`flex-1 py-2 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'personal' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
+            className={`flex-1 min-w-[100px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'personal' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
           >
             Mercado Diario
           </button>
           <button
             onClick={() => setActiveTab('general')}
-            className={`flex-1 py-2 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'general' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
+            className={`flex-1 min-w-[100px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'general' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
           >
-            Subastas en Vivo
+            Subastas
           </button>
-          <button
-            onClick={() => setActiveTab('rivals')}
-            className={`flex-1 py-2 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'rivals' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
+          <button 
+            onClick={() => { haptic.light(); setActiveTab('rivals'); }}
+            className={`flex-1 min-w-[100px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'rivals' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
           >
-            Equipos Rivals
+            Rivales
           </button>
+          {isFinal && (
+            <button 
+                onClick={() => { haptic.light(); setActiveTab('legends'); }}
+                className={`flex-1 min-w-[120px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all relative overflow-hidden group ${activeTab === 'legends' ? 'bg-amber-500 text-v-navy' : 'text-amber-500 hover:bg-amber-500/10'}`}
+            >
+                <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                ⭐ Sala Leyendas
+            </button>
+          )}
         </div>
 
         {activeTab === 'general' && (
@@ -276,7 +282,7 @@ export default function MarketView({
         </div>
       )}
 
-      {/* Content */}
+      {/* Content Area */}
       <div className="space-y-6">
         {activeTab === 'personal' ? (
           <div className="space-y-4">
@@ -290,11 +296,11 @@ export default function MarketView({
                   key={offer.id}
                   player={offer.player}
                   inAuction={auctions.some(a => a.player_id === offer.player_id)}
-                   onAction={() => {
+                  onAction={() => {
                       setConfirmDialog({
                         show: true,
                         title: "Confirmar Fichaje",
-                        message: `¿Deseas fichar a ${offer.player.nickname} por $${(offer.offer_price / 1000000).toFixed(1)}M?`,
+                        message: `¿Deseas fichar a ${offer.player?.nickname} por $${(offer.offer_price / 1000000).toFixed(1)}M?`,
                         onConfirm: () => handleAction(() => buyFromPersonalMarket(activeLeagueId, profileId, offer.player_id, offer.id))
                       });
                   }}
@@ -303,7 +309,7 @@ export default function MarketView({
                 />
               ))}
               {filteredPersonalMarket.length === 0 && (
-                <div className="py-20 text-center opacity-30 italic text-xs">No se encontraron agentes con ese nombre.</div>
+                <div className="py-20 text-center opacity-30 italic text-xs uppercase font-black">No se encontraron agentes</div>
               )}
             </div>
           </div>
@@ -321,66 +327,80 @@ export default function MarketView({
                       const isRevealed = auction.is_revealed;
 
                       return (
-                        <div key={auction.id} className="v-panel p-3 border-l-4 border-v-red bg-v-red/5">
-                          <div className="flex justify-between items-start mb-2">
-                             <div>
-                                <p className="text-[10px] font-black uppercase text-v-white/40">Vendedor: {auction.profiles?.username}</p>
-                                <h3 className="text-lg font-black italic uppercase">{auction.pro_players.nickname}</h3>
-                                {myBid && <span className="text-[8px] font-black uppercase text-v-red tracking-tighter bg-v-red/10 px-1 border border-v-red/20">Tu Puja: ${(myBid.bid_amount / 1000000).toFixed(1)}M</span>}
-                             </div>
-                             <div className="text-right">
-                                <p className="text-[8px] font-black uppercase text-v-white/40">Puja Actual</p>
-                                {isRevealed ? (
-                                    <p className="text-lg font-black italic text-green-500">${(auction.current_bid / 1000000).toFixed(1)}M</p>
-                                ) : (
-                                    <div className="space-y-1">
-                                        <p className="text-lg font-black italic text-v-white/20">💰 ???</p>
-                                        <button
-                                            onClick={() => {
-                                                setConfirmDialog({
-                                                    show: true,
-                                                    title: "Usar Ojo del Espía",
-                                                    message: "¿Quieres gastar 1 'Ojo del Espía' para ver la puja más alta actual?",
-                                                    onConfirm: () => handleReveal(auction.id)
-                                                });
-                                            }}
-                                            className="text-[7px] font-black flex items-center gap-1 uppercase text-v-red hover:text-v-white transition-colors ml-auto"
-                                        >
-                                            👁️ REVELAR
-                                        </button>
-                                    </div>
-                                )}
-                             </div>
-                          </div>
-                           <button
-                            onClick={() => {
-                              setBidDialog({
-                                show: true,
-                                auction: auction,
-                                amount: (Math.max(auction.current_bid, myBid?.bid_amount || 0) + 500000).toString()
-                              });
-                            }}
-                            className="w-full bg-v-white text-v-navy text-[10px] font-black uppercase py-2 hover:bg-v-red hover:text-v-white transition-all italic"
-                          >
-                            {myBid ? "Actualizar Puja Blind" : "Pujar Blind"}
-                          </button>
+                        <div key={auction.id} className="v-panel relative overflow-hidden group hover:border-v-red transition-all flex flex-col gap-3">
+                           <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
+                           <div className="absolute -right-2 -bottom-4 text-7xl font-black text-white/5 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
+                              {auction.pro_players?.nickname?.substring(0, 3)}
+                           </div>
 
-                          {myBid && (
-                            <button
-                                onClick={() => {
-                                    setConfirmDialog({
-                                        show: true,
-                                        title: "Retirar Puja",
-                                        message: "¿Estás seguro de que quieres retirar tu puja? Liberarás el dinero bloqueado.",
-                                        onConfirm: () => handleWithdraw(auction.id)
-                                    });
-                                }}
-                                className="w-full mt-2 border border-v-white/10 text-v-white/40 text-[7px] font-black uppercase py-1 hover:border-v-red/40 hover:text-v-red transition-all italic"
-                            >
-                                Retirar Puja y Liberar Fondos
-                            </button>
-                          )}
+                           <div className="flex justify-between items-start relative z-10">
+                              <div className="flex-1 min-w-0 pr-4">
+                                 <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">
+                                    Vendedor: <span className="text-v-white/60">{auction.profiles?.username || "SISTEMA"}</span>
+                                 </p>
+                                 <h3 className="text-xl font-black italic uppercase tracking-tighter">{auction.pro_players?.nickname}</h3>
+                                 {myBid && (
+                                   <div className="flex items-center gap-1 mt-1">
+                                     <span className="w-1 h-1 bg-v-red animate-pulse" />
+                                     <span className="text-[7px] font-black uppercase text-v-red tracking-widest bg-v-red/5 px-1.5 border border-v-red/10">Tu Puja: ${(myBid.bid_amount / 1000000).toFixed(1)}M</span>
+                                   </div>
+                                 )}
+                              </div>
+                              <div className="text-right">
+                                 <p className="text-[7px] font-black uppercase text-v-white/30 mb-1">Puja Actual</p>
+                                 {isRevealed ? (
+                                     <p className="text-xl font-black italic text-green-500">${(auction.current_bid / 1000000).toFixed(1)}M</p>
+                                 ) : (
+                                     <div className="flex flex-col items-end gap-1">
+                                         <p className="text-xl font-black italic text-v-white/20 leading-none">💰 ???</p>
+                                         <button
+                                             onClick={() => {
+                                                 setConfirmDialog({
+                                                     show: true,
+                                                     title: "Usar Ojo del Espía",
+                                                     message: "¿Quieres gastar 1 'Ojo del Espía' para ver la puja más alta actual?",
+                                                     onConfirm: () => handleReveal(auction.id)
+                                                 });
+                                             }}
+                                             className="text-[6px] font-black flex items-center gap-1 uppercase text-v-red hover:text-v-white transition-colors bg-v-red/5 px-1 py-0.5 border border-v-red/10"
+                                         >
+                                             👁️ REVELAR
+                                         </button>
+                                     </div>
+                                 )}
+                              </div>
+                           </div>
 
+                           <div className="flex gap-2 relative z-10 mt-1">
+                             <button
+                               onClick={() => {
+                                 setBidDialog({
+                                   show: true,
+                                   auction: auction,
+                                   amount: (Math.max(auction.current_bid, myBid?.bid_amount || 0) + 500000).toString()
+                                 });
+                               }}
+                               className="flex-1 bg-v-white text-v-navy text-[9px] font-black uppercase py-2.5 hover:bg-v-red hover:text-v-white transition-all italic shadow-lg shadow-white/5"
+                             >
+                               {myBid ? "Actualizar Puja Blind" : "Pujar Blind"}
+                             </button>
+
+                             {myBid && (
+                               <button
+                                   onClick={() => {
+                                       setConfirmDialog({
+                                           show: true,
+                                           title: "Retirar Puja",
+                                           message: "¿Estás seguro de que quieres retirar tu puja? Liberarás el dinero bloqueado.",
+                                           onConfirm: () => handleWithdraw(auction.id)
+                                       });
+                                   }}
+                                   className="aspect-square flex items-center justify-center border border-white/10 text-v-white/40 hover:border-v-red hover:text-v-red transition-all"
+                               >
+                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                               </button>
+                             )}
+                           </div>
                         </div>
                       );
                     })}
@@ -389,70 +409,133 @@ export default function MarketView({
                     )}
                   </div>
                 </div>
-             ) : (
+             ) : activeTab === 'rivals' ? (
                 <div className="space-y-4">
-                     <div className="px-1">
-                        <h2 className="text-xl italic uppercase text-v-white/80">Escuadras Rivales</h2>
-                        <p className="text-[8px] uppercase tracking-widest text-v-red font-black">Paga cláusulas para robar agentes</p>
-                    </div>
+                  <div className="px-1">
+                    <h2 className="text-xl italic uppercase text-v-white/80">Escuadras Rivales</h2>
+                    <p className="text-[8px] uppercase tracking-widest text-v-red font-black">Paga cláusulas para robar agentes</p>
+                  </div>
 
-                    <div className="space-y-6">
-                        {filteredRivals.map((rival) => (
-                            <div key={rival.profile_id} className="space-y-3">
-                                <div className="flex items-center gap-3 bg-v-white/5 p-2 border-l-2 border-v-red">
-                                    <div className="w-8 h-8 bg-v-red/20 rounded-full flex items-center justify-center text-[10px] font-black italic">
-                                        {rival.profiles.username?.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-sm font-black italic uppercase tracking-tighter">{rival.profiles.username}</h3>
-                                        <p className="text-[7px] font-black uppercase text-v-white/40">{rival.total_points} PUNTOS // RANK #--</p>
-                                    </div>
-                                </div>
+                  <div className="space-y-6">
+                    {filteredRivals.map((rival) => (
+                      <div key={rival.profile_id} className="space-y-3">
+                        <div className="flex items-center gap-3 bg-v-white/5 p-2 border-l-2 border-v-red">
+                          <div className="w-8 h-8 bg-v-red/20 rounded-full flex items-center justify-center text-[10px] font-black italic">
+                            {rival.profiles?.username?.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-sm font-black italic uppercase tracking-tighter">{rival.profiles?.username}</h3>
+                            <p className="text-[7px] font-black uppercase text-v-white/40">{rival.total_points || 0} PUNTOS</p>
+                          </div>
+                        </div>
 
-                                <div className="grid gap-2">
-                                    {rival.roster.length > 0 ? rival.roster.map((player: any) => (
-                                        <div key={player.id} className="v-panel p-2 flex items-center justify-between group hover:border-v-red transition-all">
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-[10px] font-black uppercase text-v-red tracking-tighter w-8">{player.pro_teams?.tag || "FA"}</div>
-                                                <div>
-                                                    <p className="text-xs font-black uppercase italic leading-none">{player.nickname}</p>
-                                                    <p className="text-[7px] font-black uppercase text-v-white/40">{player.role}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-right">
-                                                    <p className="text-[7px] font-black uppercase text-v-white/30 truncate">Cláusula</p>
-                                                    <p className="text-xs font-black italic text-v-red">${(player.release_clause / 1000000).toFixed(1)}M</p>
-                                                </div>
-                                                <button
-                                                    onClick={() => {
-                                                        setConfirmDialog({
-                                                            show: true,
-                                                            title: "Protocolo de Rescisión",
-                                                            message: `¿Deseas pagar la cláusula de $${(player.release_clause / 1000000).toFixed(1)}M por ${player.nickname}? El dinero se transferirá a ${rival.profiles.username}.`,
-                                                            onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, rival.profile_id))
-                                                        });
-                                                    }}
-                                                    className="bg-v-white text-v-navy text-[8px] font-black px-3 py-2 uppercase italic hover:bg-v-red hover:text-v-white transition-all shadow-lg shadow-white/5 active:scale-95"
-                                                >
-                                                    Pagar Cláusula
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )) : (
-                                        <p className="text-[8px] uppercase italic text-v-white/20 text-center py-2">Sin agentes que coincidan</p>
-                                    )}
+                        <div className="grid gap-2">
+                          {rival.roster.length > 0 ? rival.roster.map((player: any) => (
+                            <div key={player.id} className="v-panel relative overflow-hidden group hover:border-v-red transition-all flex items-center justify-between p-3 select-none active:scale-[0.99]">
+                              <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
+                              <div className="absolute -right-2 -bottom-2 text-4xl font-black text-white/3 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
+                                {player.pro_teams?.tag || "FA"}
+                              </div>
+
+                              <div className="flex items-center gap-3 relative z-10">
+                                <div className="w-10 text-[9px] font-black uppercase text-v-red tracking-widest border-r border-white/5">{player.pro_teams?.tag || "FA"}</div>
+                                <div>
+                                  <p className="text-sm font-black uppercase italic leading-none group-hover:text-v-red transition-colors">{player.nickname}</p>
+                                  <p className="text-[7px] font-black uppercase text-v-white/30 mt-1">{player.role}</p>
                                 </div>
+                              </div>
+                              <div className="flex items-center gap-4 relative z-10">
+                                <div className="text-right border-r border-white/5 pr-4">
+                                  <p className="text-[7px] font-black uppercase text-v-white/30 mb-0.5">Cláusula</p>
+                                  <p className="text-sm font-black italic text-v-red">${(player.release_clause / 1000000).toFixed(1)}M</p>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setConfirmDialog({
+                                      show: true,
+                                      title: "Protocolo de Rescisión",
+                                      message: `¿Deseas pagar la cláusula de $${(player.release_clause / 1000000).toFixed(1)}M por ${player.nickname}? El dinero se transferirá a ${rival.profiles?.username}.`,
+                                      onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, rival.profile_id))
+                                    });
+                                  }}
+                                  className="bg-v-white text-v-navy text-[8px] font-black px-4 py-2.5 uppercase italic hover:bg-v-red hover:text-v-white transition-all shadow-lg active:scale-95"
+                                >
+                                  Pagar
+                                </button>
+                              </div>
                             </div>
-                        ))}
-                        {filteredRivals.length === 0 && (
-                            <div className="py-20 text-center opacity-30 italic text-xs uppercase">No se han encontrado escuadras con agentes que coincidan</div>
-                        )}
-                    </div>
+                          )) : (
+                            <p className="text-[8px] uppercase italic text-v-white/20 text-center py-2">Sin agentes que coincidan</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+             ) : (
+                <div className="space-y-6">
+                  <div className="v-panel p-6 border-amber-500/30 bg-amber-500/5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-64 h-full bg-linear-to-l from-amber-500/10 to-transparent" />
+                    <h2 className="text-3xl font-black italic uppercase text-amber-500 leading-none mb-1">Sala de Leyendas</h2>
+                    <p className="text-[10px] font-black uppercase text-amber-500/60 tracking-[0.3em]">Protocolo Final de Reclutamiento</p>
+                    <p className="text-xs text-v-white/60 mt-4 leading-relaxed max-w-sm">
+                      Solo disponible durante la <span className="text-amber-500 font-bold">Gran Final</span>. 
+                      Recluta figuras históricas que puntuarán en base a hitos globales del partido.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4">
+                    {legends.map(player => (
+                      <div key={player.id} className="v-panel border-amber-500/20 bg-linear-to-br from-amber-500/10 to-v-navy p-4 relative overflow-hidden group hover:border-amber-500 transition-all">
+                        <div className="absolute -right-4 -bottom-6 text-8xl font-black text-amber-500/5 italic select-none uppercase pointer-events-none group-hover:text-amber-500/10 transition-colors">
+                          {player.nickname?.substring(0, 3)}
+                        </div>
+
+                        <div className="flex gap-4 relative z-10">
+                          <div className="w-20 h-28 bg-v-navy/80 border border-amber-500/30 overflow-hidden relative group-hover:border-amber-500 transition-colors">
+                            {player.photo_url ? (
+                              <img src={player.photo_url} alt={player.nickname} className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-transform duration-500" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl">⭐</div>
+                            )}
+                            <div className="absolute bottom-0 left-0 w-full bg-amber-500 text-v-navy text-[7px] font-black uppercase text-center py-0.5 italic">LEYENDA</div>
+                          </div>
+
+                          <div className="flex-1 flex flex-col justify-between py-1">
+                            <div>
+                              <h3 className="text-2xl font-black italic uppercase text-amber-500 leading-none">{player.nickname}</h3>
+                              <p className="text-[7px] font-black uppercase text-v-white/40 mt-1">Hito Especial:</p>
+                              <p className="text-[9px] font-black uppercase text-amber-500/80 italic mt-0.5">
+                                {player.nickname === 'Mixwell' ? '🎯 +4 pts por cada First Blood en el mapa' :
+                                  player.nickname === 'Hiko' ? '👑 +12 pts por cada Clutch del partido' :
+                                    player.nickname === 'ScreaM' ? '💀 +1 pt por cada 10 ACS del MVP' :
+                                      '🌟 +15 pts fijos por presencia legendaria'}
+                              </p>
+                            </div>
+
+                            <button 
+                              onClick={() => {
+                                setConfirmDialog({
+                                  show: true,
+                                  title: "Reclutar Leyenda",
+                                  message: `¿Deseas añadir a ${player.nickname} a tu escuadra por $${(player.market_value / 1000000).toFixed(1)}M? Solo disponible para esta final.`,
+                                  onConfirm: () => handleAction(() => buyPlayer(activeLeagueId, profileId, player.id))
+                                });
+                              }}
+                              className="w-full bg-amber-500 text-v-navy text-[10px] font-black uppercase py-2.5 hover:bg-v-white transition-all italic shadow-lg shadow-amber-500/20"
+                            >
+                              Fichar Icono: ${(player.market_value / 1000000).toFixed(1)}M
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
              )}
           </div>
-        )}</div>
+        )}
+      </div>
 
       {/* League & Budget Info */}
       {activeParticipation && (
@@ -474,7 +557,7 @@ export default function MarketView({
           <div className="v-panel w-full max-w-sm p-6 space-y-6 border-t-4 border-v-red animate-in zoom-in-95 duration-200">
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">Nueva Puja Anónima</p>
-              <h3 className="text-2xl font-black italic uppercase leading-none">{bidDialog.auction.pro_players.nickname}</h3>
+              <h3 className="text-2xl font-black italic uppercase leading-none">{bidDialog.auction.pro_players?.nickname}</h3>
               <p className="text-[10px] font-black uppercase text-v-red tracking-widest">Puja mínima requerida: ${((bidDialog.auction.current_bid + 1) / 1000000).toFixed(2)}M</p>
             </div>
 

@@ -60,7 +60,7 @@ export function PlayerCard({
   return (
     <div className="v-panel relative overflow-hidden group hover:border-v-red active:scale-[0.98] transition-all cursor-pointer select-none">
       {/* Background design element */}
-      <div className="absolute -right-4 -top-8 text-6xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors">
+      <div className="absolute -right-2 -bottom-4 text-7xl font-black text-white/5 italic select-none group-hover:text-v-red/5 transition-colors leading-none pointer-events-none uppercase">
         {player.pro_teams?.tag}
       </div>
 

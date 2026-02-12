@@ -153,45 +153,56 @@ export default async function DashboardPage() {
             <Link
               href="/ranking"
               key={ul.leagues.id}
-              className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98] select-none"
+              className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98] select-none flex flex-col gap-4"
             >
               {/* Background accent */}
-              <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
-              <div className="absolute -right-4 -top-6 text-6xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase">
+              <div className="absolute top-0 right-0 w-48 h-full bg-linear-to-l from-v-red/3 to-transparent pointer-events-none" />
+              <div className="absolute -right-2 -bottom-4 text-7xl font-black text-white/5 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
                 {ul.leagues.name.substring(0, 3)}
               </div>
 
-              <div className="flex justify-between items-start mb-6 relative z-10">
+              <div className="flex justify-between items-start relative z-10">
                 <div className="flex-1 min-w-0 pr-4">
-                  <h3 className="text-2xl sm:text-3xl italic tracking-tighter border-b-2 border-v-red w-fit truncate max-w-full">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[7px] font-black uppercase text-v-red tracking-[0.2em]">
+                       DIV: {ul.leagues.invite_code}
+                    </span>
+                    <div className="h-px bg-v-red/20 flex-1" />
+                  </div>
+                  <h3 className="text-2xl sm:text-3xl italic tracking-tighter truncate max-w-full">
                     {ul.leagues.name}
                   </h3>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">
-                       ID: {ul.leagues.invite_code}
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-1 h-1 bg-v-red animate-pulse" />
+                    <span className="text-[8px] text-v-white/40 font-black uppercase tracking-tighter">
+                       ESTADO: <span className="text-v-white/60">ACTIVA</span>
                     </span>
-                    <span className="text-[8px] text-v-red/50 animate-pulse font-black uppercase tracking-tighter bg-v-red/5 px-1 border border-v-red/10 rounded-xs">
-                       ACTIVA
-                    </span>
+                  </div>
+                </div>
+                <div className="shrink-0 flex flex-col items-end">
+                  <div className="bg-v-red/10 border border-v-red/20 px-2 py-0.5">
+                    <span className="text-[7px] font-black text-v-red uppercase tracking-widest italic">Rank #--</span>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 relative z-10 group-hover:border-v-red/20 transition-colors">
+              <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 relative z-10 group-hover:border-v-red/10 transition-colors">
                 <div>
-                  <p className="text-[8px] sm:text-[10px] font-black uppercase text-v-white/30 tracking-widest">
+                  <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest flex items-center gap-1.5">
+                    <span className="w-1 h-1 bg-v-white/20" />
                     Puntuación Global
                   </p>
-                  <p className="text-lg sm:text-xl font-black italic text-v-white">
+                  <p className="text-xl sm:text-2xl font-black italic text-v-white mt-1">
                     {ul.total_points.toLocaleString()}
                   </p>
                 </div>
                 <div className="text-right border-l border-white/5 pl-4">
-                  <p className="text-[8px] sm:text-[10px] font-black uppercase text-v-white/30 tracking-widest">
+                  <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest flex items-center justify-end gap-1.5">
                     VP Disponible
+                    <span className="w-1 h-1 bg-v-red/40" />
                   </p>
-                  <p className="text-lg sm:text-xl font-black italic text-v-red">
-                    {(Number(ul.current_budget || 0) / 1000000).toFixed(1)}M
+                  <p className="text-xl sm:text-2xl font-black italic text-v-red mt-1">
+                    {(Number(ul.current_budget || 0) / 1000000).toFixed(1)} <span className="text-[10px]">VP</span>
                   </p>
                 </div>
               </div>
