@@ -124,47 +124,32 @@ export default async function DashboardPage() {
 
         {/* Main Stats / My Leagues */}
         <div className="space-y-4">
-              <Link href="/ranking">
-                <h1 className="text-4xl leading-none italic hover:text-v-red transition-colors flex items-center gap-2">
-                  Ranking
-                  <svg
-                    className="w-4 h-4 opacity-30"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="3"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </h1>
-              </Link>
-              <div className="flex items-end justify-between px-1">
-                <Link href="/leagues">
-                  <h2 className="text-xl leading-none italic hover:text-v-red transition-colors flex items-center gap-2 opacity-50">
-                    Ligas
-                    <svg
-                      className="w-3 h-3 opacity-30"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="3"
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </h2>
-                </Link>
-                <span className="text-[10px] font-black uppercase text-v-red italic tracking-widest">
-                  S3 // 2026
-                </span>
-              </div>
+          <div className="flex items-end justify-between px-1">
+            <Link href="/leagues">
+              <h1 className="text-4xl leading-none italic hover:text-v-red transition-colors flex items-center gap-2">
+                Ligas
+                <svg
+                  className="w-4 h-4 opacity-30"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="3"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </h1>
+            </Link>
+            <Link 
+              href="/ranking" 
+              className="px-3 py-1 bg-v-red/10 border border-v-red/30 text-[8px] font-black uppercase text-v-red italic tracking-widest hover:bg-v-red hover:text-v-white transition-all shadow-lg shadow-v-red/5"
+            >
+              Ranking de Liga
+            </Link>
+          </div>
 
           {userLeagues.map((ul: any) => (
             <Link
@@ -204,7 +189,7 @@ export default async function DashboardPage() {
                     VP Disp.
                   </p>
                   <p className="text-xl font-black italic">
-                    {(ul.current_budget / 1000000).toFixed(1)}M VP
+                    {(Number(ul.current_budget || 0) / 1000000).toFixed(1)}M VP
                   </p>
                 </div>
               </div>

@@ -71,7 +71,7 @@ export default function RootLayout({
             {/* SCROLL AQUÍ */}
             <main
               className="
-              h-full w-full overflow-y-auto overscroll-contain"
+              h-full w-full overflow-y-auto overscroll-contain pb-24"
             >
               {children}
             </main>
