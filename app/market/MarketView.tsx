@@ -530,6 +530,7 @@ export default function MarketView({
                                 </button>
                               </div>
                             </div>
+                            </div>
                           )) : (
                             <p className="text-[8px] uppercase italic text-v-white/20 text-center py-2">Sin agentes que coincidan</p>
                           )}

@@ -115,7 +115,9 @@ export async function acceptTradeOffer(offerId: string, userId: string) {
 
     // 2. Validate Budgets
     const { data: senderP } = await supabase.from('league_participants').select('current_budget').eq('league_id', league_id).eq('profile_id', sender_id).single();
+    if (!senderP) throw new Error("Participante remitente no encontrado.");
     const { data: receiverP } = await supabase.from('league_participants').select('current_budget').eq('league_id', league_id).eq('profile_id', receiver_id).single();
+    if (!receiverP) throw new Error("Participante destinatario no encontrado.");
 
     if (cashOffer > 0) { // Sender pays
         if (senderP.current_budget < cashOffer) throw new Error("El remitente no tiene fondos suficientes.");
