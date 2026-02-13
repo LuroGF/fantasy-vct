@@ -1,6 +1,6 @@
 
 import { createClient } from "@/utils/supabase/server";
-import { ShoppingCart, LogOut, ShieldAlert, Package } from "lucide-react";
+import { UserPlus, UserMinus, Zap, Cpu } from "lucide-react";
 
 export async function RecentActivity({ profileId }: { profileId: string }) {
   const supabase = await createClient();
@@ -33,11 +33,11 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
 
   const getActionDetails = (type: string) => {
     switch (type) {
-      case 'buy': return { icon: ShoppingCart, color: 'text-green-400', label: 'Fichaje' };
-      case 'sell': return { icon: LogOut, color: 'text-v-red', label: 'Venta' };
-      case 'clause_paid': return { icon: ShieldAlert, color: 'text-v-role-iniciador', label: 'Clausulazo' };
-      case 'buy_item': return { icon: Package, color: 'text-v-role-controlador', label: 'Objeto' };
-      default: return { icon: ShoppingCart, color: 'text-v-white/50', label: 'Acción' };
+      case 'buy': return { icon: UserPlus, color: 'text-green-400', label: 'Reclutamiento' };
+      case 'sell': return { icon: UserMinus, color: 'text-v-red', label: 'Baja' };
+      case 'clause_paid': return { icon: Zap, color: 'text-v-role-iniciador', label: 'Reasignación' };
+      case 'buy_item': return { icon: Cpu, color: 'text-v-role-controlador', label: 'Suministro' };
+      default: return { icon: UserPlus, color: 'text-v-white/50', label: 'Operación' };
     }
   };
 
@@ -75,7 +75,7 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
 
               <div className="text-right">
                 <p className="text-[10px] font-black text-v-white italic leading-none">
-                  {(action.price / 1000000).toFixed(1)}M
+                  {(action.price / 1000000).toFixed(1)} <span className="text-[8px] text-v-red/50">VP</span>
                 </p>
                 <p className="text-[7px] text-v-white/20 font-black uppercase mt-1">
                   {new Date(action.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

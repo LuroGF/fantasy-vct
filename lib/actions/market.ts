@@ -212,7 +212,7 @@ export async function createAuction(leagueId: string, profileId: string, playerI
     }
 
     if (lockStatus.locked && roster.slot_type === 'starter') {
-      throw new Error(`Blindaje operacional: Los titulares no pueden ponerse a la venta durante la jornada (${lockStatus.reason}).`);
+      throw new Error(`Blindaje operacional: Los titulares no pueden reasignarse durante la jornada (${lockStatus.reason}).`);
     }
 
     const expiresAt = new Date();
@@ -296,7 +296,7 @@ export async function placeBid(auctionId: string, profileId: string, bidAmount: 
     const availableBudget = Number(participant.current_budget) - committedFunds;
 
     if (availableBudget < bidAmount) {
-      throw new Error(`Presupuesto insuficiente. Tienes $${(committedFunds / 1000000).toFixed(1)}M bloqueados en otras subastas.`);
+      throw new Error(`Fondos insuficientes. Tienes ${(committedFunds / 1000000).toFixed(1)} CREDS bloqueados en otras asignaciones.`);
     }
 
     // 3. CAPACITY CHECK
@@ -445,7 +445,7 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     const availableBudget = Number(participant.current_budget) - committedFunds;
 
     if (availableBudget < price) {
-      throw new Error(`Presupuesto insuficiente. Tienes $${(committedFunds / 1000000).toFixed(1)}M bloqueados en subastas.`);
+      throw new Error(`Fondos insuficientes. Tienes ${(committedFunds / 1000000).toFixed(1)} CREDS bloqueados en asignaciones.`);
     }
 
     // 4. Ownership check
@@ -572,7 +572,7 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
     const { data: playerRoster } = await supabase.from('user_rosters').select('slot_type').eq('league_id', leagueId).eq('profile_id', profileId).eq('player_id', playerId).single();
 
     if (lockStatus.locked && playerRoster?.slot_type === 'starter') {
-      throw new Error(`Blindaje operacional: Los titulares no se pueden vender durante la jornada (${lockStatus.reason}).`);
+      throw new Error(`Blindaje operacional: Los titulares no se pueden liberar durante la jornada (${lockStatus.reason}).`);
     }
 
     const { data: participant } = await supabase
@@ -714,7 +714,7 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
         .eq("profile_id", buyerProfileId)
         .single();
     
-    if (!buyer || Number(buyer.current_budget) < Number(clausePrice)) throw new Error("Presupuesto insuficiente para rescisión.");
+    if (!buyer || Number(buyer.current_budget) < Number(clausePrice)) throw new Error("Recursos insuficientes para reasignación directa.");
 
 
 
@@ -729,7 +729,7 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
     const availableBudget = Number(buyer.current_budget) - committedFunds;
 
     if (availableBudget < Number(clausePrice)) {
-      throw new Error(`Presupuesto insuficiente para rescisión. Tienes $${(committedFunds / 1000000).toFixed(1)}M bloqueados en subastas.`);
+      throw new Error(`Recursos insuficientes para reasignación. Tienes ${(committedFunds / 1000000).toFixed(1)} CREDS bloqueados en asignaciones.`);
     }
 
     // Check Capacity
@@ -816,7 +816,7 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
                         profile_id: b.profile_id,
                         league_id: leagueId,
                         title: "⚠️ SUBASTA CANCELADA",
-                        message: `La subasta de ${(rosterEntry.pro_players as any).nickname} ha sido cancelada porque alguien pagó su cláusula de rescisión.`,
+                        message: `La asignación de ${(rosterEntry.pro_players as any).nickname} ha sido cancelada porque alguien solicitó su reasignación directa.`,
                         type: "system"
                     });
                 }
@@ -840,8 +840,8 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
     await createNotification({
       profile_id: ownerId,
       league_id: leagueId,
-      title: "🚨 BAJA POR CLÁUSULA",
-      message: `Han pagado la cláusula de $${(clausePrice / 1000000).toFixed(1)}M por ${(rosterEntry.pro_players as any).nickname}.`,
+      title: "🚨 REASIGNACIÓN DE AGENTE",
+      message: `Se ha completado la reasignación de ${(rosterEntry.pro_players as any).nickname} por ${(clausePrice / 1000000).toFixed(1)} VP.`,
       type: "hostile_buy"
     });
 
@@ -966,8 +966,8 @@ export async function resolveExpiredAuctions() {
             // Log Transaction & Notify
             await supabaseAdmin.from('market_transactions').insert({ league_id: auct.league_id, profile_id: bid.profile_id, player_id: auct.player_id, type: 'buy', price: bid.bid_amount });
             const { createNotification } = await import("./notifications");
-            await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "💰 AGENTE VENDIDO", message: `Vendido: ${auct.pro_players.nickname} por $${(bid.bid_amount / 1000000).toFixed(1)}M.`, type: "sale" });
-            await createNotification({ profile_id: bid.profile_id, league_id: auct.league_id, title: "✅ SUBASTA GANADA", message: `Ganado: ${auct.pro_players.nickname} por $${(bid.bid_amount / 1000000).toFixed(1)}M.`, type: "buy" });
+            await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "📋 AGENTE TRANSFERIDO", message: `Transferido: ${auct.pro_players.nickname} por ${(bid.bid_amount / 1000000).toFixed(1)} VP.`, type: "sale" });
+            await createNotification({ profile_id: bid.profile_id, league_id: auct.league_id, title: "✅ ASIGNACIÓN EXITOSA", message: `Agente asignado: ${auct.pro_players.nickname} por ${(bid.bid_amount / 1000000).toFixed(1)} VP.`, type: "buy" });
 
             auctionResolved = true;
             break;
@@ -991,7 +991,7 @@ export async function resolveExpiredAuctions() {
               });
           }
           const { createNotification } = await import("./notifications");
-          await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "🏦 VENTA A LA BANCA", message: `Sin pujas válidas por ${auct.pro_players.nickname}. Pago banca: $${(bankPrice / 1000000).toFixed(1)}M.`, type: "sale" });
+          await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "🔄 RETORNO A BASE", message: `Sin asignaciones válidas por ${auct.pro_players.nickname}. Retorno compensado: ${(bankPrice / 1000000).toFixed(1)} VP.`, type: "sale" });
       }
 
       await (supabaseAdmin.from('market_auctions') as any).update({ status: 'sold' }).eq('id', auct.id);

@@ -78,7 +78,7 @@ export function PlayerCard({
                   <div className="flex gap-1 shrink-0">
                     {isLocked && <span title="Protegido" className="text-v-red animate-pulse text-sm">🛡️</span>}
                     {isCaptain && <span title="Capitán" className="text-role-iniciador text-sm">©️</span>}
-                    {inAuction && <span className="text-[7px] bg-v-red text-white px-1.5 py-0.5 rounded-sm tracking-widest font-black self-center">SUBASTA</span>}
+                    {inAuction && <span className="text-[7px] bg-v-red text-white px-1.5 py-0.5 rounded-sm tracking-widest font-black self-center uppercase">DRAFT</span>}
                   </div>
                 </h3>
               </Link>
@@ -94,10 +94,10 @@ export function PlayerCard({
             </div>
 
             <div className="text-right">
-              <p className="text-[8px] font-black uppercase text-white/30 tracking-widest mb-1">Valor</p>
-              <p className="text-xl font-black italic leading-none">${(player.market_value / 1000000).toFixed(1)}M</p>
+              <p className="text-[8px] font-black uppercase text-white/30 tracking-widest mb-1">Asignación</p>
+              <p className="text-xl font-black italic leading-none">{(player.market_value / 1000000).toFixed(1)} <span className="text-[10px]">VP</span></p>
               {player.releaseClause && (
-                 <p className="text-[9px] font-bold italic text-v-red mt-1">Cláusula: ${(player.releaseClause / 1000000).toFixed(1)}M</p>
+                 <p className="text-[9px] font-bold italic text-v-red mt-1">Reasignación: {(player.releaseClause / 1000000).toFixed(1)} VP</p>
               )}
             </div>
           </div>
