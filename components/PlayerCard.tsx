@@ -95,9 +95,9 @@ export function PlayerCard({
 
             <div className="text-right">
               <p className="text-[8px] font-black uppercase text-white/30 tracking-widest mb-1">Asignación</p>
-              <p className="text-xl font-black italic leading-none">{(player.market_value / 1000000).toFixed(1)} <span className="text-[10px]">VP</span></p>
+              <p className="text-xl font-black italic leading-none">{(player.market_value / 1000000).toFixed(1)}M <span className="text-[10px]">VP</span></p>
               {player.releaseClause && (
-                 <p className="text-[9px] font-bold italic text-v-red mt-1">Reasignación: {(player.releaseClause / 1000000).toFixed(1)} VP</p>
+                 <p className="text-[9px] font-bold italic text-v-red mt-1">Reasignación: {(player.releaseClause / 1000000).toFixed(1)}M VP</p>
               )}
             </div>
           </div>
@@ -106,15 +106,15 @@ export function PlayerCard({
           <div className="grid grid-cols-3 gap-1 bg-black/20 rounded-sm p-2 mb-4">
              <div className="text-center">
                 <span className="block text-[7px] uppercase text-white/40 font-black">Points</span>
-                <span className="text-sm font-black italic text-v-red">{stats.avgPoints || "--"}</span>
+                <span className="text-sm font-black italic text-v-red">{stats.avgPoints ?? 0}</span>
              </div>
              <div className="text-center border-x border-white/5">
                 <span className="block text-[7px] uppercase text-white/40 font-black">ACS</span>
-                <span className="text-sm font-black italic">{stats.acs || "--"}</span>
+                <span className="text-sm font-black italic">{stats.acs ?? 0}</span>
              </div>
              <div className="text-center">
                 <span className="block text-[7px] uppercase text-white/40 font-black">K/D</span>
-                <span className="text-sm font-black italic">{stats.kd || "--"}</span>
+                <span className="text-sm font-black italic">{stats.kd ?? 0}</span>
              </div>
           </div>
         </div>

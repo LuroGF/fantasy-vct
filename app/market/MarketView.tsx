@@ -196,12 +196,12 @@ export default function MarketView({
           <div className="flex justify-between items-center pt-2 mt-2 border-t border-white/5">
              <div>
                  <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">Créditos Disponibles</p>
-                 <p className="text-sm font-black italic text-v-white">{(availableBudget / 1000000).toFixed(1)} VP</p>
+                 <p className="text-sm font-black italic text-v-white">{(availableBudget / 1000000).toFixed(1)}M VP</p>
               </div>
               {committedFunds > 0 && (
                  <div className="flex-1 px-4 border-l border-white/5 mx-4">
                     <p className="text-[7px] font-black uppercase text-v-red/60 mb-0.5">Comprometido en Draft</p>
-                    <p className="text-sm font-black italic text-v-red/80">{(committedFunds / 1000000).toFixed(1)} VP</p>
+                    <p className="text-sm font-black italic text-v-red/80">{(committedFunds / 1000000).toFixed(1)}M VP</p>
                  </div>
              )}
           </div>
@@ -300,11 +300,11 @@ export default function MarketView({
                       setConfirmDialog({
                         show: true,
                         title: "Confirmar Reclutamiento",
-                        message: `¿Deseas reclutar a ${offer.player?.nickname} por ${(offer.offer_price / 1000000).toFixed(1)} VP?`,
+                        message: `¿Deseas reclutar a ${offer.player?.nickname} por ${(offer.offer_price / 1000000).toFixed(1)}M VP?`,
                         onConfirm: () => handleAction(() => buyFromPersonalMarket(activeLeagueId, profileId, offer.player_id, offer.id))
                       });
                   }}
-                  actionLabel={offer.is_purchased ? "Adquirido" : `Reclutar ${(offer.offer_price / 1000000).toFixed(1)} VP`}
+                  actionLabel={offer.is_purchased ? "Adquirido" : `Reclutar ${(offer.offer_price / 1000000).toFixed(1)}M VP`}
                   actionDisabled={offer.is_purchased}
                 />
               ))}
@@ -345,17 +345,17 @@ export default function MarketView({
                                     <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter leading-none">{auction.pro_players?.nickname}</h3>
                                     {myBid && (
                                        <div className="inline-flex items-center gap-2 mt-2 bg-v-red px-2 py-0.5 rounded-sm">
-                                          <span className="text-[7px] font-black uppercase text-white tracking-widest whitespace-nowrap">TU OFERTA: {(myBid.bid_amount / 1000000).toFixed(1)} VP</span>
+                                          <span className="text-[7px] font-black uppercase text-white tracking-widest whitespace-nowrap">TU OFERTA: {(myBid.bid_amount / 1000000).toFixed(1)}M VP</span>
                                        </div>
                                     )}
                                  </div>
                                  <div className="text-right bg-black/40 backdrop-blur-md p-3 rounded-sm border border-white/5 min-w-[100px]">
                                     <p className="text-[7px] font-black uppercase text-white/30 tracking-widest mb-1">OFERTA LÍDER</p>
                                     {isRevealed ? (
-                                       <p className="text-2xl font-black italic text-green-500 leading-none">{(auction.current_bid / 1000000).toFixed(1)} <span className="text-[10px]">VP</span></p>
+                                       <p className="text-2xl font-black italic text-green-500 leading-none">{(auction.current_bid / 1000000).toFixed(1)}M <span className="text-[10px]">VP</span></p>
                                     ) : (
                                        <div className="flex flex-col items-end gap-1.5">
-                                          <p className="text-xl font-black italic text-white/10 leading-none select-none">???.? VP</p>
+                                          <p className="text-xl font-black italic text-white/10 leading-none select-none">???.?M VP</p>
                                           <button
                                               onClick={() => {
                                                   setConfirmDialog({
@@ -451,14 +451,14 @@ export default function MarketView({
                               <div className="flex items-center gap-4 relative z-10">
                                   <div className="text-right border-r border-white/5 pr-4">
                                   <p className="text-[7px] font-black uppercase text-v-white/30 mb-0.5">Reasignación</p>
-                                  <p className="text-sm font-black italic text-v-red">{(player.release_clause / 1000000).toFixed(1)} VP</p>
+                                  <p className="text-sm font-black italic text-v-red">{(player.release_clause / 1000000).toFixed(1)}M VP</p>
                                 </div>
                                 <button
                                   onClick={() => {
                                     setConfirmDialog({
                                       show: true,
                                       title: "Protocolo de Reasignación",
-                                      message: `¿Deseas solicitar la reasignación de ${player.nickname} por ${(player.release_clause / 1000000).toFixed(1)} VP? Los créditos de operación se transferirán a ${rival.profiles?.username}.`,
+                                      message: `¿Deseas solicitar la reasignación de ${player.nickname} por ${(player.release_clause / 1000000).toFixed(1)}M VP? Los créditos de operación se transferirán a ${rival.profiles?.username}.`,
                                       onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, rival.profile_id))
                                     });
                                   }}
@@ -522,13 +522,13 @@ export default function MarketView({
                                   setConfirmDialog({
                                     show: true,
                                     title: "Reclutar Leyenda",
-                                    message: `¿Deseas añadir a ${player.nickname} a tu escuadra por ${(player.market_value / 1000000).toFixed(1)} VP? Solo disponible para esta final.`,
+                                    message: `¿Deseas añadir a ${player.nickname} a tu escuadra por ${(player.market_value / 1000000).toFixed(1)}M VP? Solo disponible para esta final.`,
                                     onConfirm: () => handleAction(() => buyPlayer(activeLeagueId, profileId, player.id))
                                   });
                                 }}
                                 className="w-full bg-amber-500 text-v-navy text-[10px] font-black uppercase py-2.5 hover:bg-v-white transition-all italic shadow-lg shadow-amber-500/20"
                               >
-                                Reclutar Icono: {(player.market_value / 1000000).toFixed(1)} VP
+                                Reclutar Icono: {(player.market_value / 1000000).toFixed(1)}M VP
                               </button>
                           </div>
                         </div>
@@ -546,7 +546,7 @@ export default function MarketView({
         <div className="v-panel p-3 mt-4 flex justify-between items-center border-t-2 border-v-red">
           <div>
             <p className="text-[8px] font-black uppercase text-v-white/40">Créditos de Operación</p>
-            <p className="text-xl font-black italic text-v-white">{(activeParticipation.current_budget / 1000000).toFixed(1)} VP</p>
+            <p className="text-xl font-black italic text-v-white">{(activeParticipation.current_budget / 1000000).toFixed(1)}M VP</p>
           </div>
           <div className="text-right">
             <p className="text-[8px] font-black uppercase text-v-white/40">Liga Operativa</p>
@@ -562,7 +562,7 @@ export default function MarketView({
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">Nueva Oferta Anónima</p>
               <h3 className="text-2xl font-black italic uppercase leading-none">{bidDialog.auction.pro_players?.nickname}</h3>
-              <p className="text-[10px] font-black uppercase text-v-red tracking-widest">Oferta mínima requerida: {((bidDialog.auction.current_bid + 1) / 1000000).toFixed(2)} VP</p>
+              <p className="text-[10px] font-black uppercase text-v-red tracking-widest">Oferta mínima requerida: {((bidDialog.auction.current_bid + 1) / 1000000).toFixed(2)}M VP</p>
             </div>
 
             <div className="space-y-4">
@@ -583,7 +583,7 @@ export default function MarketView({
                         onClick={() => setBidDialog(prev => ({ ...prev, amount: (parseInt(prev.amount || "0") + add).toString() }))}
                         className="shrink-0 px-2 py-1 bg-v-white/5 border border-white/10 text-[8px] font-black hover:bg-v-white/10"
                       >
-                        +{add / 1000000} VP
+                        +{add / 1000000}M VP
                       </button>
                     ))}
                 </div>

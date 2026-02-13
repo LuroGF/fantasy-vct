@@ -75,7 +75,7 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
 
               <div className="text-right">
                 <p className="text-[10px] font-black text-v-white italic leading-none">
-                  {(action.price / 1000000).toFixed(1)} <span className="text-[8px] text-v-red/50">VP</span>
+                  {(action.price / 1000000).toFixed(1)}M <span className="text-[8px] text-v-red/50">VP</span>
                 </p>
                 <p className="text-[7px] text-v-white/20 font-black uppercase mt-1">
                   {new Date(action.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

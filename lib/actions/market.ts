@@ -841,7 +841,7 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
       profile_id: ownerId,
       league_id: leagueId,
       title: "🚨 REASIGNACIÓN DE AGENTE",
-      message: `Se ha completado la reasignación de ${(rosterEntry.pro_players as any).nickname} por ${(clausePrice / 1000000).toFixed(1)} VP.`,
+      message: `Se ha completado la reasignación de ${(rosterEntry.pro_players as any).nickname} por ${(clausePrice / 1000000).toFixed(1)}M VP.`,
       type: "hostile_buy"
     });
 
@@ -966,8 +966,8 @@ export async function resolveExpiredAuctions() {
             // Log Transaction & Notify
             await supabaseAdmin.from('market_transactions').insert({ league_id: auct.league_id, profile_id: bid.profile_id, player_id: auct.player_id, type: 'buy', price: bid.bid_amount });
             const { createNotification } = await import("./notifications");
-            await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "📋 AGENTE TRANSFERIDO", message: `Transferido: ${auct.pro_players.nickname} por ${(bid.bid_amount / 1000000).toFixed(1)} VP.`, type: "sale" });
-            await createNotification({ profile_id: bid.profile_id, league_id: auct.league_id, title: "✅ ASIGNACIÓN EXITOSA", message: `Agente asignado: ${auct.pro_players.nickname} por ${(bid.bid_amount / 1000000).toFixed(1)} VP.`, type: "buy" });
+            await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "📋 AGENTE TRANSFERIDO", message: `Transferido: ${auct.pro_players.nickname} por ${(bid.bid_amount / 1000000).toFixed(1)}M VP.`, type: "sale" });
+            await createNotification({ profile_id: bid.profile_id, league_id: auct.league_id, title: "✅ ASIGNACIÓN EXITOSA", message: `Agente asignado: ${auct.pro_players.nickname} por ${(bid.bid_amount / 1000000).toFixed(1)}M VP.`, type: "buy" });
 
             auctionResolved = true;
             break;
@@ -991,7 +991,7 @@ export async function resolveExpiredAuctions() {
               });
           }
           const { createNotification } = await import("./notifications");
-          await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "🔄 RETORNO A BASE", message: `Sin asignaciones válidas por ${auct.pro_players.nickname}. Retorno compensado: ${(bankPrice / 1000000).toFixed(1)} VP.`, type: "sale" });
+          await createNotification({ profile_id: auct.seller_id, league_id: auct.league_id, title: "🔄 RETORNO A BASE", message: `Sin asignaciones válidas por ${auct.pro_players.nickname}. Retorno compensado: ${(bankPrice / 1000000).toFixed(1)}M VP.`, type: "sale" });
       }
 
       await (supabaseAdmin.from('market_auctions') as any).update({ status: 'sold' }).eq('id', auct.id);
