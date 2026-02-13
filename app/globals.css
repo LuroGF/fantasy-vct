@@ -126,6 +126,42 @@ h1, h2, h3 {
   100% { transform: translateX(100%); }
 }
 
+@keyframes scan {
+  0% { top: 0% }
+  100% { top: 100% }
+}
+
+@keyframes glitch-skew {
+  0% { transform: skew(0deg); }
+  20% { transform: skew(-2deg); }
+  40% { transform: skew(3deg); }
+  60% { transform: skew(-1deg); }
+  80% { transform: skew(2deg); }
+  100% { transform: skew(0deg); }
+}
+
+.animate-scan {
+  animation: scan 4s linear infinite;
+}
+
+.animate-glitch {
+  animation: glitch-skew 4s infinite linear alternate-reverse;
+}
+
+@utility v-card-animated {
+  @apply relative overflow-hidden bg-v-gray/40 backdrop-blur-xl border border-white/5 rounded-sm transition-all duration-500;
+  &::before {
+    content: '';
+    @apply absolute top-0 left-0 w-1 h-full bg-v-red scale-y-0 transition-transform duration-500 origin-top;
+  }
+  &:hover {
+    @apply bg-v-gray/60 border-white/10;
+    &::before {
+      @apply scale-y-100;
+    }
+  }
+}
+
 /* Mobile Adjustments */
 @media (max-width: 640px) {
   .v-btn {

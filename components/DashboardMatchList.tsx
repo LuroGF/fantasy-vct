@@ -49,21 +49,21 @@ export async function DashboardMatchList() {
                     return (
                         <div
                             key={`${match.teams}-${idx}`}
-                            className="relative overflow-hidden group active:scale-[0.98] transition-all"
+                            className="v-card-animated group active:scale-[0.98]"
                         >
                             <div className="flex items-stretch h-16 sm:h-20">
                                 {/* Team A */}
-                                <div className="flex-1 bg-v-gray/40 border-l-2 border-v-white/10 flex items-center px-4 relative overflow-hidden group-hover:bg-v-gray/60 transition-colors">
-                                    <div className="absolute -left-2 -bottom-4 text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
+                                <div className="flex-1 flex items-center px-4 relative overflow-hidden transition-colors">
+                                    <div className="absolute -left-2 -bottom-4 text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
                                         {teamA.substring(0, 3)}
                                     </div>
-                                    <span className="text-xs sm:text-sm font-black uppercase italic tracking-tighter truncate relative z-10 group-hover:text-v-red transition-colors">
+                                    <span className="text-xs sm:text-sm font-black uppercase italic tracking-tighter truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:translate-x-1">
                                         {teamA}
                                     </span>
                                 </div>
 
                                 {/* Center Info */}
-                                <div className="w-20 sm:w-28 flex flex-col items-center justify-center bg-v-navy border-y border-white/5 relative z-10">
+                                <div className="w-20 sm:w-28 flex flex-col items-center justify-center bg-v-navy/40 border-x border-white/5 relative z-10">
                                     <div className="absolute inset-0 bg-v-red/5 animate-pulse-slow" />
                                     <span className={`text-[10px] sm:text-xs font-black relative z-10 ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
                                         {isLive ? "LIVE" : (() => {
@@ -98,18 +98,15 @@ export async function DashboardMatchList() {
                                 </div>
 
                                 {/* Team B */}
-                                <div className="flex-1 bg-v-gray/40 border-r-2 border-v-white/10 flex items-center justify-end px-4 relative overflow-hidden group-hover:bg-v-gray/60 transition-colors">
-                                     <div className="absolute -right-2 -bottom-4 text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none text-right">
+                                <div className="flex-1 flex items-center justify-end px-4 relative overflow-hidden transition-colors">
+                                     <div className="absolute -right-2 -bottom-4 text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none text-right">
                                         {(teamB ?? "TBD").substring(0, 3)}
                                     </div>
-                                    <span className="text-xs sm:text-sm font-black uppercase italic tracking-tighter truncate text-right relative z-10">
+                                    <span className="text-xs sm:text-sm font-black uppercase italic tracking-tighter truncate text-right relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:-translate-x-1">
                                         {teamB ?? "TBD"}
                                     </span>
                                 </div>
                             </div>
-
-                            {/* Decorative line */}
-                            <div className="absolute bottom-0 left-0 w-full h-px bg-linear-to-r from-transparent via-v-white/5 to-transparent group-hover:via-v-red/30 transition-all" />
                         </div>
                     );
                 })}
