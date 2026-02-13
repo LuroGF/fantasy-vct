@@ -66,115 +66,130 @@ export default function TopBar() {
     const hasNotifications = unreadCount > 0 || bonusStatus.canClaim;
 
     return (
-        <header className="sticky top-0 left-0 w-full z-50 bg-v-navy/80 backdrop-blur-md border-b border-white/5 px-4 h-14 flex items-center justify-between">
-            {/* Branding / Term identifier */}
-            <div className="flex items-center gap-3">
+        <header className="sticky top-0 left-0 w-full z-40 bg-black/40 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 h-14 flex items-center justify-between">
+            {/* Background design element */}
+            <div className="absolute inset-0 bg-linear-to-r from-v-red/5 to-transparent pointer-events-none" />
+            
+            <div className="flex items-center gap-4 relative z-10">
                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black italic text-v-white leading-none tracking-tighter">VCT // FANTASY</span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                        <div className="w-1 h-1 bg-green-500 animate-pulse rounded-full" />
-                        <span className="text-[7px] font-black uppercase text-green-500/80 tracking-widest">CONNECTED</span>
+                    <span className="text-[11px] font-black italic text-v-red leading-none tracking-tighter sm:text-xs">VCT FANTASY // TERMINAL</span>
+                    <div className="flex items-center gap-2 mt-1">
+                        <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
+                        <span className="text-[7px] font-black uppercase text-green-500/60 tracking-[0.3em] font-sans">EN LÍNEA</span>
                     </div>
                  </div>
             </div>
 
-            <div className="relative flex items-center gap-4">
-                <div className="hidden sm:flex flex-col items-end">
-                    <span className="text-[7px] font-black uppercase text-v-white/40 tracking-widest leading-none">Agente</span>
-                    <span className="text-[10px] font-black uppercase italic text-v-white leading-tight">{user.user_metadata?.username || "USER"}</span>
+            <div className="flex items-center gap-3 sm:gap-6 relative z-10">
+                <div className="flex flex-col items-end">
+                    <span className="text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">Agente Autorizado</span>
+                    <span className="text-[11px] font-black uppercase italic text-white leading-tight sm:text-xs">{user.user_metadata?.username || "OPERATOR"}</span>
                 </div>
                 
-                <div className="h-4 w-px bg-white/10 hidden sm:block" />
+                <div className="h-6 w-px bg-white/5 hidden sm:block" />
 
-                <button 
-                    onClick={() => {
-                        haptic.light();
-                        setShowNotifications(!showNotifications);
-                    }}
-                    className="relative p-2 text-v-white/60 hover:text-v-red transition-colors outline-none"
-                >
-                    <Bell className="w-6 h-6" />
+                <div className="relative">
+                    <button 
+                        onClick={() => {
+                            haptic.light();
+                            setShowNotifications(!showNotifications);
+                        }}
+                        className={`relative p-2 rounded-sm transition-all outline-none ${showNotifications ? 'bg-v-red text-white' : 'hover:bg-white/5 text-white/60'}`}
+                    >
+                        <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
+                        <AnimatePresence>
+                            {hasNotifications && (
+                                <motion.span 
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    exit={{ scale: 0 }}
+                                    className="absolute top-1.5 right-1.5 w-2 h-2 bg-v-red rounded-full border border-v-navy shadow-[0_0_5px_rgba(255,70,85,1)]" 
+                                />
+                            )}
+                        </AnimatePresence>
+                    </button>
+
                     <AnimatePresence>
-                        {hasNotifications && (
-                            <motion.span 
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                exit={{ scale: 0 }}
-                                className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-v-red rounded-full border-2 border-v-navy" 
-                            />
-                        )}
-                    </AnimatePresence>
-                </button>
-
-                {/* Notifications Dropdown */}
-                <AnimatePresence>
-                    {showNotifications && (
-                        <>
-                            <motion.div 
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setShowNotifications(false)}
-                                className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
-                            />
-                            <motion.div
-                                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                className="absolute right-0 top-full mt-2 w-72 z-50 origin-top-right"
-                            >
-                                <div className="bg-v-navy border border-white/10 shadow-2xl shadow-black/50 overflow-hidden flex flex-col">
-                                    <div className="p-3 border-b border-white/5 bg-white/5">
-                                        <h3 className="text-[10px] font-black uppercase tracking-widest text-v-white/60">Notificaciones</h3>
-                                    </div>
-                                    
-                                    <div className="max-h-[300px] overflow-y-auto">
-                                        {/* Daily Bonus Item */}
-                                        {bonusStatus.canClaim && (
-                                            <div className="p-3 border-b border-white/5 bg-v-red/5 hover:bg-v-red/10 transition-colors">
-                                                <div className="flex gap-3 items-start">
-                                                    <div className="w-8 h-8 rounded bg-v-red/20 flex items-center justify-center shrink-0 text-v-red">
-                                                        <Gift size={16} />
-                                                    </div>
-                                                    <div className="flex-1 space-y-2">
-                                                        <div>
-                                                            <p className="text-xs font-bold text-v-white">Bonus Diario Disponible</p>
-                                                            <p className="text-[10px] text-v-white/60 leading-tight">Reclama tus $2M para fichajes hoy.</p>
+                        {showNotifications && (
+                            <>
+                                <motion.div 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setShowNotifications(false)}
+                                    className="fixed inset-0 z-40 lg:absolute lg:right-0 lg:top-full lg:h-[200vh] lg:w-[200vw]"
+                                />
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute right-0 top-full mt-3 w-[280px] sm:w-[320px] z-50 origin-top-right"
+                                >
+                                    <div className="v-panel bg-v-gray/95 border-v-red/20 shadow-2xl p-0 overflow-hidden">
+                                        <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">Notificaciones</h3>
+                                            <span className="text-[8px] font-black text-white/20">SYSTEM v2.0</span>
+                                        </div>
+                                        
+                                        <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
+                                            {/* Daily Bonus Item */}
+                                            {bonusStatus.canClaim && (
+                                                <div className="p-4 border-b border-white/5 bg-v-red/5 hover:bg-v-red/10 transition-colors group">
+                                                    <div className="flex gap-4 items-start">
+                                                        <div className="w-10 h-10 rounded-sm bg-v-red/20 flex items-center justify-center shrink-0 text-v-red border border-v-red/30 group-hover:border-v-red transition-colors">
+                                                            <Gift size={20} />
                                                         </div>
-                                                        
-                                                        {claimMessage ? (
-                                                            <div className="flex items-center gap-2 text-green-400 text-[10px] font-bold animate-in fade-in">
-                                                                <CheckCircle size={12} />
-                                                                <span>{claimMessage}</span>
+                                                        <div className="flex-1 space-y-3">
+                                                            <div>
+                                                                <p className="text-[11px] font-black uppercase text-white tracking-wider italic">Recompensa Diaria</p>
+                                                                <p className="text-[10px] text-white/50 leading-tight mt-1">Créditos de operación detectados. Procede con el reclamo.</p>
                                                             </div>
-                                                        ) : (
-                                                            <button 
-                                                                onClick={handleClaim}
-                                                                disabled={claiming}
-                                                                className="w-full bg-v-red text-white text-[10px] font-black uppercase py-1.5 hover:bg-v-red/80 transition-colors disabled:opacity-50"
-                                                            >
-                                                                {claiming ? "Procesando..." : "RECLAMAR AHORA"}
-                                                            </button>
-                                                        )}
+                                                            
+                                                            {claimMessage ? (
+                                                                <div className="flex items-center gap-2 text-green-500 text-[10px] font-black uppercase italic animate-in slide-in-from-left">
+                                                                    <div className="w-4 h-4 rounded-full border border-green-500/30 flex items-center justify-center">
+                                                                       <CheckCircle size={10} />
+                                                                    </div>
+                                                                    <span>{claimMessage}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <button 
+                                                                    onClick={handleClaim}
+                                                                    disabled={claiming}
+                                                                    className="w-full v-btn-primary !px-0 !py-2 !text-[9px] italic"
+                                                                >
+                                                                    {claiming ? "Sincronizando..." : "RECLAMAR CRÉDITOS"}
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
 
-                                        {/* Empty State */}
-                                        {!bonusStatus.canClaim && unreadCount === 0 && (
-                                            <div className="p-6 text-center">
-                                                <p className="text-[10px] uppercase text-v-white/20 font-black tracking-widest">
-                                                    Sin nuevas notificaciones
-                                                </p>
-                                            </div>
-                                        )}
+                                            {/* Empty State */}
+                                            {!bonusStatus.canClaim && unreadCount === 0 && (
+                                                <div className="p-10 text-center space-y-3">
+                                                    <div className="text-3xl opacity-10">📡</div>
+                                                    <p className="text-[9px] uppercase text-white/20 font-black tracking-[0.3em] italic">
+                                                        Terminal Despejada
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-2 bg-black/20 text-center">
+                                            <button 
+                                                onClick={() => setShowNotifications(false)}
+                                                className="text-[8px] font-black uppercase text-white/20 hover:text-white transition-colors"
+                                            >
+                                                [ CERRAR ]
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         </header>
     );

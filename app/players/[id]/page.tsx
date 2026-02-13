@@ -79,7 +79,7 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
         <div className="bg-v-navy/50 p-3 border-t border-white/5 flex items-center justify-between">
            <div>
              <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-0.5">Valor de Mercado</p>
-             <p className="text-xl font-black italic text-v-red">${(player.market_value / 1000000).toFixed(1)}M</p>
+             <p className="text-xl font-black italic text-v-red">{(player.market_value / 1000000).toFixed(1)}M VP</p>
            </div>
         </div>
       </div>

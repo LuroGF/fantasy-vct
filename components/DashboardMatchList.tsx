@@ -41,59 +41,83 @@ export async function DashboardMatchList() {
                     Agenda Completa
                 </Link>
             </div>
-            <div className="grid gap-3">
-                {filteredMatches.map((match) => {
+            <div className="grid gap-4">
+                {filteredMatches.map((match, idx) => {
                     const isLive = match.time.toLowerCase().includes("live") || match.time === "";
+                    const [teamA, teamB] = match.teams.split(" vs ");
+                    
                     return (
                         <div
-                            key={match.teams}
-                            className="bg-v-gray/40 border-l-2 border-v-white/10 p-3 flex items-center justify-between group hover:border-v-red hover:bg-v-gray/60 transition-all"
+                            key={`${match.teams}-${idx}`}
+                            className="v-card-animated group active:scale-[0.98]"
                         >
-                            <div className="flex-1 text-sm font-black uppercase italic tracking-tighter group-hover:text-v-red transition-colors truncate min-w-0">
-                                {match.teams.split(" vs ")[0]}
-                            </div>
-                            <div className="flex flex-col items-center px-4 border-x border-white/5 shrink-0 min-w-[100px]">
-                                <span className={`text-xs font-black ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
-                                    {isLive ? "EN VIVO" : (() => {
-                                        if (match.date) {
-                                            try {
-                                                return new Intl.DateTimeFormat('es-ES', {
-                                                    timeZone: 'Europe/Madrid',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                }).format(new Date(match.date));
-                                            } catch (e) { }
-                                        }
-                                        return match.time;
-                                    })()}
-                                </span>
-                                <span className="text-[8px] font-black uppercase text-v-white/40 mb-0.5">
-                                    {(() => {
-                                        if (match.date) {
-                                            try {
-                                                return new Intl.DateTimeFormat('es-ES', {
-                                                    timeZone: 'Europe/Madrid',
-                                                    month: 'short',
-                                                    day: 'numeric'
-                                                }).format(new Date(match.date));
-                                            } catch (e) { }
-                                        }
-                                        const d = match.rawDate || "";
-                                        return d.includes(",") ? d.split(",")[1].trim() : d;
-                                    })()}
-                                </span>
-                            </div>
-                            <div className="flex-1 text-sm font-black uppercase italic tracking-tighter text-right truncate min-w-0">
-                                {match.teams.split(" vs ")[1] ?? "TBD"}
+                            <div className="flex items-stretch h-16 sm:h-20">
+                                {/* Team A */}
+                                <div className="flex-1 flex items-center px-4 relative overflow-hidden transition-colors">
+                                    <div className="absolute -left-2 -bottom-4 text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
+                                        {teamA.substring(0, 3)}
+                                    </div>
+                                    <span className="text-xs sm:text-sm font-black uppercase italic tracking-tighter truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:translate-x-1">
+                                        {teamA}
+                                    </span>
+                                </div>
+
+                                {/* Center Info */}
+                                <div className="w-20 sm:w-28 flex flex-col items-center justify-center bg-v-navy/40 border-x border-white/5 relative z-10">
+                                    <div className="absolute inset-0 bg-v-red/5 animate-pulse-slow" />
+                                    <span className={`text-[10px] sm:text-xs font-black relative z-10 ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
+                                        {isLive ? "LIVE" : (() => {
+                                            if (match.date) {
+                                                try {
+                                                    return new Intl.DateTimeFormat('es-ES', {
+                                                        timeZone: 'Europe/Madrid',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    }).format(new Date(match.date));
+                                                } catch (e) { }
+                                            }
+                                            return match.time;
+                                        })()}
+                                    </span>
+                                    <div className="h-px w-8 bg-v-white/10 my-1 relative z-10" />
+                                    <span className="text-[7px] sm:text-[8px] font-black uppercase text-v-white/40 relative z-10">
+                                        {(() => {
+                                            if (match.date) {
+                                                try {
+                                                    return new Intl.DateTimeFormat('es-ES', {
+                                                        timeZone: 'Europe/Madrid',
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    }).format(new Date(match.date));
+                                                } catch (e) { }
+                                            }
+                                            const d = match.rawDate || "";
+                                            return d.includes(",") ? d.split(",")[1].trim() : d;
+                                        })()}
+                                    </span>
+                                </div>
+
+                                {/* Team B */}
+                                <div className="flex-1 flex items-center justify-end px-4 relative overflow-hidden transition-colors">
+                                     <div className="absolute -right-2 -bottom-4 text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none text-right">
+                                        {(teamB ?? "TBD").substring(0, 3)}
+                                    </div>
+                                    <span className="text-xs sm:text-sm font-black uppercase italic tracking-tighter truncate text-right relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:-translate-x-1">
+                                        {teamB ?? "TBD"}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     );
                 })}
 
                 {filteredMatches.length === 0 && (
-                    <div className="v-panel border-white/5 py-8 text-center">
-                        <p className="text-v-white/20 text-[10px] font-black uppercase tracking-widest">
-                            No hay partidos programados para hoy
+                    <div className="v-panel border-white/5 py-12 text-center opacity-30">
+                        <div className="mb-2 flex justify-center">
+                            <div className="w-1 h-1 bg-v-red rounded-full animate-ping" />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-widest italic">
+                            No hay transmisiones programadas
                         </p>
                     </div>
                 )}

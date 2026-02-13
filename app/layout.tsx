@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import LayoutShell from "@/components/LayoutShell";
 import PWAInstaller from "@/components/PWAInstaller";
 import PushManager from "@/components/PushManager";
-import TopBar from "@/components/TopBar";
-import { ScrollToTopButton } from "@/components/ScrollToTopButton";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -56,39 +53,9 @@ export default function RootLayout({
         <PWAInstaller />
         <PushManager />
 
-        {/* FULL WIDTH WRAPPER */}
-        <div className="relative h-dvh w-full overflow-hidden bg-v-navy/50 shadow-2xl shadow-black/50">
-          {/* Sidebar fixed (desktop) */}
-          <Sidebar />
-
-          {/* MAIN FULL WIDTH */}
-          <div className="relative h-full w-full">
-            {/* TopBar móvil */}
-            <div className="lg:hidden sticky top-0 z-40">
-              <TopBar />
-            </div>
-
-            {/* SCROLL AQUÍ */}
-            <main
-              className="
-              h-full w-full overflow-y-auto overscroll-contain pb-24"
-            >
-              {children}
-            </main>
-
-            {/* Navbar móvil */}
-            <Navbar />
-            <ScrollToTopButton />
-          </div>
-
-          {/* Corner accents */}
-          {/* <div className="pointer-events-none absolute inset-0 z-0">
-            <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-v-red/30" />
-            <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-v-red/30" />
-            <div className="absolute bottom-24 left-4 w-4 h-4 border-b-2 border-l-2 border-v-red/30" />
-            <div className="absolute bottom-24 right-4 w-4 h-4 border-b-2 border-r-2 border-v-red/30" />
-          </div> */}
-        </div>
+        <LayoutShell>
+          {children}
+        </LayoutShell>
       </body>
     </html>
   );

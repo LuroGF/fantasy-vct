@@ -1,66 +1,135 @@
 
 import { SupabaseClient } from "@supabase/supabase-js";
 
+
 /**
  * Real-time check for market lock status.
  * Returns true if the market should be locked based on:
- * 1. Weekly cycle (Mon 24h to Thu 24h)
- * 2. Matches starting in less than 5 hours or currently live
- * 3. Manual override in gameweeks table
+ * 1. Admin manual override
+ * 2. Weekly cycle (Mon 23:59 or 5h before match)
+ * 3. Match in progress or imminent
+ * 4. Special rule: if prev GW ended Sunday, delay lock until 5h before next match
  */
 export async function getMarketLockStatus(supabase: SupabaseClient, leagueId?: string) {
     const now = new Date();
     
-    // 1. Weekly Cycle (Madrid Time)
-    const madridTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
-    const dayOfWeek = madridTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-    const hour = madridTime.getHours();
-    const minute = madridTime.getMinutes();
-
-    // Lock from Monday 23:59 until end of Thursday
-    // Mon (1) >= 23:59 OR Tue(2), Wed(3), Thu(4)
-    const isMondayNight = dayOfWeek === 1 && (hour > 23 || (hour === 23 && minute >= 59));
-    const isMidWeek = dayOfWeek >= 2 && dayOfWeek <= 4;
+    // Utility to get a Date object representing the time in Madrid as if it were UTC
+    // (the "digits" match Madrid time). Useful for day/hour checks.
+    const toMadridLocal = (d: Date) => new Date(d.toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
     
-    if (isMondayNight || isMidWeek) {
-        return { locked: true, reason: "Ciclo semanal de competición (Lunes-Jueves)" };
-    }
+    const madridNow = toMadridLocal(now);
 
-    // 2. Dynamic Match Lock (5h before match)
-    // Get active gameweek and its matches
+    // 1. Manual override in gameweeks table
     const { data: activeGw } = await supabase
         .from('gameweeks')
-        .select('id, is_locked')
+        .select('id, is_locked, start_date')
         .eq('is_active', true)
         .maybeSingle();
 
-    if (activeGw?.is_locked) {
+    if (!activeGw) {
+        return { locked: false };
+    }
+
+    if (activeGw.is_locked) {
         return { locked: true, reason: "Mercado cerrado por la administración" };
     }
 
-    if (activeGw) {
-        const { data: matches } = await supabase
-            .from('matches')
-            .select('match_date, status')
-            .eq('gameweek_id', activeGw.id);
+    // 2. Dynamic Match Lock
+    const { data: matches } = await supabase
+        .from('matches')
+        .select('match_date, status')
+        .eq('gameweek_id', activeGw.id)
+        .order('match_date', { ascending: true });
 
-        if (matches) {
-            const nowMs = now.getTime();
-            const fiveHoursMs = 5 * 60 * 60 * 1000;
+    if (!matches || matches.length === 0) {
+        // Fallback if no matches are found: standard Monday night lock
+        const dayOfWeek = madridNow.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const isMondayNight = dayOfWeek === 1 && madridNow.getHours() >= 23 && madridNow.getMinutes() >= 59;
+        const isMidWeek = dayOfWeek >= 2 && dayOfWeek <= 4;
+        
+        if (isMondayNight || isMidWeek) {
+            return { locked: true, reason: "Ciclo semanal (Lunes-Jueves)" };
+        }
+        return { locked: false };
+    }
 
-            for (const m of matches) {
-                if (m.status === 'live') {
-                    return { locked: true, reason: "Partido en curso" };
-                }
-                if (m.status === 'upcoming' && m.match_date) {
-                    const startTime = new Date(m.match_date).getTime();
-                    if (startTime > nowMs && startTime - nowMs < fiveHoursMs) {
-                        return { locked: true, reason: "Partido inminente (menos de 5h)" };
-                    }
-                }
+    // 3. Re-open check: If all matches of the current GW are finished, market is OPEN
+    const allFinished = matches.every(m => m.status === 'finished' || m.status === 'completed');
+    if (allFinished) {
+        return { locked: false };
+    }
+
+    // 4. Live match check
+    const liveMatch = matches.find(m => m.status === 'live');
+    if (liveMatch) {
+        return { locked: true, reason: "Partido en curso" };
+    }
+
+    // 5. Imminent match check (5h before)
+    const fiveHoursMs = 5 * 60 * 60 * 1000;
+    const nextMatch = matches.find(m => m.status === 'upcoming');
+    if (nextMatch) {
+        const startTime = new Date(nextMatch.match_date).getTime();
+        if (startTime > now.getTime() && startTime - now.getTime() < fiveHoursMs) {
+            return { locked: true, reason: "Partido inminente (menos de 5h)" };
+        }
+    }
+
+    // 6. Calculate main Lock Time for the week
+    const firstMatchDate = new Date(matches[0].match_date);
+    const firstMatchMadrid = toMadridLocal(firstMatchDate);
+    const firstDay = firstMatchMadrid.getDay();
+
+    let lockTimeMs: number;
+
+    if (firstDay === 1) {
+        // Rule: If there's a match on Monday, lock 5h before that match
+        lockTimeMs = toMadridLocal(new Date(firstMatchDate.getTime() - fiveHoursMs)).getTime();
+    } else {
+        // No match on Monday? 
+        // Check if previous GW ended on Sunday
+        const { data: prevGw } = await supabase
+            .from('gameweeks')
+            .select('id')
+            .lt('start_date', activeGw.start_date)
+            .order('start_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        
+        let prevEndedSunday = false;
+        if (prevGw) {
+            const { data: lastMatchPrev } = await supabase
+                .from('matches')
+                .select('match_date')
+                .eq('gameweek_id', prevGw.id)
+                .order('match_date', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            
+            if (lastMatchPrev) {
+                const lpMadrid = toMadridLocal(new Date(lastMatchPrev.match_date));
+                if (lpMadrid.getDay() === 0) prevEndedSunday = true;
             }
         }
+
+        if (prevEndedSunday) {
+            // Rule: skip Monday night, lock 5h before next match
+            lockTimeMs = toMadridLocal(new Date(firstMatchDate.getTime() - fiveHoursMs)).getTime();
+        } else {
+            // Default rule: Lock Monday night (23:59) of the current week
+            // find Monday of the week starting the GW
+            const diff = firstDay === 0 ? 6 : firstDay - 1;
+            const monday = new Date(firstMatchMadrid);
+            monday.setDate(firstMatchMadrid.getDate() - diff);
+            monday.setHours(23, 59, 59, 999);
+            lockTimeMs = monday.getTime();
+        }
+    }
+
+    if (madridNow.getTime() >= lockTimeMs) {
+        return { locked: true, reason: "Mercado cerrado por inicio de jornada" };
     }
 
     return { locked: false };
 }
+

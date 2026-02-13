@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
 
 export async function getUserNotifications(profileId: string) {
@@ -52,6 +53,7 @@ export async function markAllAsRead(profileId: string) {
   return { success: true };
 }
 
+
 export async function createNotification(data: {
   profile_id: string;
   league_id?: string;
@@ -59,11 +61,7 @@ export async function createNotification(data: {
   message: string;
   type: string;
 }) {
-  const supabase = await createClient(); // Use server client (service role usually better for internal, but here we can use user client if authorized)
-  
-  // Note: Usually internal creation happens via a separate admin client or trigger
-  // But for simple actions we can use the regular client if policies allow.
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("notifications")
     .insert([data]);
 
