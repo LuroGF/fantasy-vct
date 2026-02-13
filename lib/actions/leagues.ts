@@ -187,6 +187,7 @@ export async function joinLeague(inviteCode: string, userId: string) {
     await assignInitialRoster(supabase, league.id, userId);
 
     revalidatePath("/leagues");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error al unirse a la liga";

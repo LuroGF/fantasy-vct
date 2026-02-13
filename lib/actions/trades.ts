@@ -124,6 +124,7 @@ export async function acceptTradeOffer(offerId: string, userId: string) {
 
     revalidatePath("/market");
     revalidatePath("/team");
+    revalidatePath("/");
     return { success: true, message: result.message || 'Intercambio completado.' };
 
   } catch (error: any) {
