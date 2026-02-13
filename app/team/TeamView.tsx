@@ -15,6 +15,8 @@ interface TeamViewProps {
   initialActivePowerUps: any[];
   activeGameweekId?: any;
   hasScoutActive?: boolean;
+  casters?: any[];
+  initialActiveCasters?: any[];
 }
 
 export default function TeamView({ 
@@ -25,6 +27,8 @@ export default function TeamView({
   initialActivePowerUps, 
   activeGameweekId,
   hasScoutActive = false,
+  casters = [],
+  initialActiveCasters = [],
 }: TeamViewProps) {
   const [roster, setRoster] = useState(initialRoster);
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagues[0]?.leagues.id || "");
@@ -32,10 +36,13 @@ export default function TeamView({
   const router = useRouter();
   const [inventory, setInventory] = useState(initialInventory);
   const [activePowerUps, setActivePowerUps] = useState(initialActivePowerUps);
+  const [activeCasters, setActiveCasters] = useState(initialActiveCasters);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
   const [auctions, setAuctions] = useState<any[]>([]);
   const [selectedPowerUp, setSelectedPowerUp] = useState<any>(null);
+  const [selectedCaster, setSelectedCaster] = useState<any>(null);
+  
   const [auctionDialog, setAuctionDialog] = useState<{ show: boolean; player: any | null; price: string }>({
     show: false,
     player: null,
@@ -58,22 +65,50 @@ export default function TeamView({
       const { getUserFullRoster } = await import("@/lib/actions/roster");
       const { fetchActiveAuctions } = await import("@/lib/actions/market");
       const { getUserInventory, getActivePowerUps } = await import("@/lib/actions/inventory");
+      const { getActiveCasters } = await import("@/lib/actions/casters");
       
-      const [rosterData, auctionsData, inventoryData, powerUpsData] = await Promise.all([
+      const [rosterData, auctionsData, inventoryData, powerUpsData, casterData] = await Promise.all([
         getUserFullRoster(activeLeagueId, profileId),
         fetchActiveAuctions(activeLeagueId),
         getUserInventory(activeLeagueId, profileId),
-        getActivePowerUps(activeLeagueId, profileId)
+        getActivePowerUps(activeLeagueId, profileId),
+        activeGameweekId ? getActiveCasters(activeLeagueId, profileId, activeGameweekId) : Promise.resolve([])
       ]);
       
       setRoster(rosterData);
       setAuctions(auctionsData);
       setInventory(inventoryData);
       setActivePowerUps(powerUpsData);
+      setActiveCasters(casterData);
       setLoading(false);
     }
     if (activeLeagueId) loadData();
-  }, [activeLeagueId, profileId]);
+  }, [activeLeagueId, profileId, activeGameweekId]);
+
+  async function handleHireCaster(casterId: string, nickname: string) {
+    setConfirmDialog({
+      show: true,
+      title: "Contratar Analista",
+      message: `¿Deseas contratar a ${nickname} para tu mesa de análisis por esta jornada?`,
+      onConfirm: async () => {
+        haptic.medium();
+        setLoading(true);
+        const { hireCaster } = await import("@/lib/actions/casters");
+        const res = await hireCaster(activeLeagueId, profileId, activeGameweekId, casterId);
+
+        if (res.success) {
+          haptic.success();
+          setStatus({ type: "success", message: `Contrato firmado con ${nickname}` });
+          setSelectedCaster(null);
+          window.location.reload();
+        } else {
+          haptic.error();
+          setStatus({ type: "error", message: res.error as string });
+        }
+        setLoading(false);
+      }
+    });
+  }
 
   // Grouping by slot type
   const starters = useMemo(() => roster.filter(r => r.slot_type === 'starter'), [roster]);
@@ -344,6 +379,115 @@ export default function TeamView({
             </div>
         )}
       </div>
+
+      {/* Mesa de Análisis (Casters) */}
+      <div className="v-panel p-4 space-y-4">
+        <div className="flex justify-between items-end">
+            <div>
+                <h2 className="text-xl italic uppercase text-v-white/80 leading-none">Mesa de Análisis</h2>
+                <p className="text-[7px] uppercase tracking-[0.2em] text-amber-500 font-black">Broadcast Boosts Disponibles</p>
+            </div>
+            {activeCasters.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 px-2 py-1">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                    <span className="text-[8px] font-black uppercase text-amber-500">LIVE ({activeCasters.length}/2)</span>
+                </div>
+            )}
+        </div>
+
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+            {casters.map((caster) => {
+                const isActive = activeCasters.some(ac => ac.caster_id === caster.id);
+                return (
+                    <button 
+                        key={caster.id}
+                        onClick={() => {
+                            haptic.light();
+                            setSelectedCaster(selectedCaster?.id === caster.id ? null : caster);
+                        }}
+                        className={`shrink-0 relative w-16 h-16 rounded-full v-panel flex items-center justify-center p-0.5 transition-all border-2 overflow-hidden
+                            ${selectedCaster?.id === caster.id ? 'border-amber-500 scale-110 ring-4 ring-amber-500/10' : 
+                              isActive ? 'border-amber-500 shadow-lg shadow-amber-500/20' : 'border-white/5 opacity-60 hover:opacity-100'}`}
+                    >
+                        {caster.photo_url ? (
+                            <img src={caster.photo_url} alt={caster.nickname} className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                            <div className="w-full h-full rounded-full bg-v-navy flex items-center justify-center text-v-white font-black italic text-xs">
+                                {caster.nickname.substring(0, 2).toUpperCase()}
+                            </div>
+                        )}
+                        {isActive && (
+                            <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
+                                <span className="text-[14px]">🎙️</span>
+                            </div>
+                        )}
+                    </button>
+                );
+            })}
+        </div>
+
+        {(selectedCaster || activeCasters.length > 0) && (
+            <div className={`border p-4 animate-in slide-in-from-bottom duration-300 relative overflow-hidden group 
+                ${activeCasters.length > 0 && !selectedCaster ? 'border-amber-500/30 bg-amber-500/5' : 'border-v-white/10 bg-v-white/5'}`}>
+                
+                <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-amber-500/5 to-transparent pointer-events-none" />
+                
+                <div className="flex justify-between items-start relative z-10">
+                    <div>
+                        <h3 className="text-2xl font-black italic uppercase text-v-white leading-none">
+                            {(selectedCaster || activeCasters[0].casters).nickname}
+                        </h3>
+                        <p className="text-[8px] font-black uppercase text-amber-500 tracking-[0.3em] mt-1">{(selectedCaster || activeCasters[0].casters).name}</p>
+                    </div>
+                    {selectedCaster && !activeCasters.some(ac => ac.caster_id === selectedCaster.id) && (
+                        <div className="text-right">
+                             <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">Coste del Contrato</p>
+                             <p className="text-lg font-black italic text-v-white leading-none">${(selectedCaster.base_price / 1000000).toFixed(1)}M</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 relative z-10">
+                    <div className="space-y-1">
+                        <p className="text-[7px] font-black uppercase text-v-white/30 tracking-widest">Análisis Operativo:</p>
+                        <p className="text-[10px] text-v-white/70 leading-relaxed italic">{(selectedCaster || activeCasters[0].casters).description}</p>
+                    </div>
+                    <div className="bg-amber-500/10 border-l-2 border-amber-500 p-2">
+                         <p className="text-[7px] font-black uppercase text-amber-500 tracking-widest mb-1">Broadcast Boost:</p>
+                         <p className="text-[11px] font-black uppercase italic text-amber-500 leading-tight">{(selectedCaster || activeCasters[0].casters).buff_description}</p>
+                    </div>
+                </div>
+
+                {selectedCaster && !activeCasters.some(ac => ac.caster_id === selectedCaster.id) && (
+                    <button 
+                        onClick={() => handleHireCaster(selectedCaster.id, selectedCaster.nickname)}
+                        disabled={loading || activeCasters.length >= 2}
+                        className="w-full mt-4 bg-amber-500 text-v-navy py-3 text-[10px] font-black uppercase italic hover:bg-v-white transition-all shadow-lg shadow-amber-500/10 disabled:opacity-50"
+                    >
+                        {activeCasters.length >= 2 ? 'MÁXIMO DE CONTRATOS' : loading ? 'FIRMANDO...' : 'FIRMAR CONTRATO DE JORNADA'}
+                    </button>
+                )}
+
+                {!selectedCaster && activeCasters.length > 0 && (
+                    <div className="mt-4 space-y-2 border-t border-amber-500/20 pt-3">
+                        {activeCasters.map((ac, idx) => (
+                            <div key={ac.id} className="flex justify-between items-center bg-amber-500/5 p-2 rounded-sm">
+                                <span className="text-[9px] font-black uppercase text-amber-500 italic">CONTRATO #{idx+1}: {ac.casters.nickname}</span>
+                                <span className="text-[7px] font-black uppercase text-amber-500/60">ACTIVO</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
+                {selectedCaster && activeCasters.some(ac => ac.caster_id === selectedCaster.id) && (
+                     <p className="w-full mt-4 border-t border-amber-500/20 pt-2 text-center text-[7px] font-black uppercase text-amber-500/40 italic tracking-widest">
+                        ESTE ANALISTA YA ESTÁ EN TU MESA
+                    </p>
+                )}
+            </div>
+        )}
+      </div>
+
 
       {/* Titulares (5) */}
       <div className="space-y-4">

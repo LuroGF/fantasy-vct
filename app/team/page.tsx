@@ -20,11 +20,16 @@ export default async function TeamPage() {
 
   // Fetch Inventory and Active Powerups
   const { getUserInventory, getActivePowerUps } = await import("@/lib/actions/inventory");
+  const { getCasters, getActiveCasters } = await import("@/lib/actions/casters");
+
   const inventory = activeLeagueId ? await getUserInventory(activeLeagueId, session.user.id) : [];
   const activePowerUps = activeLeagueId ? await getActivePowerUps(activeLeagueId, session.user.id) : [];
 
   const supabase = await createClient();
   const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).single();
+
+  const casters = await getCasters();
+  const initialActiveCasters = (activeLeagueId && activeGw) ? await getActiveCasters(activeLeagueId, session.user.id, activeGw.id) : [];
 
   const hasScoutActive = activePowerUps?.some((ap: any) => ap.powerup_types?.code === 'SCOUT') || false;
 
@@ -56,6 +61,8 @@ export default async function TeamPage() {
           initialActivePowerUps={activePowerUps || []}
           activeGameweekId={activeGw?.id}
           hasScoutActive={hasScoutActive}
+          casters={casters}
+          initialActiveCasters={initialActiveCasters}
         />
       </div>
     </ClientRefreshWrapper>

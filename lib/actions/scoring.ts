@@ -74,16 +74,34 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
       }
     });
 
-    // 6. Aggregate Score per Participant
+    // 6. Get Active Casters for this Gameweek
+    const { data: activeCasters } = await supabaseAdmin
+      .from("active_casters")
+      .select("profile_id, casters(buff_code)")
+      .eq("gameweek_id", gameweekId);
+    
+    const casterMap = new Map<string, string[]>();
+    activeCasters?.forEach((ac: any) => {
+      if (ac.profile_id && ac.casters?.buff_code) {
+        const existing = casterMap.get(ac.profile_id) || [];
+        casterMap.set(ac.profile_id, [...existing, ac.casters.buff_code]);
+      }
+    });
+
+    // 7. Aggregate Score per Participant
     const participantScores = new Map<string, { leagueId: string; profileId: string; points: number }>();
+
+    // Performance map for specific event buffs (like Ulises Clutches)
+    const playerPerfData = new Map<string, { clutches: number }>();
+    performances?.forEach((p: any) => p.player_id && playerPerfData.set(p.player_id, { clutches: p.clutches || 0 }));
 
     for (const r of rosters || []) {
       if (!r.league_id || !r.profile_id) continue;
       const key = `${r.league_id}-${r.profile_id}`;
       let points = 0;
 
+      // Base Points (Normal or Legend)
       if (r.pro_players.is_legend) {
-        // Legendary Scoring: Call RPC for first match in GW (the Final)
         const { data: legendPoints } = await supabaseAdmin.rpc('calculate_legend_points', { 
             match_id: matchIds[0], 
             legend_id: r.player_id 
@@ -95,6 +113,35 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
       
       const captainPlayerId = captainMap.get(r.profile_id);
       if (captainPlayerId === r.player_id) points *= 2;
+
+      // --- APPLY CASTER BUFFS (MAY BE MULTIPLE) ---
+      const buffCodes = casterMap.get(r.profile_id);
+      if (buffCodes && buffCodes.length > 0) {
+        const playerRole = (r.pro_players as any).role?.trim().toUpperCase();
+        
+        buffCodes.forEach(buffCode => {
+          switch (buffCode) {
+            case 'ULISES_HYPE':
+              const perf = playerPerfData.get(r.player_id!);
+              if (perf && perf.clutches > 0) {
+                points += (perf.clutches * 10);
+              }
+              break;
+            case 'KAQUKA_TACTICS':
+              if (playerRole === 'INICIADOR') points *= 1.2;
+              break;
+            case 'URI_CONTROL':
+              if (playerRole === 'CENTINELA') points *= 1.2;
+              break;
+            case 'IKER_HEROIC':
+              if (playerRole === 'DUELISTA') points *= 1.2;
+              break;
+            case 'LUIGI_STATS':
+              if (playerRole === 'CONTROLADOR') points *= 1.2;
+              break;
+          }
+        });
+      }
 
       if (!participantScores.has(key)) {
         participantScores.set(key, { leagueId: r.league_id!, profileId: r.profile_id!, points: 0 });
