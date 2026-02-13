@@ -279,7 +279,7 @@ export default function LeaguesPage() {
                             <span className="w-1 h-1 bg-v-red/40" />
                           </p>
                           <p className="text-xl font-black italic text-v-red mt-1">
-                            ${(ul.current_budget / 1000000).toFixed(1)}M
+                            {(ul.current_budget / 1000000).toFixed(1)}M VP
                           </p>
                         </div>
                       </div>

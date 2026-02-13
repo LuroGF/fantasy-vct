@@ -223,14 +223,14 @@ export default function TeamView({
 
     if (startingPrice < minPrice) {
       haptic.error();
-      setStatus({ type: "error", message: `Precio mínimo: $${(minPrice / 1000000).toFixed(2)}M (valor base - 20%)` });
+      setStatus({ type: "error", message: `Precio mínimo: ${(minPrice / 1000000).toFixed(2)}M VP (valor base - 20%)` });
       document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (startingPrice > maxPrice) {
       haptic.error();
-      setStatus({ type: "error", message: `Precio máximo: $${(maxPrice / 1000000).toFixed(2)}M (valor base + 15%)` });
+      setStatus({ type: "error", message: `Precio máximo: ${(maxPrice / 1000000).toFixed(2)}M VP (valor base + 15%)` });
       document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -281,7 +281,7 @@ export default function TeamView({
           <div className="grid grid-cols-2 gap-4 relative">
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-v-red/30 transition-colors group">
                <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-v-red/60">Presupuesto</p>
-               <p className="text-2xl font-black italic tracking-tighter text-white group-hover:scale-105 origin-left transition-transform">${(activeParticipation.current_budget / 1000000).toFixed(1)}M</p>
+               <p className="text-2xl font-black italic tracking-tighter text-white group-hover:scale-105 origin-left transition-transform">{(activeParticipation.current_budget / 1000000).toFixed(1)}M VP</p>
             </div>
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-white/20 transition-colors group">
                <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-white/60">Agentes</p>
@@ -360,7 +360,7 @@ export default function TeamView({
                         <p className="text-xs text-v-white/80 leading-tight">
                             {activePowerUps.some(ap => ap.powerup_type_id === selectedPowerUp.powerup_types.id) 
                               ? `Ya has activado esta carta en esta jornada. Solo se permite una por tipo.` :
-                             selectedPowerUp.powerup_types.code === 'MONEY' ? `¿Activar "${selectedPowerUp.powerup_types.name}" para recibir $5M extra ahora?` :
+                             selectedPowerUp.powerup_types.code === 'MONEY' ? `¿Activar "${selectedPowerUp.powerup_types.name}" para recibir 5M VP extra ahora?` :
                              selectedPowerUp.powerup_types.code === 'SPY' ? `El "${selectedPowerUp.powerup_types.name}" se utiliza directamente en el Mercado sobre las subastas.` :
                              `Selecciona un agente de tu escuadra para aplicar "${selectedPowerUp.powerup_types.name}".`}
                         </p>
@@ -455,7 +455,7 @@ export default function TeamView({
                     {selectedCaster && !activeCasters.some(ac => ac.caster_id === selectedCaster.id) && (
                         <div className="text-right">
                              <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">Coste del Contrato</p>
-                             <p className="text-lg font-black italic text-v-white leading-none">${(selectedCaster.base_price / 1000000).toFixed(1)}M</p>
+                             <p className="text-lg font-black italic text-v-white leading-none">{(selectedCaster.base_price / 1000000).toFixed(1)}M VP</p>
                         </div>
                     )}
                 </div>
@@ -582,7 +582,7 @@ export default function TeamView({
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-v-white/60">Precio de Salida ($M)</label>
+                <label className="text-[10px] font-black uppercase text-v-white/60">Precio de Salida (M VP)</label>
                 <div className="flex gap-2">
                   <input 
                     type="number"
@@ -607,7 +607,7 @@ export default function TeamView({
                   </div>
                 </div>
                 <div className="flex justify-between text-[8px] font-black uppercase text-v-white/30 px-1">
-                  <span>Rango: ${(auctionDialog.player.market_value * 0.8 / 1000000).toFixed(1)}M - ${(auctionDialog.player.market_value * 1.15 / 1000000).toFixed(1)}M</span>
+                  <span>Rango: {(auctionDialog.player.market_value * 0.8 / 1000000).toFixed(1)}M VP - {(auctionDialog.player.market_value * 1.15 / 1000000).toFixed(1)}M VP</span>
                 </div>
               </div>
 

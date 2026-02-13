@@ -189,7 +189,7 @@ export function RankingView({
                                         <div className="flex items-center gap-4 text-right">
                                             <div className="shrink-0">
                                                 <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest">Rescisión</p>
-                                                <p className="text-sm font-black italic text-v-white">${(Number(player.release_clause || 0) / 1000000).toFixed(1)}M</p>
+                                                <p className="text-sm font-black italic text-v-white">{(Number(player.release_clause || 0) / 1000000).toFixed(1)}M VP</p>
                                             </div>
                                             <button 
                                                 onClick={() => setConfirmPay({ player })}
@@ -216,7 +216,7 @@ export function RankingView({
                         <div className="space-y-2 text-center">
                             <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">Confirmación</p>
                             <h3 className="text-xl font-black italic uppercase leading-tight">Ejecutar Cláusula</h3>
-                            <p className="text-xs text-v-white/60">¿Pagar rescisión de <span className="text-v-white font-black">${(Number(confirmPay.player.release_clause || 0) / 1000000).toFixed(1)}M</span> por <span className="text-v-red font-black uppercase">{confirmPay.player.nickname}</span>?</p>
+                            <p className="text-xs text-v-white/60">¿Pagar rescisión de <span className="text-v-white font-black">{(Number(confirmPay.player.release_clause || 0) / 1000000).toFixed(1)}M VP</span> por <span className="text-v-red font-black uppercase">{confirmPay.player.nickname}</span>?</p>
                         </div>
                         <div className="flex flex-col gap-2">
                             <button 
