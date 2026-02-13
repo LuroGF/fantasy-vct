@@ -39,6 +39,8 @@
   
   --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
   --shadow-red: 0 0 20px rgba(255, 70, 85, 0.2);
+  
+  --animate-shimmer: shimmer 2s infinite;
 }
 
 html {
@@ -78,15 +80,15 @@ body {
 
 @utility v-btn-primary {
   @apply v-btn bg-v-red text-white hover:brightness-110 hover:shadow-red;
-}
-
-@utility v-btn-primary::after {
-  content: '';
-  @apply absolute inset-0 bg-white/20 translate-x-[-100%] transition-transform duration-500 skew-x-12;
-}
-
-@utility v-btn-primary:hover::after {
-  @apply translate-x-[100%];
+  
+  &::after {
+    content: '';
+    @apply absolute inset-0 bg-white/20 translate-x-[-100%] transition-transform duration-500 skew-x-12;
+  }
+  
+  &:hover::after {
+    @apply translate-x-[100%];
+  }
 }
 
 @utility v-btn-secondary {
@@ -122,10 +124,6 @@ h1, h2, h3 {
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
-}
-
-@utility animate-shimmer {
-  animation: shimmer 2s infinite;
 }
 
 /* Mobile Adjustments */
