@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/utils/haptics";
 import { buyPlayer, buyFromPersonalMarket, payClause, placeBid, createAuction, getPersonalMarket, fetchActiveAuctions, revealAuction, withdrawBid } from "@/lib/actions/market";
+import { createTradeOffer, getTrades, acceptTradeOffer, rejectTradeOffer, cancelTradeOffer } from "@/lib/actions/trades";
 import { PlayerCard } from "@/components/PlayerCard";
 import { useState, useMemo, useEffect } from "react";
 
@@ -23,7 +24,7 @@ export default function MarketView({
   initialLeagueRosters,
   activePowerUps: initialActivePowerUps,
 }: MarketViewProps) {
-  const [activeTab, setActiveTab] = useState<'personal' | 'general' | 'rivals' | 'legends'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'general' | 'rivals' | 'legends' | 'trades'>('personal');
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [isFinal, setIsFinal] = useState(false);
@@ -56,6 +57,15 @@ export default function MarketView({
 
   const [userBids, setUserBids] = useState<any[]>([]);
   const [rivals, setRivals] = useState<any[]>([]);
+  const [trades, setTrades] = useState<any[]>([]);
+  const [tradeDialog, setTradeDialog] = useState<{ show: boolean; targetPlayer: any | null; receiverId: string; myPlayerId: string; cashAmount: string; direction: 'pay' | 'receive' }>({
+    show: false,
+    targetPlayer: null,
+    receiverId: "",
+    myPlayerId: "",
+    cashAmount: "",
+    direction: 'pay'
+  });
 
   useEffect(() => {
     async function loadInitialData() {
@@ -99,7 +109,11 @@ export default function MarketView({
     }, 30000);
 
     return () => clearInterval(timer);
-  }, [activeLeagueId, profileId, refreshTrigger]);
+
+    if (activeTab === 'trades' && activeLeagueId) {
+        getTrades(activeLeagueId, profileId).then(setTrades);
+    }
+  }, [activeLeagueId, profileId, refreshTrigger, activeTab]);
 
   const handleAction = async (actionFn: () => Promise<any>) => {
     haptic.medium();
@@ -137,6 +151,25 @@ export default function MarketView({
     handleAction(() => placeBid(bidDialog.auction.id, profileId, amount));
   };
 
+  const submitTrade = async () => {
+      const { targetPlayer, receiverId, myPlayerId, cashAmount, direction } = tradeDialog;
+      if (!targetPlayer || !receiverId) return;
+      
+      const cash = parseInt(cashAmount) || 0;
+      const finalCash = direction === 'pay' ? cash : -cash;
+      
+      setTradeDialog(prev => ({ ...prev, show: false }));
+      
+      handleAction(() => createTradeOffer(
+          activeLeagueId, 
+          profileId, 
+          receiverId, 
+          myPlayerId || null, 
+          targetPlayer.id, 
+          finalCash
+      ));
+  };
+
   const roles = ["Duelista", "Iniciador", "Controlador", "Centinela"];
 
   // Filtering Logic
@@ -161,6 +194,13 @@ export default function MarketView({
     })).filter(r => r.roster.length > 0 || searchTerm === ""),
     [rivals, searchTerm]
   );
+  
+  const myRoster = useMemo(() => {
+      return initialLeagueRosters.filter(r => r.profile_id === profileId).map(r => r.pro_players);
+  }, [initialLeagueRosters, profileId]);
+
+  const incomingTrades = useMemo(() => trades.filter(t => t.receiver_id === profileId), [trades, profileId]);
+  const outgoingTrades = useMemo(() => trades.filter(t => t.sender_id === profileId), [trades, profileId]);
 
   const committedFunds = useMemo(() => {
     return userBids.reduce((sum, b) => sum + Number(b.bid_amount), 0);
@@ -251,6 +291,12 @@ export default function MarketView({
                 ⭐ Sala Leyendas
             </button>
           )}
+          <button 
+            onClick={() => { haptic.light(); setActiveTab('trades'); }}
+            className={`flex-1 min-w-[100px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'trades' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
+          >
+            Intercambios
+          </button>
         </div>
 
         {activeTab === 'general' && (
@@ -453,6 +499,7 @@ export default function MarketView({
                                   <p className="text-[7px] font-black uppercase text-v-white/30 mb-0.5">Reasignación</p>
                                   <p className="text-sm font-black italic text-v-red">{(player.release_clause / 1000000).toFixed(1)}M VP</p>
                                 </div>
+                              <div className="flex flex-col gap-1">
                                 <button
                                   onClick={() => {
                                     setConfirmDialog({
@@ -462,9 +509,24 @@ export default function MarketView({
                                       onConfirm: () => handleAction(() => payClause(activeLeagueId, profileId, player.id, rival.profile_id))
                                     });
                                   }}
-                                  className="bg-v-white text-v-navy text-[8px] font-black px-4 py-2.5 uppercase italic hover:bg-v-red hover:text-v-white transition-all shadow-lg active:scale-95"
+                                  className="bg-v-white text-v-navy text-[8px] font-black px-4 py-2.5 uppercase italic hover:bg-v-red hover:text-v-white transition-all shadow-lg active:scale-95 w-full"
                                 >
-                                  Pagar
+                                  Pagar Rescisión
+                                </button>
+                                <button
+                                  onClick={() => {
+                                      setTradeDialog({
+                                          show: true,
+                                          targetPlayer: player,
+                                          receiverId: rival.profile_id,
+                                          myPlayerId: "",
+                                          cashAmount: "",
+                                          direction: 'pay'
+                                      });
+                                  }}
+                                  className="border border-white/10 text-v-white/50 hover:text-v-white hover:border-v-white text-[7px] font-black px-4 py-1.5 uppercase italic transition-all active:scale-95 w-full"
+                                >
+                                  Prop. Intercambio
                                 </button>
                               </div>
                             </div>
@@ -475,6 +537,119 @@ export default function MarketView({
                       </div>
                     ))}
                   </div>
+                </div>
+             ) : activeTab === 'trades' ? (
+                <div className="space-y-8">
+                   {/* INCOMING */}
+                   <div className="space-y-4">
+                      <h2 className="text-xl italic uppercase text-v-white/80 border-b border-v-red/50 w-fit pr-4">Ofertas Recibidas</h2>
+                      <div className="grid gap-3">
+                          {incomingTrades.map(trade => (
+                              <div key={trade.id} className="v-panel p-4 border-l-4 border-green-500 bg-v-navy/40 relative">
+                                  <div className="flex justify-between items-start mb-4">
+                                      <div>
+                                         <p className="text-[9px] font-black uppercase text-v-white/40 tracking-widest">De: {trade.sender?.username}</p>
+                                         <p className="text-[9px] font-black uppercase text-v-white/20 tracking-widest italic">{new Date(trade.created_at).toLocaleDateString()}</p>
+                                      </div>
+                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
+                                          trade.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' : 
+                                          trade.status === 'accepted' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
+                                      }`}>{trade.status}</span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between gap-4">
+                                      {/* THEY GIVE */}
+                                      <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
+                                          <p className="text-[7px] font-black uppercase text-v-white/30 mb-1">Recibes</p>
+                                          {trade.sender_player ? (
+                                              <p className="text-sm font-black italic text-v-white">{trade.sender_player.nickname}</p>
+                                          ) : <span className="text-xs opacity-20">-</span>}
+                                          {trade.cash_offer > 0 && <p className="text-xs font-black text-green-400 mt-1">+{(trade.cash_offer/1000000).toFixed(1)}M VP</p>}
+                                      </div>
+                                      
+                                      <div className="text-v-white/20">⇄</div>
+
+                                      {/* YOU GIVE */}
+                                      <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
+                                          <p className="text-[7px] font-black uppercase text-v-white/30 mb-1">Entregas</p>
+                                          {trade.receiver_player ? (
+                                              <p className="text-sm font-black italic text-v-red">{trade.receiver_player.nickname}</p>
+                                          ) : <span className="text-xs opacity-20">-</span>}
+                                           {trade.cash_offer < 0 && <p className="text-xs font-black text-v-red mt-1">+{(Math.abs(trade.cash_offer)/1000000).toFixed(1)}M VP</p>}
+                                      </div>
+                                  </div>
+
+                                  {trade.status === 'pending' && (
+                                      <div className="flex gap-2 mt-4 pt-4 border-t border-white/5">
+                                          <button 
+                                              onClick={() => {
+                                                  setConfirmDialog({
+                                                      show: true,
+                                                      title: "Aceptar Intercambio",
+                                                      message: "¿Confirmas el intercambio de activos? Esta acción es irreversible.",
+                                                      onConfirm: () => handleAction(() => acceptTradeOffer(trade.id, profileId))
+                                                  });
+                                              }}
+                                              className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-v-navy text-[9px] font-black uppercase italic transition-colors"
+                                          >
+                                              Aceptar
+                                          </button>
+                                          <button 
+                                              onClick={() => handleAction(() => rejectTradeOffer(trade.id, profileId))}
+                                              className="flex-1 py-2 bg-v-white/5 hover:bg-v-red hover:text-v-white text-v-white/40 text-[9px] font-black uppercase italic transition-colors"
+                                          >
+                                              Rechazar
+                                          </button>
+                                      </div>
+                                  )}
+                              </div>
+                          ))}
+                          {incomingTrades.length === 0 && <p className="text-[10px] uppercase italic opacity-30">No tienes ofertas pendientes.</p>}
+                      </div>
+                   </div>
+
+                   {/* OUTGOING */}
+                   <div className="space-y-4">
+                      <h2 className="text-xl italic uppercase text-v-white/80 border-b border-v-red/50 w-fit pr-4">Ofertas Enviadas</h2>
+                      <div className="grid gap-3">
+                          {outgoingTrades.map(trade => (
+                              <div key={trade.id} className="v-panel p-4 border-l-4 border-v-white/20 bg-v-navy/40 opacity-80 hover:opacity-100 transition-opacity">
+                                   <div className="flex justify-between items-start mb-4">
+                                      <div>
+                                         <p className="text-[9px] font-black uppercase text-v-white/40 tracking-widest">Para: {trade.receiver?.username}</p>
+                                         <p className="text-[9px] font-black uppercase text-v-white/20 tracking-widest italic">{new Date(trade.created_at).toLocaleDateString()}</p>
+                                      </div>
+                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
+                                          trade.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' : 
+                                          trade.status === 'accepted' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
+                                      }`}>{trade.status}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4">
+                                      <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
+                                          <span className="block text-[7px] text-v-white/30 uppercase">Ofreces</span>
+                                          <span className="text-xs font-black italic">{trade.sender_player?.nickname || "-"}</span>
+                                          {trade.cash_offer > 0 && <span className="block text-[9px] text-v-red/80 font-bold">{(trade.cash_offer/1000000).toFixed(1)}M VP</span>}
+                                      </div>
+                                      <div className="text-v-white/20">→</div>
+                                      <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
+                                          <span className="block text-[7px] text-v-white/30 uppercase">Pides</span>
+                                          <span className="text-xs font-black italic">{trade.receiver_player?.nickname || "-"}</span>
+                                           {trade.cash_offer < 0 && <span className="block text-[9px] text-green-500/80 font-bold">+{(Math.abs(trade.cash_offer)/1000000).toFixed(1)}M VP</span>}
+                                      </div>
+                                  </div>
+                                  {trade.status === 'pending' && (
+                                      <button 
+                                          onClick={() => handleAction(() => cancelTradeOffer(trade.id, profileId))}
+                                          className="w-full mt-3 py-1.5 text-[8px] font-black uppercase text-v-white/30 hover:text-v-red hover:bg-v-red/5 border border-transparent hover:border-v-red/20 transition-all"
+                                      >
+                                          Cancelar Propuesta
+                                      </button>
+                                  )}
+                              </div>
+                          ))}
+                          {outgoingTrades.length === 0 && <p className="text-[10px] uppercase italic opacity-30">No has enviado ofertas.</p>}
+                      </div>
+                   </div>
                 </div>
              ) : (
                 <div className="space-y-6">
@@ -553,6 +728,85 @@ export default function MarketView({
             <p className="text-xs font-black italic text-v-red uppercase">{activeParticipation.leagues?.name || activeParticipation.name}</p>
           </div>
         </div>
+      )}
+
+      {/* Trade Dialog */}
+      {tradeDialog.show && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-v-navy/90 backdrop-blur-sm animate-in fade-in duration-200">
+             <div className="v-panel w-full max-w-sm p-0 overflow-hidden border-t-4 border-v-white animate-in zoom-in-95 duration-200">
+                 <div className="bg-v-white/5 p-4 border-b border-white/5">
+                     <h3 className="text-xl font-black italic uppercase leading-none">Propuesta de Intercambio</h3> 
+                     <p className="text-[9px] uppercase tracking-widest text-v-white/40 mt-1">Negociación Directa</p>
+                 </div>
+                 
+                 <div className="p-6 space-y-6">
+                     {/* TARGET */}
+                     <div className="bg-black/20 p-3 rounded border border-white/5">
+                         <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-1">Objetivo (Recibes)</p>
+                         <p className="text-xl font-black italic text-v-red uppercase">{tradeDialog.targetPlayer?.nickname}</p>
+                         <p className="text-[10px] text-v-white/50">{tradeDialog.targetPlayer?.pro_teams?.tag} // {tradeDialog.targetPlayer?.role}</p>
+                     </div>
+
+                     <div className="flex justify-center text-v-white/20 text-xl font-black rotate-90 sm:rotate-0">
+                         ⇄
+                     </div>
+
+                     {/* OFFER */}
+                     <div className="space-y-4">
+                         <div className="space-y-2">
+                             <label className="text-[9px] font-black uppercase text-v-white/60">Tu Agente (Opcional)</label>
+                             <select 
+                                 value={tradeDialog.myPlayerId} 
+                                 onChange={(e) => setTradeDialog({...tradeDialog, myPlayerId: e.target.value})}
+                                 className="w-full bg-v-navy border border-white/10 px-3 py-2 text-xs font-black uppercase italic focus:border-v-red outline-none"
+                             >
+                                 <option value="">-- Ninguno --</option>
+                                 {myRoster.map((p: any) => (
+                                     <option key={p.id} value={p.id}>{p.nickname} ({p.role}) - {(p.market_value/1000000).toFixed(1)}M</option>
+                                 ))}
+                             </select>
+                         </div>
+
+                         <div className="space-y-2">
+                             <label className="text-[9px] font-black uppercase text-v-white/60">Compensación Económica</label>
+                             <div className="flex gap-2">
+                                 <input 
+                                     type="number"
+                                     value={tradeDialog.cashAmount}
+                                     onChange={(e) => setTradeDialog({...tradeDialog, cashAmount: e.target.value})}
+                                     placeholder="CANTIDAD..."
+                                     className="flex-1 bg-v-navy border border-white/10 px-3 py-2 text-xs font-black italic focus:border-v-red outline-none"
+                                 />
+                                 <select
+                                     value={tradeDialog.direction}
+                                     onChange={(e) => setTradeDialog({...tradeDialog, direction: e.target.value as any})}
+                                     className="w-24 bg-v-navy border border-white/10 px-2 py-2 text-[10px] font-black uppercase italic focus:border-v-red outline-none"
+                                 >
+                                     <option value="pay">PAGAS</option>
+                                     <option value="receive">RECIBES</option>
+                                 </select>
+                             </div>
+                         </div>
+                     </div>
+
+                     <div className="pt-4 flex gap-3">
+                         <button 
+                             onClick={() => setTradeDialog(prev => ({ ...prev, show: false }))}
+                             className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-v-white/5 transition-colors border border-white/10"
+                         >
+                             Cancelar
+                         </button>
+                         <button 
+                             onClick={submitTrade}
+                             disabled={loading}
+                             className="flex-1 py-3 bg-v-white text-v-navy hover:bg-v-red hover:text-v-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
+                         >
+                             Enviar Propuesta
+                         </button>
+                     </div>
+                 </div>
+             </div>
+          </div>
       )}
 
       {/* Bid Dialog */}
