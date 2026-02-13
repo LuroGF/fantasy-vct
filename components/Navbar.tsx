@@ -32,7 +32,7 @@ export default function Navbar() {
     if (hideNavbar) return null;
 
     return (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full lg:hidden z-50 border-t border-white/10 bg-v-navy/95 backdrop-blur-xl">
+        <nav className="fixed bottom-0 left-0 w-full lg:hidden z-50 border-t border-white/10 bg-v-navy/95 backdrop-blur-xl v-safe-area-pb">
             <div className="flex items-center justify-between px-2 h-16">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;
@@ -43,16 +43,16 @@ export default function Navbar() {
                             key={item.href}
                             href={item.href}
                             onClick={() => haptic.light()}
-                            className="relative flex flex-1 flex-col items-center justify-center gap-1 h-full active:scale-90 transition-transform select-none"
+                            className="relative flex flex-1 flex-col items-center justify-center gap-1 h-full active:scale-95 transition-transform select-none"
                         >
                             {isActive && (
                                 <motion.div
                                     layoutId="nav-active"
-                                    className="absolute inset-0 z-0 bg-v-red/10"
+                                    className="absolute inset-x-1 inset-y-2 z-0 bg-v-red/10 rounded-sm"
                                     transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
                                 />
                             )}
-                            <div className="relative z-10">
+                            <div className="relative z-10 flex flex-col items-center">
                                 <item.icon
                                     className={cn(
                                         "h-5 w-5 transition-colors duration-200",
@@ -60,20 +60,20 @@ export default function Navbar() {
                                     )}
                                 />
                                 {isMore && <NotificationBadge />}
+                                <span
+                                    className={cn(
+                                        "text-[8px] font-black uppercase tracking-[0.1em] mt-1 transition-colors duration-200 font-oswald",
+                                        isActive ? "text-v-white" : "text-v-white/40"
+                                    )}
+                                >
+                                    {item.label}
+                                </span>
                             </div>
-                            <span
-                                className={cn(
-                                    "text-[9px] font-black uppercase tracking-widest transition-colors duration-200 z-10 font-oswald",
-                                    isActive ? "text-v-white" : "text-v-white/40"
-                                )}
-                            >
-                                {item.label}
-                            </span>
 
                             {isActive && (
                                 <motion.div
                                     layoutId="nav-indicator"
-                                    className="absolute top-0 h-[3px] w-12 bg-v-red shadow-[0_0_10px_rgba(255,70,85,0.5)]"
+                                    className="absolute top-0 h-[2px] w-8 bg-v-red shadow-[0_0_10px_rgba(255,70,85,0.8)]"
                                     transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
                                 />
                             )}

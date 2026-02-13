@@ -7,6 +7,8 @@ import { createTradeOffer, getTrades, acceptTradeOffer, rejectTradeOffer, cancel
 import { PlayerCard } from "@/components/PlayerCard";
 import { useState, useMemo, useEffect } from "react";
 
+import { motion, AnimatePresence } from "framer-motion";
+
 interface MarketViewProps {
   personalMarket: any[];
   auctions: any[];
@@ -263,40 +265,46 @@ export default function MarketView({
             />
         </div>
 
-        <div className="flex bg-v-navy/50 p-1 border border-white/5 overflow-x-auto scrollbar-hide">
-          <button
-            onClick={() => setActiveTab('personal')}
-            className={`flex-1 min-w-[100px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'personal' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
-          >
-            Mercado Diario
-          </button>
-          <button
-            onClick={() => setActiveTab('general')}
-            className={`flex-1 min-w-[100px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'general' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
-          >
-            Draft Agentes
-          </button>
-          <button 
-            onClick={() => { haptic.light(); setActiveTab('rivals'); }}
-            className={`flex-1 min-w-[100px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'rivals' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
-          >
-            Rivales
-          </button>
+        <div className="flex bg-v-navy/80 p-1 border border-white/10 rounded-sm overflow-x-auto scrollbar-hide relative">
+          {[
+            { id: 'personal', label: 'Diario' },
+            { id: 'general', label: 'Draft' },
+            { id: 'rivals', label: 'Rivales' },
+            { id: 'trades', label: 'Trades' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => { haptic.light(); setActiveTab(tab.id as any); }}
+              className={`relative flex-1 min-w-[70px] py-2.5 text-[8.5px] font-black uppercase italic tracking-[0.05em] transition-colors z-10 ${activeTab === tab.id ? 'text-v-white' : 'text-v-white/40 hover:text-v-white/70'}`}
+            >
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="market-tab-active"
+                  className="absolute inset-0 bg-v-red shadow-[0_0_15px_rgba(255,70,85,0.3)]"
+                  transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
+                />
+              )}
+              <span className="relative z-20">{tab.label}</span>
+            </button>
+          ))}
+          
           {isFinal && (
             <button 
                 onClick={() => { haptic.light(); setActiveTab('legends'); }}
-                className={`flex-1 min-w-[120px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all relative overflow-hidden group ${activeTab === 'legends' ? 'bg-amber-500 text-v-navy' : 'text-amber-500 hover:bg-amber-500/10'}`}
+                className={`relative flex-1 min-w-[100px] py-2.5 text-[9px] font-black uppercase italic tracking-widest transition-all overflow-hidden group z-10 ${activeTab === 'legends' ? 'text-v-navy' : 'text-amber-500'}`}
             >
-                <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
-                ⭐ Sala Leyendas
+                {activeTab === 'legends' ? (
+                  <motion.div
+                    layoutId="market-tab-active"
+                    className="absolute inset-0 bg-amber-500"
+                    transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-amber-500/5 group-hover:bg-amber-500/10 transition-colors" />
+                )}
+                <span className="relative z-20 whitespace-nowrap">⭐ Leyendas</span>
             </button>
           )}
-          <button 
-            onClick={() => { haptic.light(); setActiveTab('trades'); }}
-            className={`flex-1 min-w-[100px] py-2.5 text-[10px] font-black uppercase italic tracking-widest transition-all ${activeTab === 'trades' ? 'bg-v-red text-v-white' : 'text-v-white/40 hover:text-v-white'}`}
-          >
-            Intercambios
-          </button>
         </div>
 
         {activeTab === 'general' && (
