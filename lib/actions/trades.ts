@@ -60,6 +60,25 @@ export async function createTradeOffer(
       if ((sender?.current_budget - committed) < cashOffer) {
         throw new Error("Fondos insuficientes para realizar esta oferta.");
       }
+    } else if (cashOffer < 0) {
+      // FIX Bug #4: Receiver must pay, check their committed funds too
+      const { data: receiver } = await supabase
+        .from('league_participants')
+        .select('current_budget')
+        .eq('league_id', leagueId)
+        .eq('profile_id', receiverId)
+        .single();
+      
+      const { data: receiverCommittedBids } = await supabase
+        .from('user_bids')
+        .select('bid_amount, market_auctions!inner(status)')
+        .eq('profile_id', receiverId)
+        .eq('market_auctions.status', 'active');
+      const receiverCommitted = receiverCommittedBids?.reduce((sum, b) => sum + Number(b.bid_amount), 0) || 0;
+      
+      if ((receiver?.current_budget - receiverCommitted) < Math.abs(cashOffer)) {
+        throw new Error("El destinatario no tiene fondos suficientes para esta oferta.");
+      }
     }
     
     // 3. Create Offer
@@ -89,115 +108,23 @@ export async function createTradeOffer(
 export async function acceptTradeOffer(offerId: string, userId: string) {
   const supabase = await createClient();
   try {
-    const { data: offer, error: oError } = await supabase
-      .from('trade_offers')
-      .select('*')
-      .eq('id', offerId)
-      .single();
+    // FIX Bug #8: Use atomic RPC function for trade acceptance
+    const { data, error } = await supabase.rpc('accept_trade_offer_atomic', {
+      p_offer_id: offerId,
+      p_receiver_id: userId
+    });
 
-    if (oError || !offer) throw new Error("Oferta no encontrada.");
-    if (offer.status !== 'pending') throw new Error("La oferta ya no está activa.");
-    if (offer.receiver_id !== userId) throw new Error("No tienes permiso para aceptar esta oferta.");
-    // Expiration check
-    if (new Date(offer.expires_at) < new Date()) throw new Error("La oferta ha expirado.");
+    if (error) throw error;
 
-    const { league_id, sender_id, receiver_id, sender_player_id, receiver_player_id, cash_offer: cashOffer } = offer;
-
-    // 1. Re-validate Ownership
-    if (sender_player_id) {
-        const { data: sRoster } = await supabase.from('user_rosters').select('id').eq('league_id', league_id).eq('profile_id', sender_id).eq('player_id', sender_player_id).maybeSingle();
-        if (!sRoster) throw new Error("El remitente ya no posee el agente ofrecido.");
-    }
-    if (receiver_player_id) {
-        const { data: rRoster } = await supabase.from('user_rosters').select('id').eq('league_id', league_id).eq('profile_id', receiver_id).eq('player_id', receiver_player_id).maybeSingle();
-        if (!rRoster) throw new Error("Ya no posees el agente solicitado.");
-    }
-
-    // 2. Validate Budgets
-    const { data: senderP } = await supabase.from('league_participants').select('current_budget').eq('league_id', league_id).eq('profile_id', sender_id).single();
-    if (!senderP) throw new Error("Participante remitente no encontrado.");
-    const { data: receiverP } = await supabase.from('league_participants').select('current_budget').eq('league_id', league_id).eq('profile_id', receiver_id).single();
-    if (!receiverP) throw new Error("Participante destinatario no encontrado.");
-
-    if (cashOffer > 0) { // Sender pays
-        if (senderP.current_budget < cashOffer) throw new Error("El remitente no tiene fondos suficientes.");
-    } else if (cashOffer < 0) { // Receiver pays
-        if (receiverP.current_budget < Math.abs(cashOffer)) throw new Error("No tienes fondos suficientes.");
-    }
-
-    // 3. Validate Roster Limits (Space)
-    // Sender: Loses 1? Gains 1?
-    // Receiver: Loses 1? Gains 1?
+    const result = data as { success: boolean; error?: string; message?: string };
     
-    // Check sender roster count
-    const { count: sCount } = await supabase.from('user_rosters').select('id', { count: 'exact', head: true }).eq('league_id', league_id).eq('profile_id', sender_id);
-    // Check receiver roster count
-    const { count: rCount } = await supabase.from('user_rosters').select('id', { count: 'exact', head: true }).eq('league_id', league_id).eq('profile_id', receiver_id);
-
-    let senderNet = 0;
-    if (sender_player_id) senderNet--;
-    if (receiver_player_id) senderNet++;
-
-    let receiverNet = 0;
-    if (receiver_player_id) receiverNet--;
-    if (sender_player_id) receiverNet++;
-
-    if ((sCount || 0) + senderNet > 10) throw new Error("El remitente no tendría espacio suficiente en plantilla.");
-    if ((rCount || 0) + receiverNet > 10) throw new Error("No tendrías espacio suficiente en plantilla.");
-
-    // 4. EXECUTE TRADE
-    
-    // Move Money
-    if (cashOffer !== 0) {
-        await supabase.from('league_participants').update({ current_budget: senderP.current_budget - cashOffer }).eq('league_id', league_id).eq('profile_id', sender_id);
-        await supabase.from('league_participants').update({ current_budget: receiverP.current_budget + cashOffer }).eq('league_id', league_id).eq('profile_id', receiver_id);
-    }
-
-    // Move Players
-    // Sender gives player to Receiver
-    if (sender_player_id) {
-        await supabase.from('user_rosters')
-            .update({ 
-                profile_id: receiver_id, 
-                slot_type: 'substitute', 
-                is_starter: false, // Reset to sub
-                acquisition_price: 0 // Trade value is tricky, set to 0 or estimates? leave as is? Let's use 0 for now or keep original? No, ownership change.
-            }) 
-            .eq('league_id', league_id)
-            .eq('player_id', sender_player_id)
-            .eq('profile_id', sender_id);
-    }
-
-    // Receiver gives player to Sender
-    if (receiver_player_id) {
-        await supabase.from('user_rosters')
-            .update({ 
-                profile_id: sender_id, 
-                slot_type: 'substitute', 
-                is_starter: false,
-                acquisition_price: 0 
-            }) 
-            .eq('league_id', league_id)
-            .eq('player_id', receiver_player_id)
-            .eq('profile_id', receiver_id);
-    }
-
-    // 5. Update Offer Status
-    await supabase.from('trade_offers').update({ status: 'accepted' }).eq('id', offerId);
-
-    // 6. Log Transaction
-    if (sender_player_id) {
-        await supabase.from('market_transactions').insert({ league_id, profile_id: sender_id, player_id: sender_player_id, type: 'trade_out', price: cashOffer });
-        await supabase.from('market_transactions').insert({ league_id, profile_id: receiver_id, player_id: sender_player_id, type: 'trade_in', price: -cashOffer });
-    }
-    if (receiver_player_id) {
-        await supabase.from('market_transactions').insert({ league_id, profile_id: receiver_id, player_id: receiver_player_id, type: 'trade_out', price: -cashOffer });
-        await supabase.from('market_transactions').insert({ league_id, profile_id: sender_id, player_id: receiver_player_id, type: 'trade_in', price: cashOffer });
+    if (!result.success) {
+      throw new Error(result.error || 'Error desconocido al aceptar trade');
     }
 
     revalidatePath("/market");
     revalidatePath("/team");
-    return { success: true, message: "Intercambio completado." };
+    return { success: true, message: result.message || 'Intercambio completado.' };
 
   } catch (error: any) {
     return { success: false, error: error.message };

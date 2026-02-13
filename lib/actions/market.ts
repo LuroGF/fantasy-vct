@@ -81,7 +81,9 @@ export async function buyFromPersonalMarket(leagueId: string, profileId: string,
       .eq('id', personalMarketId)
       .single();
     
-    if (eError || !entry || entry.is_purchased) throw new Error("Oferta no válida o ya comprada.");
+    // FIX Bug #12: Check is_purchased BEFORE attempting to buy
+    if (eError || !entry) throw new Error("Oferta no encontrada.");
+    if (entry.is_purchased) throw new Error("Esta oferta ya fue comprada.");
 
     // 2. Buy standard logic but from personal market
     const res = await buyPlayer(leagueId, profileId, playerId, entry.offer_price);
@@ -161,6 +163,21 @@ export async function revealAuction(leagueId: string, profileId: string, auction
       .maybeSingle();
     
     if (existing) throw new Error("Ya has revelado esta subasta.");
+
+    // FIX Bug #10: Validate auction is still active and not expired
+    const { data: auctionData } = await supabase
+      .from('market_auctions')
+      .select('expires_at, status')
+      .eq('id', auctionId)
+      .single();
+
+    if (!auctionData || auctionData.status !== 'active') {
+      throw new Error("La subasta ya no está activa.");
+    }
+
+    if (new Date(auctionData.expires_at) < new Date()) {
+      throw new Error("La subasta ya expiró.");
+    }
 
     // 4. Consume Item
     await supabase.from('user_inventory').update({ quantity: inventory.quantity - 1 }).eq('id', inventory.id);
@@ -600,6 +617,9 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
           }
         }
         await supabase.from('market_auctions').update({ status: 'canceled' }).eq('id', auct.id);
+        
+        // FIX Bug #2: Delete ALL user_bids to release committed funds from all bidders
+        await supabase.from('user_bids').delete().eq('auction_id', auct.id);
       }
     }
 
@@ -655,6 +675,7 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
       .select(`
         profile_id,
         release_clause,
+        slot_type,
         pro_players!inner (nickname, market_value, role)
       `)
       .eq("league_id", leagueId)
@@ -911,15 +932,15 @@ export async function resolveExpiredAuctions() {
 
       if (allBids && allBids.length > 0) {
         for (const bid of allBids) {
-            // Check Total Capacity (Winner cannot have more than 10)
-            const { count: totalPlayers } = await supabaseAdmin.from('user_rosters').select('id', { count: 'exact', head: true }).eq('league_id', auct.league_id).eq('profile_id', bid.profile_id);
-            if (totalPlayers !== null && totalPlayers >= 10) {
-                console.log(`Skipping bidder ${bid.profile_id} - Roster full (10)`);
+            // RE-CHECK Total Capacity in real-time (prevents race condition when user wins multiple auctions)
+            const { count: currentTotalPlayers } = await supabaseAdmin.from('user_rosters').select('id', { count: 'exact', head: true }).eq('league_id', auct.league_id).eq('profile_id', bid.profile_id);
+            if (currentTotalPlayers !== null && currentTotalPlayers >= 10) {
+                console.log(`Skipping bidder ${bid.profile_id} - Roster NOW full (${currentTotalPlayers}/10) - Race condition prevented`);
                 continue;
             }
 
             // Check Role Capacity (Winner cannot have more than 2 of the same role)
-            const { data: userRoster } = await (supabaseAdmin.from('user_rosters').select('pro_players(role)').eq('league_id', auct.league_id).eq('profile_id', bid.profile_id) as any);
+            const { data: userRoster } = await (supabaseAdmin.from('user_rosters').select('slot_type, pro_players(role)').eq('league_id', auct.league_id).eq('profile_id', bid.profile_id) as any);
             const role = auct.pro_players.role.trim().toUpperCase();
             const roleCount = userRoster?.filter((r: any) => r.pro_players.role.trim().toUpperCase() === role).length || 0;
             

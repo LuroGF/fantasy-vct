@@ -108,11 +108,11 @@ export default function MarketView({
         } catch (e) {}
     }, 30000);
 
-    return () => clearInterval(timer);
-
     if (activeTab === 'trades' && activeLeagueId) {
         getTrades(activeLeagueId, profileId).then(setTrades);
     }
+
+    return () => clearInterval(timer);
   }, [activeLeagueId, profileId, refreshTrigger, activeTab]);
 
   const handleAction = async (actionFn: () => Promise<any>) => {
