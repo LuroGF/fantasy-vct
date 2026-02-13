@@ -258,30 +258,36 @@ export default function TeamView({
   return (
     <div className="flex flex-col gap-6">
       {/* Selector de Liga */}
-      <div className="v-panel p-4 space-y-4">
-        <div className="flex flex-col gap-2">
-          <label className="text-[8px] font-black uppercase text-v-white/40 ml-1 tracking-[0.2em]">Escuadra Operativa en:</label>
-          <select 
-            value={activeLeagueId}
-            onChange={(e) => setActiveLeagueId(e.target.value)}
-            className="w-full bg-v-navy/50 border border-white/10 px-4 py-2 text-xs font-black italic focus:border-v-red outline-none transition-colors"
-          >
-            {leagues.map(l => (
-              <option key={l.leagues.id} value={l.leagues.id}>{l.leagues.name}</option>
-            ))}
-          </select>
+      <div className="v-panel bg-v-navy/20 border-white/5 p-5 space-y-6">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-black uppercase text-v-red tracking-[0.3em] ml-1">Central de Operaciones</label>
+          <div className="relative group">
+            <select 
+              value={activeLeagueId}
+              onChange={(e) => setActiveLeagueId(e.target.value)}
+              className="w-full bg-v-navy/80 border border-white/10 rounded-sm px-4 py-3 text-sm font-black italic uppercase focus:border-v-red outline-none transition-all appearance-none cursor-pointer"
+            >
+              {leagues.map(l => (
+                <option key={l.leagues.id} value={l.leagues.id}>{l.leagues.name}</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-v-red">
+               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
         </div>
 
         {activeParticipation && (
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
-            <div className="bg-v-navy/30 p-2 border-l-2 border-v-red">
-               <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">Presupuesto</p>
-               <p className="text-sm font-black italic">${(activeParticipation.current_budget / 1000000).toFixed(1)}M</p>
+          <div className="grid grid-cols-2 gap-4 relative">
+            <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-v-red/30 transition-colors group">
+               <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-v-red/60">Presupuesto</p>
+               <p className="text-2xl font-black italic tracking-tighter text-white group-hover:scale-105 origin-left transition-transform">${(activeParticipation.current_budget / 1000000).toFixed(1)}M</p>
             </div>
-            <div className="bg-v-navy/30 p-2 border-l-2 border-v-white/20">
-               <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">Agentes Totales</p>
-               <p className="text-sm font-black italic">{roster.length} / 10</p>
+            <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-white/20 transition-colors group">
+               <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-white/60">Agentes</p>
+               <p className="text-2xl font-black italic tracking-tighter text-white group-hover:scale-105 origin-left transition-transform">{roster.length} / 10</p>
             </div>
+            <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-v-red shadow-[0_0_10px_rgba(255,70,85,0.5)]" />
           </div>
         )}
       </div>
@@ -298,15 +304,18 @@ export default function TeamView({
 
       {/* Inventario de Cartas */}
       <div className="v-panel p-4 space-y-4">
-        <div className="flex justify-between items-end">
+        <div className="flex justify-between items-end border-b border-white/5 pb-2">
             <div>
-                <h2 className="text-xl italic uppercase text-v-white/80 leading-none">Tu Inventario</h2>
-                <p className="text-[7px] uppercase tracking-[0.2em] text-v-red font-black">Cartas de Poder Disponibles</p>
+                <h2 className="text-2xl italic uppercase text-white tracking-widest leading-none">Inventario</h2>
+                <p className="text-[9px] uppercase tracking-[0.2em] text-v-red font-black mt-1">Suministros Tácticos</p>
             </div>
-            <Link href="/shop" className="text-[8px] font-black uppercase border border-white/10 px-2 py-1 hover:bg-v-white/5 transition-colors">Tienda de Puntos</Link>
+            <Link href="/shop" className="group flex items-center gap-2 text-[10px] font-black uppercase bg-v-navy/80 border border-white/10 px-3 py-1.5 hover:bg-v-red hover:text-white transition-all">
+               <span>Tienda</span>
+               <svg className="w-3 h-3 translate-x-0 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </Link>
         </div>
         
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
             {inventory.length > 0 ? inventory.map((item: any) => {
                 const isActive = activePowerUps.some(ap => ap.powerup_type_id === item.powerup_types.id);
                 return (
@@ -316,22 +325,26 @@ export default function TeamView({
                             haptic.light();
                             setSelectedPowerUp(selectedPowerUp?.id === item.id ? null : item);
                         }}
-                        className={`shrink-0 relative w-20 h-24 v-panel flex flex-col items-center justify-center gap-1 transition-all border-2 
-                            ${selectedPowerUp?.id === item.id ? 'border-v-red bg-v-red/10 scale-105' : 
-                              isActive ? 'border-green-500/50 bg-green-500/5' : 'border-white/5 bg-v-navy/20 hover:border-white/20'}`}
+                        className={`shrink-0 relative w-24 h-32 v-panel flex flex-col items-center justify-center gap-2 transition-all border-2 snap-center
+                            ${selectedPowerUp?.id === item.id ? 'border-v-red bg-v-red/20 shadow-red scale-105' : 
+                              isActive ? 'border-green-500/50 bg-green-500/10' : 'border-white/5 bg-black/40 hover:border-white/20'}`}
                     >
-                        <span className="text-3xl">{item.powerup_types.icon}</span>
-                        <span className={`text-[7px] font-black uppercase text-center px-1 leading-tight ${isActive ? 'text-green-500' : ''}`}>
+                        <span className="text-4xl drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">{item.powerup_types.icon}</span>
+                        <span className={`text-[8px] font-black uppercase text-center px-1 leading-tight tracking-wider ${isActive ? 'text-green-500' : ''}`}>
                             {item.powerup_types.name}
                         </span>
                         {isActive && (
-                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-green-500 text-v-navy text-[6px] font-black px-1 rounded-sm uppercase italic">Activa</span>
+                            <div className="absolute top-1 left-1 flex gap-0.5">
+                               <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
+                            </div>
                         )}
-                        <span className="absolute -top-1 -right-1 bg-v-red text-v-white text-[8px] font-black px-1 rounded-sm shadow-lg">x{item.quantity}</span>
+                        <span className="absolute top-2 right-2 bg-v-red text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm shadow-xl">x{item.quantity}</span>
                     </button>
                 );
             }) : (
-                <div className="w-full py-4 text-center border border-dashed border-white/5 opacity-30 italic text-[10px]">No tienes cartas en esta liga</div>
+                <div className="w-full py-8 text-center border-2 border-dashed border-white/5 opacity-30 rounded-lg">
+                   <p className="text-[10px] font-black uppercase tracking-widest italic">Suministros Agotados</p>
+                </div>
             )}
         </div>
 

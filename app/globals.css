@@ -1,17 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f1923;
-  /* valorant-black */
+  --background: #0b1119;
   --foreground: #ece8e1;
-  /* valorant-white */
 
-  /* Valorant Core Colors */
+  /* Valorant Premium Palette */
   --valorant-red: #ff4655;
+  --valorant-red-hover: #ff5d6a;
+  --valorant-red-dark: #cc3844;
   --valorant-navy: #0f1923;
+  --valorant-glass: rgba(31, 35, 38, 0.7);
   --valorant-white: #ece8e1;
   --valorant-dark-gray: #1f2326;
   --valorant-light-gray: #7b8084;
+  
+  /* Role Colors */
+  --duelista: #00f0ff;
+  --iniciador: #ffea00;
+  --controlador: #ab47bc;
+  --centinela: #00ff7f;
 }
 
 @theme inline {
@@ -21,89 +28,109 @@
   --color-v-navy: var(--valorant-navy);
   --color-v-white: var(--valorant-white);
   --color-v-gray: var(--valorant-dark-gray);
+  
+  --color-role-duelista: var(--duelista);
+  --color-role-iniciador: var(--iniciador);
+  --color-role-controlador: var(--controlador);
+  --color-role-centinela: var(--centinela);
 
-  --font-valorant: var(--font-oswald), cursive;
-  --font-sans: var(--font-inter), sans-serif;
+  --font-valorant: "Oswald", sans-serif;
+  --font-sans: "Inter", sans-serif;
+  
+  --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  --shadow-red: 0 0 20px rgba(255, 70, 85, 0.2);
 }
 
 html {
-  background-color: var(--valorant-navy);
+  background-color: var(--background);
+  scroll-behavior: smooth;
 }
 
 body {
-  background-color: var(--valorant-navy);
-  background-image:
-    radial-gradient(circle at top right, rgba(255, 70, 85, 0.05), transparent 40%),
-    radial-gradient(circle at bottom left, rgba(255, 70, 85, 0.05), transparent 40%),
-    linear-gradient(rgba(15, 25, 35, 0.97), rgba(15, 25, 35, 0.97)),
-    url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+  background-color: var(--background);
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(255, 70, 85, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   color: var(--valorant-white);
   min-height: 100vh;
-  font-family: var(--font-inter), sans-serif;
+  font-family: var(--font-sans);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Premium Glassmorphism Panel */
+@utility v-panel {
+  @apply relative bg-v-gray/40 backdrop-blur-xl border border-white/5 rounded-sm p-4 sm:p-6 transition-all duration-300;
+  box-shadow: var(--shadow-premium);
+}
+
+@utility v-panel-red {
+  @apply v-panel border-l-4 border-l-v-red;
+}
 
 /* Valorant-style sharp buttons */
 @utility v-btn {
-  @apply relative inline-flex items-center justify-center px-6 py-3 font-bold uppercase tracking-wider transition-all duration-200;
-  clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+  @apply relative inline-flex items-center justify-center px-8 py-4 font-black uppercase tracking-[0.15em] transition-all duration-300 overflow-hidden active:scale-95;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  font-family: var(--font-valorant);
 }
 
 @utility v-btn-primary {
-  @apply v-btn bg-v-red text-white hover:bg-[#ff5d6a] active:scale-95;
+  @apply v-btn bg-v-red text-white hover:brightness-110 hover:shadow-red;
+}
+
+@utility v-btn-primary::after {
+  content: '';
+  @apply absolute inset-0 bg-white/20 translate-x-[-100%] transition-transform duration-500 skew-x-12;
+}
+
+@utility v-btn-primary:hover::after {
+  @apply translate-x-[100%];
 }
 
 @utility v-btn-secondary {
-  @apply v-btn border border-v-white/20 bg-transparent text-v-white hover:bg-v-white/5;
-}
-
-/* Industrial glass effect */
-@utility v-panel {
-  @apply bg-v-gray/80 backdrop-blur-md border-l-4 border-v-red p-4 sm:p-6;
+  @apply v-btn bg-white/5 border border-white/10 text-white hover:bg-white/10;
 }
 
 /* Typography */
-h1,
-h2,
-h3,
-.v-font {
-  font-family: var(--font-oswald);
-  @apply font-black uppercase tracking-tighter;
+h1, h2, h3 {
+  font-family: var(--font-valorant);
+  @apply font-black uppercase italic tracking-tighter;
 }
+
+.text-role-Duelista { color: var(--duelista); }
+.text-role-Iniciador { color: var(--iniciador); }
+.text-role-Controlador { color: var(--controlador); }
+.text-role-Centinela { color: var(--centinela); }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--valorant-navy);
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--valorant-red);
+  border-radius: 10px;
 }
 
-/* Mobile optimizations */
-/* No overrides needed here as v-panel is now responsive by default */
-
-/* Custom Animations */
-@keyframes scan {
-  0% { transform: translateY(0); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateY(100%); opacity: 0; }
+/* Animations */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
-@utility animate-scan {
-  animation: scan 4s linear infinite;
+@utility animate-shimmer {
+  animation: shimmer 2s infinite;
 }
 
-@utility animate-pulse-slow {
-  animation: pulse-slow 8s ease-in-out infinite;
-}
-
-@utility animate-bounce-subtle {
-  animation: bounce-subtle 3s ease-in-out infinite;
+/* Mobile Adjustments */
+@media (max-width: 640px) {
+  .v-btn {
+    @apply px-4 py-3 text-xs;
+  }
 }

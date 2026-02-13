@@ -54,9 +54,9 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
     // 4. Get Active User Rosters (STARTERS ONLY)
     const { data: rosters, error: rosterError } = await supabaseAdmin
       .from("user_rosters")
-      .select("league_id, profile_id, player_id, pro_players!inner(is_legend)")
+      .select("league_id, profile_id, player_id, pro_players!inner(is_legend, role)")
       .eq("slot_type", "starter")
-      .returns<{ league_id: string | null; profile_id: string | null; player_id: string | null; pro_players: { is_legend: boolean } }[]>();
+      .returns<{ league_id: string | null; profile_id: string | null; player_id: string | null; pro_players: { is_legend: boolean; role: string } }[]>();
 
     if (rosterError) throw rosterError;
 
@@ -93,7 +93,13 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
 
     // Performance map for specific event buffs (like Ulises Clutches)
     const playerPerfData = new Map<string, { clutches: number }>();
-    performances?.forEach((p: any) => p.player_id && playerPerfData.set(p.player_id, { clutches: p.clutches || 0 }));
+    performances?.forEach((p: any) => {
+        if (!p.player_id) return;
+        const current = playerPerfData.get(p.player_id) || { clutches: 0 };
+        playerPerfData.set(p.player_id, {
+            clutches: current.clutches + (p.clutches || 0)
+        });
+    });
 
     for (const r of rosters || []) {
       if (!r.league_id || !r.profile_id) continue;
@@ -102,11 +108,15 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
 
       // Base Points (Normal or Legend)
       if (r.pro_players.is_legend) {
-        const { data: legendPoints } = await supabaseAdmin.rpc('calculate_legend_points', { 
-            match_id: matchIds[0], 
-            legend_id: r.player_id 
-        });
-        points = Number(legendPoints || 0);
+        let totalLegendPoints = 0;
+        for (const mId of matchIds) {
+            const { data: legendPoints } = await supabaseAdmin.rpc('calculate_legend_points', { 
+                match_id: mId, 
+                legend_id: r.player_id 
+            });
+            totalLegendPoints += Number(legendPoints || 0);
+        }
+        points = totalLegendPoints;
       } else {
         points = playerPointsMap.get(r.player_id!) || 0;
       }
@@ -205,7 +215,7 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
 
         // --- FIXED: ONLY REWARD IF FINALIZED ---
         if (finalize) {
-          const reward = Math.floor(p.points_earned! * 150000);
+          const reward = Math.floor(p.points_earned! * 50000);
           const { data: currentP } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', p.league_id).eq('profile_id', p.profile_id).single();
           if (currentP) {
               await supabaseAdmin.from('league_participants')

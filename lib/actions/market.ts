@@ -252,6 +252,13 @@ export async function placeBid(auctionId: string, profileId: string, bidAmount: 
     if (aError || !auction || auction.status !== 'active') throw new Error("Subasta no disponible.");
     if (auction.seller_id === profileId) throw new Error("No puedes pujar por tu propio jugador.");
 
+    // 0. Market Lock Check
+    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+    const lockStatus = await getMarketLockStatus(supabase);
+    if (lockStatus.locked) {
+        throw new Error(`Puja bloqueada: ${lockStatus.reason}.`);
+    }
+
     // NEW: Check if user already owns the player (prevent duplicate bidding)
     const { data: alreadyOwned } = await supabase
       .from('user_rosters')
@@ -743,9 +750,8 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
             .eq("profile_id", ownerId);
     }
 
-    await supabase.from("user_rosters").delete().eq("league_id", leagueId).eq("player_id", playerId).eq("profile_id", ownerId);
-    
-    // Auto-assign slot with proper role and lock logic
+
+    // --- SLOT ASSIGNMENT LOGIC ---
     const { data: roster } = await (supabase
         .from("user_rosters")
         .select("slot_type, pro_players(role)")
@@ -774,7 +780,24 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
         throw new Error(`Configuración de roles no permitida: Ya tienes un ${(rosterEntry.pro_players as any).role} en titulares y suplentes.`);
     }
 
-    // Cancel any active auctions of this player from this owner and release blocked budgets
+    // Transfer ownership: Update current entry to new owner
+    const { error: updateError } = await supabase
+      .from("user_rosters")
+      .update({
+        profile_id: buyerProfileId,
+        acquisition_price: clausePrice,
+        release_clause: Math.floor(Number(clausePrice) * 1.5),
+        slot_type: targetSlot,
+        is_starter: targetSlot === 'starter',
+        created_at: new Date().toISOString()
+      })
+      .eq("league_id", leagueId)
+      .eq("player_id", playerId)
+      .eq("profile_id", ownerId);
+
+    if (updateError) throw updateError;
+
+    // Cancel any active auctions of this player from this owner
     const { data: ownerAuctions } = await supabase.from('market_auctions')
         .select('id')
         .eq('league_id', leagueId)
@@ -784,10 +807,7 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
 
     if (ownerAuctions) {
         for (const auct of ownerAuctions) {
-            // 1. Mark auction as canceled
             await supabase.from('market_auctions').update({ status: 'canceled' }).eq('id', auct.id);
-            
-            // 2. Notify all bidders before deleting their records
             const { data: bidders } = await supabase.from('user_bids').select('profile_id').eq('auction_id', auct.id);
             if (bidders) {
                 const { createNotification } = await import("./notifications");
@@ -801,22 +821,9 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
                     });
                 }
             }
-
-            // 3. Delete all bids to unblock budgets
             await supabase.from('user_bids').delete().eq('auction_id', auct.id);
         }
     }
-
-    await supabase.from("user_rosters").insert({
-        league_id: leagueId,
-        profile_id: buyerProfileId,
-        player_id: playerId,
-        acquisition_price: clausePrice,
-        release_clause: Math.floor(Number(clausePrice) * 1.5),
-        is_active: true,
-        slot_type: targetSlot,
-        is_starter: targetSlot === 'starter'
-    });
     
     // Increment Transfers
     await supabase.rpc('increment_transfers', { p_league_id: leagueId, p_profile_id: buyerProfileId });
@@ -938,7 +945,12 @@ export async function resolveExpiredAuctions() {
             }
             // 3. Add to Buyer Roster
             const starterExists = userRoster?.some((r: any) => r.slot_type === 'starter' && r.pro_players.role.trim().toUpperCase() === role);
-            const targetSlot = starterExists ? 'substitute' : 'starter';
+            
+            // --- SYNC WITH LOCK LOGIC ---
+            const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+            const lockStatus = await getMarketLockStatus(supabaseAdmin);
+            
+            const targetSlot = (!lockStatus.locked && !starterExists) ? 'starter' : 'substitute';
 
             await supabaseAdmin.from('user_rosters').insert({
                 league_id: auct.league_id,

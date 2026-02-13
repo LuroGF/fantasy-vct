@@ -64,6 +64,13 @@ export async function getActivePowerUps(leagueId: string, profileId: string) {
 export async function buyPowerUp(leagueId: string, profileId: string, powerUpCode: string) {
   const supabase = await createClient();
   try {
+    // 0. Market Lock Check
+    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+    const lockStatus = await getMarketLockStatus(supabase);
+    if (lockStatus.locked) {
+        throw new Error(`La tienda está cerrada: ${lockStatus.reason}.`);
+    }
+
     // 1. Get Powerup details
     const { data: item, error: iError } = await supabase
       .from("powerup_types")
@@ -166,7 +173,13 @@ export async function activatePowerUp(leagueId: string, profileId: string, power
             .single();
 
         if (!activeGw) throw new Error("No hay jornada activa");
-        if (activeGw.is_locked) throw new Error("No se pueden usar cartas durante la jornada (mercado cerrado)");
+        
+        // 1.1 Real-time Lock Check
+        const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+        const lockStatus = await getMarketLockStatus(supabase);
+        if (lockStatus.locked) {
+            throw new Error(`Protocolos de poder suspendidos: ${lockStatus.reason}.`);
+        }
 
         // 2. CHECK RESTRICTION: One powerup of each type per gameweek per user
         const { count } = await supabase

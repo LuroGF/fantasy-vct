@@ -47,27 +47,27 @@ export async function updateMarketValues() {
         // Trend: If the latest game is better than the average, price goes up faster
         if (points[0] > (avgPoints * 1.2)) trendMultiplier = 1.1;
         else if (points[0] < (avgPoints * 0.8)) trendMultiplier = 0.9;
+
       } else {
-        // Inactive players lose value slowly
-        const newValue = Math.max(8000000, Number(player.market_value) * 0.95);
+        // Inactive players or no stats: lose value slowly until min
+        const newValue = Math.max(2500000, Number(player.market_value) * 0.95);
         await supabaseAdmin.from('pro_players').update({ market_value: Math.round(newValue / 250000) * 250000 }).eq('id', player.id);
         continue;
       }
 
-      // 4. THE FORMULA
-      // Base: 10M
-      // Points Value: Non-linear (Diminishing returns)
-      // Points contribution = 1.5M * (points ^ 0.85) -> prevents 60M cap from being reached by a single 30pt game
-      const pointsContrib = 1500000 * Math.pow(avgPoints, 0.85);
+      // 4. THE BALANCED FORMULA (Targeting 100M budget)
+      // Base Value for any pro player: 4M
+      // Points contribution: using 0.7 exponent to handle high scores (100+) without exploding.
+      const pointsContrib = 1500000 * Math.pow(avgPoints, 0.7);
       
       // Ownership contribution (Demand)
       const count = ownerCounts.get(player.id) || 0;
-      const demandMultiplier = 1 + (count * 0.02); // Every owner in the world adds 2% value
+      const demandMultiplier = 1 + (count * 0.03); // 3% price Increase for every manager that owns the player
 
-      let newValue = (10000000 + pointsContrib) * trendMultiplier * demandMultiplier;
+      let newValue = (4000000 + pointsContrib) * trendMultiplier * demandMultiplier;
 
-      // Clamping: 8M to 80M
-      newValue = Math.max(8000000, Math.min(80000000, newValue));
+      // Clamping: 2.5M to 55M
+      newValue = Math.max(2500000, Math.min(55000000, newValue));
       
       // Formatting: Round to nearest 250k
       newValue = Math.round(newValue / 250000) * 250000;
@@ -75,6 +75,7 @@ export async function updateMarketValues() {
       if (Math.abs(newValue - Number(player.market_value)) > 100000) {
         await supabaseAdmin.from('pro_players').update({ market_value: newValue }).eq('id', player.id);
       }
+
     }
 
 

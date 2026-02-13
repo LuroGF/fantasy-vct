@@ -57,21 +57,19 @@ export default function RootLayout({
         <PushManager />
 
         {/* FULL WIDTH WRAPPER */}
-        <div className="relative h-dvh w-full overflow-hidden bg-v-navy/50 shadow-2xl shadow-black/50">
+        <div className="relative h-dvh w-full overflow-hidden bg-background shadow-2xl">
           {/* Sidebar fixed (desktop) */}
           <Sidebar />
 
           {/* MAIN FULL WIDTH */}
-          <div className="relative h-full w-full">
+          <div className="relative h-full w-full lg:pl-72">
             {/* TopBar móvil */}
-            <div className="lg:hidden sticky top-0 z-40">
-              <TopBar />
-            </div>
+            <TopBar />
 
             {/* SCROLL AQUÍ */}
             <main
-              className="
-              h-full w-full overflow-y-auto overscroll-contain pb-24"
+              id="main-content"
+              className="h-[calc(100%-3.5rem)] w-full overflow-y-auto overscroll-contain pb-24 lg:pb-8 custom-scrollbar relative z-10"
             >
               {children}
             </main>
@@ -79,15 +77,22 @@ export default function RootLayout({
             {/* Navbar móvil */}
             <Navbar />
             <ScrollToTopButton />
-          </div>
 
-          {/* Corner accents */}
-          {/* <div className="pointer-events-none absolute inset-0 z-0">
-            <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-v-red/30" />
-            <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-v-red/30" />
-            <div className="absolute bottom-24 left-4 w-4 h-4 border-b-2 border-l-2 border-v-red/30" />
-            <div className="absolute bottom-24 right-4 w-4 h-4 border-b-2 border-r-2 border-v-red/30" />
-          </div> */}
+            {/* Corner Decorative Accents */}
+            <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden">
+               {/* Top left */}
+               <div className="absolute top-0 left-0 w-8 h-8 lg:left-72">
+                  <div className="absolute top-4 left-4 w-4 h-px bg-v-red/40" />
+                  <div className="absolute top-4 left-4 w-px h-4 bg-v-red/40" />
+               </div>
+               {/* Top right */}
+               <div className="absolute top-0 right-0 w-8 h-8">
+                  <div className="absolute top-4 right-4 w-4 h-px bg-v-red/40" />
+                  <div className="absolute top-4 right-4 w-px h-4 bg-v-red/40" />
+               </div>
+               {/* Bottom accents for mobile nav area are handled inside Navbar for better alignment */}
+            </div>
+          </div>
         </div>
       </body>
     </html>

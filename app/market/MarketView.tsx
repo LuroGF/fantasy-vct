@@ -327,79 +327,83 @@ export default function MarketView({
                       const isRevealed = auction.is_revealed;
 
                       return (
-                        <div key={auction.id} className="v-panel relative overflow-hidden group hover:border-v-red transition-all flex flex-col gap-3">
-                           <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
-                           <div className="absolute -right-2 -bottom-4 text-7xl font-black text-white/5 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
+                        <div key={auction.id} className="v-panel-red group relative overflow-hidden transition-all hover:translate-y-[-2px] hover:shadow-2xl">
+                           <div className="absolute top-0 right-0 w-48 h-full bg-linear-to-l from-v-red/10 to-transparent pointer-events-none" />
+                           <div className="absolute -right-4 -bottom-6 text-8xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
                               {auction.pro_players?.nickname?.substring(0, 3)}
                            </div>
 
-                           <div className="flex justify-between items-start relative z-10">
-                              <div className="flex-1 min-w-0 pr-4">
-                                 <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">
-                                    Vendedor: <span className="text-v-white/60">{auction.profiles?.username || "SISTEMA"}</span>
-                                 </p>
-                                 <h3 className="text-xl font-black italic uppercase tracking-tighter">{auction.pro_players?.nickname}</h3>
-                                 {myBid && (
-                                   <div className="flex items-center gap-1 mt-1">
-                                     <span className="w-1 h-1 bg-v-red animate-pulse" />
-                                     <span className="text-[7px] font-black uppercase text-v-red tracking-widest bg-v-red/5 px-1.5 border border-v-red/10">Tu Puja: ${(myBid.bid_amount / 1000000).toFixed(1)}M</span>
-                                   </div>
-                                 )}
+                           <div className="relative z-10 flex flex-col gap-4">
+                              <div className="flex justify-between items-start">
+                                 <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                       <span className="w-1.5 h-1.5 bg-v-red rounded-full shadow-[0_0_5px_rgba(255,70,85,1)] animate-pulse" />
+                                       <p className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">
+                                          Vendedor: <span className="text-white/80">{auction.profiles?.username || "SISTEMA"}</span>
+                                       </p>
+                                    </div>
+                                    <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter leading-none">{auction.pro_players?.nickname}</h3>
+                                    {myBid && (
+                                       <div className="inline-flex items-center gap-2 mt-2 bg-v-red px-2 py-0.5 rounded-sm">
+                                          <span className="text-[7px] font-black uppercase text-white tracking-widest whitespace-nowrap">TU PUJA: ${(myBid.bid_amount / 1000000).toFixed(1)}M</span>
+                                       </div>
+                                    )}
+                                 </div>
+                                 <div className="text-right bg-black/40 backdrop-blur-md p-3 rounded-sm border border-white/5 min-w-[100px]">
+                                    <p className="text-[7px] font-black uppercase text-white/30 tracking-widest mb-1">PUJA ACTUAL</p>
+                                    {isRevealed ? (
+                                       <p className="text-2xl font-black italic text-green-500 leading-none">${(auction.current_bid / 1000000).toFixed(1)}M</p>
+                                    ) : (
+                                       <div className="flex flex-col items-end gap-1.5">
+                                          <p className="text-xl font-black italic text-white/10 leading-none select-none">$$$.$M</p>
+                                          <button
+                                              onClick={() => {
+                                                  setConfirmDialog({
+                                                      show: true,
+                                                      title: "Protocolo de Espionaje",
+                                                      message: "¿Confirmas el uso de 1 'Ojo del Espía' para interceptar la puja más alta?",
+                                                      onConfirm: () => handleReveal(auction.id)
+                                                  });
+                                              }}
+                                              className="group flex items-center gap-1.5 text-[8px] font-black uppercase text-v-red hover:text-white bg-v-red/10 hover:bg-v-red px-2 py-1 border border-v-red/20 transition-all rounded-sm"
+                                          >
+                                              <span className="text-xs">👁️</span> REVELAR 
+                                          </button>
+                                       </div>
+                                    )}
+                                 </div>
                               </div>
-                              <div className="text-right">
-                                 <p className="text-[7px] font-black uppercase text-v-white/30 mb-1">Puja Actual</p>
-                                 {isRevealed ? (
-                                     <p className="text-xl font-black italic text-green-500">${(auction.current_bid / 1000000).toFixed(1)}M</p>
-                                 ) : (
-                                     <div className="flex flex-col items-end gap-1">
-                                         <p className="text-xl font-black italic text-v-white/20 leading-none">💰 ???</p>
-                                         <button
-                                             onClick={() => {
-                                                 setConfirmDialog({
-                                                     show: true,
-                                                     title: "Usar Ojo del Espía",
-                                                     message: "¿Quieres gastar 1 'Ojo del Espía' para ver la puja más alta actual?",
-                                                     onConfirm: () => handleReveal(auction.id)
-                                                 });
-                                             }}
-                                             className="text-[6px] font-black flex items-center gap-1 uppercase text-v-red hover:text-v-white transition-colors bg-v-red/5 px-1 py-0.5 border border-v-red/10"
-                                         >
-                                             👁️ REVELAR
-                                         </button>
-                                     </div>
-                                 )}
-                              </div>
-                           </div>
 
-                           <div className="flex gap-2 relative z-10 mt-1">
-                             <button
-                               onClick={() => {
-                                 setBidDialog({
-                                   show: true,
-                                   auction: auction,
-                                   amount: (Math.max(auction.current_bid, myBid?.bid_amount || 0) + 500000).toString()
-                                 });
-                               }}
-                               className="flex-1 bg-v-white text-v-navy text-[9px] font-black uppercase py-2.5 hover:bg-v-red hover:text-v-white transition-all italic shadow-lg shadow-white/5"
-                             >
-                               {myBid ? "Actualizar Puja Blind" : "Pujar Blind"}
-                             </button>
-
-                             {myBid && (
-                               <button
+                              <div className="flex gap-2 relative z-10">
+                                 <button
                                    onClick={() => {
-                                       setConfirmDialog({
-                                           show: true,
-                                           title: "Retirar Puja",
-                                           message: "¿Estás seguro de que quieres retirar tu puja? Liberarás el dinero bloqueado.",
-                                           onConfirm: () => handleWithdraw(auction.id)
-                                       });
+                                     setBidDialog({
+                                       show: true,
+                                       auction: auction,
+                                       amount: (Math.max(auction.current_bid, myBid?.bid_amount || 0) + 500000).toString()
+                                     });
                                    }}
-                                   className="aspect-square flex items-center justify-center border border-white/10 text-v-white/40 hover:border-v-red hover:text-v-red transition-all"
-                               >
-                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
-                               </button>
-                             )}
+                                   className="v-btn-primary flex-1 !py-3 !text-[10px] italic shadow-xl"
+                                 >
+                                   {myBid ? "MODIFICAR PUJA" : "ENVIAR PUJA BLIND"}
+                                 </button>
+
+                                 {myBid && (
+                                   <button
+                                       onClick={() => {
+                                           setConfirmDialog({
+                                               show: true,
+                                               title: "Retirar Oferta",
+                                               message: "¿Deseas anular tu puja y recuperar el saldo bloqueado?",
+                                               onConfirm: () => handleWithdraw(auction.id)
+                                           });
+                                       }}
+                                       className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 text-white/30 hover:border-v-red hover:text-v-red hover:bg-v-red/5 transition-all rounded-sm group/close"
+                                   >
+                                       <svg className="w-5 h-5 group-hover/close:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                   </button>
+                                 )}
+                              </div>
                            </div>
                         </div>
                       );

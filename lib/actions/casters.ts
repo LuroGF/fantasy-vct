@@ -33,9 +33,17 @@ export async function getActiveCasters(leagueId: string, profileId: string, game
   return data || [];
 }
 
+
 export async function hireCaster(leagueId: string, profileId: string, gameweekId: number, casterId: string) {
   const supabase = await createClient();
   try {
+    // 0. Real-time Lock Check (Match Day protection)
+    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
+    const lockStatus = await getMarketLockStatus(supabase);
+    if (lockStatus.locked) {
+        throw new Error(`Contratación bloqueada: ${lockStatus.reason}.`);
+    }
+
     // 1. Check if already has 2 casters for this gameweek
     const { data: existing } = await supabase
       .from("active_casters")
