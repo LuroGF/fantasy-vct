@@ -162,9 +162,38 @@ h1, h2, h3 {
   }
 }
 
-/* Mobile Adjustments */
+/* Mobile Adjustments & Safe Areas */
+@utility v-safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility v-safe-area-pt {
+  padding-top: env(safe-area-inset-top);
+}
+
 @media (max-width: 640px) {
   .v-btn {
-    @apply px-4 py-3 text-xs;
+    @apply px-6 py-3 text-[10px];
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   }
+  
+  h1 { @apply text-3xl; }
+  h2 { @apply text-xl; }
+  h3 { @apply text-lg; }
+}
+
+/* Redefine v-panel for better contrast */
+@utility v-panel {
+  @apply relative bg-v-navy/60 backdrop-blur-2xl border border-white/10 rounded-sm p-4 sm:p-6 transition-all duration-300;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+}
+
+/* Custom Scrollbar improvements */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--valorant-red);
+  box-shadow: 0 0 10px var(--valorant-red);
 }

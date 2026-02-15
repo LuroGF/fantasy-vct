@@ -84,7 +84,8 @@ export async function getMarketLockStatus(supabase: SupabaseClient, leagueId?: s
 
     if (firstDay === 1) {
         // Rule: If there's a match on Monday, lock 5h before that match
-        lockTimeMs = toMadridLocal(new Date(firstMatchDate.getTime() - fiveHoursMs)).getTime();
+        // FIX Bug #9: Avoid double timezone conversion - calculate directly in ms
+        lockTimeMs = firstMatchDate.getTime() - fiveHoursMs;
     } else {
         // No match on Monday? 
         // Check if previous GW ended on Sunday
@@ -114,7 +115,7 @@ export async function getMarketLockStatus(supabase: SupabaseClient, leagueId?: s
 
         if (prevEndedSunday) {
             // Rule: skip Monday night, lock 5h before next match
-            lockTimeMs = toMadridLocal(new Date(firstMatchDate.getTime() - fiveHoursMs)).getTime();
+            lockTimeMs = firstMatchDate.getTime() - fiveHoursMs;
         } else {
             // Default rule: Lock Monday night (23:59) of the current week
             // find Monday of the week starting the GW

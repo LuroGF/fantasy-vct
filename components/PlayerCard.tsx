@@ -66,66 +66,66 @@ export function PlayerCard({
       <div className="flex flex-col sm:flex-row gap-4 relative z-10">
         {/* Main Info Section */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-4 mb-2">
-            <div>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="min-w-0 flex-1">
               <Link 
                 href={`/players/${player.id}`} 
-                className="inline-block hover:text-v-red transition-colors focus:outline-none"
+                className="inline-block hover:text-v-red transition-colors focus:outline-none max-w-full"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-2xl sm:text-3xl tracking-tighter flex items-center gap-2">
-                  {player.nickname}
+                <h3 className="text-xl sm:text-2xl tracking-tighter flex items-center gap-2 truncate">
+                  <span className="truncate">{player.nickname}</span>
                   <div className="flex gap-1 shrink-0">
-                    {isLocked && <span title="Protegido" className="text-v-red animate-pulse text-sm">🛡️</span>}
-                    {isCaptain && <span title="Capitán" className="text-role-iniciador text-sm">©️</span>}
-                    {inAuction && <span className="text-[7px] bg-v-red text-white px-1.5 py-0.5 rounded-sm tracking-widest font-black self-center uppercase">DRAFT</span>}
+                    {isLocked && <span title="Protegido" className="text-v-red animate-pulse text-xs">🛡️</span>}
+                    {isCaptain && <span title="Capitán" className="text-role-iniciador text-xs">©️</span>}
+                    {inAuction && <span className="text-[7px] bg-v-red text-white px-1.5 py-0.5 rounded-sm tracking-widest font-black self-center uppercase shrink-0">DRAFT</span>}
                   </div>
                 </h3>
               </Link>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-v-red">
+              <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
+                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-v-red truncate">
                   {player.pro_teams?.tag || "Free Agent"}
                 </span>
-                <span className="text-white/10 text-xs">|</span>
-                <span className={`text-[10px] font-black uppercase tracking-[0.2em] text-role-${player.role}`}>
+                <span className="text-white/10 text-[10px]">|</span>
+                <span className={`text-[9px] font-black uppercase tracking-[0.15em] text-role-${player.role} truncate`}>
                   {player.role}
                 </span>
               </div>
             </div>
 
-            <div className="text-right">
-              <p className="text-[8px] font-black uppercase text-white/30 tracking-widest mb-1">Asignación</p>
-              <p className="text-xl font-black italic leading-none">{(player.market_value / 1000000).toFixed(1)}M <span className="text-[10px]">VP</span></p>
+            <div className="text-right shrink-0">
+              <p className="text-[7px] font-black uppercase text-white/30 tracking-widest mb-0.5">Asignación</p>
+              <p className="text-lg font-black italic leading-none whitespace-nowrap">{(player.market_value / 1000000).toFixed(1)}M <span className="text-[9px]">VP</span></p>
               {player.releaseClause && (
-                 <p className="text-[9px] font-bold italic text-v-red mt-1">Reasignación: {(player.releaseClause / 1000000).toFixed(1)}M VP</p>
+                 <p className="text-[8px] font-bold italic text-v-red mt-1 whitespace-nowrap">Reasig: {(player.releaseClause / 1000000).toFixed(1)}M</p>
               )}
             </div>
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-1 bg-black/20 rounded-sm p-2 mb-4">
+          <div className="grid grid-cols-3 gap-1 bg-white/5 rounded-sm p-2 mb-3">
              <div className="text-center">
-                <span className="block text-[7px] uppercase text-white/40 font-black">Points</span>
-                <span className="text-sm font-black italic text-v-red">{stats.avgPoints ?? 0}</span>
+                <span className="block text-[6px] uppercase text-white/40 font-black tracking-tighter">Points</span>
+                <span className="text-xs font-black italic text-v-red">{stats.avgPoints ?? 0}</span>
              </div>
              <div className="text-center border-x border-white/5">
-                <span className="block text-[7px] uppercase text-white/40 font-black">ACS</span>
-                <span className="text-sm font-black italic">{stats.acs ?? 0}</span>
+                <span className="block text-[6px] uppercase text-white/40 font-black tracking-tighter">ACS</span>
+                <span className="text-xs font-black italic">{stats.acs ?? 0}</span>
              </div>
              <div className="text-center">
-                <span className="block text-[7px] uppercase text-white/40 font-black">K/D</span>
-                <span className="text-sm font-black italic">{stats.kd ?? 0}</span>
+                <span className="block text-[6px] uppercase text-white/40 font-black tracking-tighter">K/D</span>
+                <span className="text-xs font-black italic">{stats.kd ?? 0}</span>
              </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex sm:flex-col gap-2 w-full sm:w-32 justify-end">
+        <div className="flex sm:flex-col gap-2 w-full sm:w-28 justify-end shrink-0">
           {onAction && (
             <button 
               onClick={(e) => { e.stopPropagation(); onAction(); }}
               disabled={actionDisabled}
-              className={`${actionClassName} flex-1 sm:flex-none !px-4 !py-2 !text-[9px] disabled:opacity-30 disabled:grayscale`}
+              className={`${actionClassName} flex-1 sm:flex-none !px-3 !py-2 !text-[10px] disabled:opacity-30 disabled:grayscale`}
             >
               {actionLabel}
             </button>
@@ -133,7 +133,7 @@ export function PlayerCard({
           {onSecondAction && (
             <button 
               onClick={(e) => { e.stopPropagation(); onSecondAction(); }}
-              className={`${secondActionClassName} flex-1 sm:flex-none !px-4 !py-2 !text-[9px] hover:border-v-red hover:text-v-red`}
+              className={`${secondActionClassName} flex-1 sm:flex-none !px-3 !py-2 !text-[10px] hover:border-v-red hover:text-v-red`}
             >
               {secondActionLabel}
             </button>

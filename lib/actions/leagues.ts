@@ -35,7 +35,8 @@ export async function getGlobalRank(userId: string) {
 }
 
 async function assignInitialRoster(supabase: any, leagueId: string, profileId: string) {
-    const targetRoles = ['Duelista', 'Iniciador', 'Controlador', 'Centinela', 'Flex'];
+    // FIX Bug #11: Use normalized role names for consistency
+    const targetRoles = ['DUELISTA', 'INICIADOR', 'CONTROLADOR', 'CENTINELA', 'FLEX'];
     const selectedPlayers: any[] = [];
     const playerIds = new Set<string>();
 
@@ -43,7 +44,7 @@ async function assignInitialRoster(supabase: any, leagueId: string, profileId: s
         let p: any = null;
         
         // Try to fetch by role first
-        if (role !== 'Flex') {
+        if (role !== 'FLEX') {
             const { data: players } = await supabase
                 .from('pro_players')
                 .select('id, market_value')
@@ -186,6 +187,7 @@ export async function joinLeague(inviteCode: string, userId: string) {
     await assignInitialRoster(supabase, league.id, userId);
 
     revalidatePath("/leagues");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error al unirse a la liga";

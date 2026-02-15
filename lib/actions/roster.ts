@@ -68,11 +68,11 @@ export async function setStarterStatus(leagueId: string, profileId: string, play
         .eq("profile_id", profileId)
         .eq("player_id", conflictingPlayer.player_id);
 
-      if (swapError) throw swapError;
+      if (swapError) throw new Error("Error al desplazar al agente anterior del puesto.");
     } else {
       // If no conflict, just check capacity
       if (targetSlotPlayers.length >= 5) {
-        throw new Error(`Ya tienes 5 ${newSlot === 'starter' ? 'titulares' : 'suplentes'}. Debes mover a alguien al banquillo primero.`);
+        throw new Error(`Máximo alcanzado: Ya tienes 5 ${newSlot === 'starter' ? 'titulares' : 'suplentes'}.`);
       }
     }
 
@@ -87,11 +87,13 @@ export async function setStarterStatus(leagueId: string, profileId: string, play
       .eq("profile_id", profileId)
       .eq("player_id", playerId);
 
-    if (error) throw error;
+    if (error) throw new Error("Error al asignar el nuevo puesto del agente.");
 
     revalidatePath("/team");
-    return { success: true };
+    revalidatePath("/"); // Update global navbar/stats
+    return { success: true, message: `Alineación actualizada: ${playerRole} movido a ${newSlot}.` };
   } catch (error: any) {
+    console.error("Roster Change Error:", error);
     return { success: false, error: error.message };
   }
 }
