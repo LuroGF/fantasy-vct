@@ -8,7 +8,10 @@ import { Challenges } from "@/components/Challenges";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 import BonusManager from "@/components/BonusManager";
-import { DashboardMatchList, DashboardMatchListSkeleton } from "@/components/DashboardMatchList";
+import {
+  DashboardMatchList,
+  DashboardMatchListSkeleton,
+} from "@/components/DashboardMatchList";
 import { RecentActivity } from "@/components/RecentActivity";
 import { Suspense } from "react";
 import { Award } from "lucide-react";
@@ -27,7 +30,10 @@ async function DashboardStats({ supabase }: { supabase: any }) {
 
   return (
     <div className="grid grid-cols-3 gap-2 sm:gap-4">
-      <Link href="/players" className="v-panel p-2 py-3 sm:p-4 border-l-v-role-duelista group hover:bg-v-role-duelista/5 transition-all cursor-pointer">
+      <Link
+        href="/players"
+        className="v-panel p-2 py-3 sm:p-4 border-l-v-role-duelista group hover:bg-v-role-duelista/5 transition-all cursor-pointer"
+      >
         <p className="text-[7px] sm:text-[8px] font-black uppercase text-v-role-duelista/60 leading-none mb-1 group-hover:text-v-role-duelista transition-colors truncate">
           Ojeador
         </p>
@@ -90,7 +96,7 @@ export default async function DashboardPage() {
   max-w-md sm:max-w-xl lg:max-w-4xl
   px-4 sm:px-6
   flex flex-col gap-8
-  animate-in fade-in slide-in-from-bottom-4 duration-700 py-6
+  animate-in fade-in slide-in-from-bottom-4 duration-700 py-6 sm:pb-44
 "
       >
         {/* Header Info */}
@@ -110,8 +116,10 @@ export default async function DashboardPage() {
         </div>
 
         {/* Recent Activity Section */}
-        <Suspense fallback={<div className="h-32 v-panel animate-pulse bg-white/5" />}>
-           <RecentActivity profileId={user?.id || ""} />
+        <Suspense
+          fallback={<div className="h-32 v-panel animate-pulse bg-white/5" />}
+        >
+          <RecentActivity profileId={user?.id || ""} />
         </Suspense>
 
         {/* Real-time DB Stats (Suspended) */}
@@ -119,38 +127,37 @@ export default async function DashboardPage() {
           <DashboardStats supabase={supabase} />
         </Suspense>
 
-
         <div className="space-y-4">
           <div className="flex gap-3">
-              <Link
-                href="/team"
-                className="v-btn-primary flex-1 shadow-xl shadow-v-red/20 group"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  Editar equipo
-                  <svg
-                    className="w-4 h-4 group-hover:translate-x-1 transition-transform"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="3"
-                      d="M14 5l7 7m0 0l-7 7m7-7H3"
-                    />
-                  </svg>
-                </span>
-              </Link>
-              <Link
-                href="/players"
-                className="v-panel flex-1 flex items-center justify-center gap-2 bg-v-white/5 border-white/10 hover:border-v-white transition-all group"
-              >
-                <span className="text-[10px] font-black uppercase tracking-widest text-v-white italic group-hover:text-v-red transition-colors flex items-center gap-2">
-                   <Award className="w-3 h-3" /> Ojeador
-                </span>
-              </Link>
+            <Link
+              href="/team"
+              className="v-btn-primary flex-1 shadow-xl shadow-v-red/20 group"
+            >
+              <span className="flex items-center justify-center gap-1 text-xs sm:text-[10px] lg:text-base">
+                Editar equipo
+                <svg
+                  className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="3"
+                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  />
+                </svg>
+              </span>
+            </Link>
+            <Link
+              href="/players"
+              className="v-panel flex-1 flex items-center justify-center gap-2 bg-v-white/5 border-white/10 hover:border-v-white transition-all group"
+            >
+              <span className="text-[10px] font-black uppercase tracking-widest text-v-white italic group-hover:text-v-red transition-colors flex items-center gap-2">
+                <Award className="w-3 h-3" /> Ojeador
+              </span>
+            </Link>
           </div>
         </div>
 

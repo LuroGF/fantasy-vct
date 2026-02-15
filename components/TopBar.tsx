@@ -72,7 +72,7 @@ export default function TopBar() {
             
             <div className="flex items-center gap-4 relative z-10">
                  <div className="flex flex-col">
-                    <span className="text-[11px] font-black italic text-v-red leading-none tracking-tighter sm:text-xs">VCT FANTASY // TERMINAL</span>
+                    <span className="text-[11px] font-black italic text-v-red leading-none tracking-tighter sm:text-xs">VCT FANTASY</span>
                     <div className="flex items-center gap-2 mt-1">
                         <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
                         <span className="text-[7px] font-black uppercase text-green-500/60 tracking-[0.3em] font-sans">EN LÍNEA</span>
@@ -82,7 +82,7 @@ export default function TopBar() {
 
             <div className="flex items-center gap-3 sm:gap-6 relative z-10">
                 <div className="flex flex-col items-end">
-                    <span className="text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">Agente Autorizado</span>
+                    <span className="text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">Usuario</span>
                     <span className="text-[11px] font-black uppercase italic text-white leading-tight sm:text-xs">{user.user_metadata?.username || "OPERATOR"}</span>
                 </div>
                 
@@ -94,7 +94,7 @@ export default function TopBar() {
                             haptic.light();
                             setShowNotifications(!showNotifications);
                         }}
-                        className={`relative p-2 rounded-sm transition-all outline-none ${showNotifications ? 'bg-v-red text-white' : 'hover:bg-white/5 text-white/60'}`}
+                        className={`relative p-2 rounded-sm cursor-pointer transition-all outline-none ${showNotifications ? 'bg-v-red text-white' : 'hover:bg-white/5 text-white/60'}`}
                     >
                         <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
                         <AnimatePresence>

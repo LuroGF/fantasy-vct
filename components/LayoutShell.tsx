@@ -35,7 +35,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         <main
           id="main-content"
           className={cn(
-            "w-full overflow-y-auto overscroll-contain pb-24 lg:pb-8 custom-scrollbar relative z-10",
+            "w-full overflow-y-auto overscroll-contain pb-16 lg:pb-2 custom-scrollbar relative z-10",
             !isAuthPage ? "h-[calc(100%-3.5rem)]" : "h-full"
           )}
         >
@@ -47,8 +47,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         {!isAuthPage && <ScrollToTopButton />}
 
         {/* Corner Decorative Accents */}
-        <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden">
-           {/* Top left */}
+        {/* <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden">
            <div className={cn(
              "absolute top-0 left-0 w-8 h-8 transition-all duration-300",
              !isAuthPage ? "lg:left-72" : "left-0"
@@ -56,12 +55,11 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
               <div className="absolute top-4 left-4 w-4 h-px bg-v-red/40" />
               <div className="absolute top-4 left-4 w-px h-4 bg-v-red/40" />
            </div>
-           {/* Top right */}
            <div className="absolute top-0 right-0 w-8 h-8">
               <div className="absolute top-4 right-4 w-4 h-px bg-v-red/40" />
               <div className="absolute top-4 right-4 w-px h-4 bg-v-red/40" />
            </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
