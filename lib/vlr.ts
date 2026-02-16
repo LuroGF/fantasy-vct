@@ -110,19 +110,19 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
   if (limitPages >= 2) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=2`));
   if (limitPages >= 3) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=3`));
   
-  // Always fetch results if we are fetching more than 1 page (likely schedule page), otherwise skip for dashboard speed
-  if (limitPages > 1) {
-      promises.push(fetchPage("https://www.vlr.gg/matches/results"));
-  }
+  // Results pages
+  promises.push(fetchPage("https://www.vlr.gg/matches/results"));
+  promises.push(fetchPage("https://www.vlr.gg/matches/results/?page=2"));
+  promises.push(fetchPage("https://www.vlr.gg/matches/results/?page=3"));
 
   const responses = await Promise.all(promises);
-  const page1 = responses[0];
-  const page2 = limitPages >= 2 ? responses[1] : null;
-  const page3 = limitPages >= 3 ? responses[2] : null;
-  // Results is the last one if added
-  const resultsHtml = limitPages > 1 ? responses[responses.length - 1] : null;
+  
+  // Upcoming matches are usually the first few pages (1 to 3)
+  const upcomingHtmls = responses.slice(0, 3);
+  // Results are the rest (4 to 6)
+  const resultsHtmls = responses.slice(3);
 
-  if (!page1) throw new Error("VLR page 1 fetch failed");
+  if (upcomingHtmls.length === 0) throw new Error("VLR page 1 fetch failed");
   
   const parseMatches = (html: string | null) => {
     if (!html) return [];
@@ -172,12 +172,8 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
     return results;
   };
 
-  const upcomingResults = [
-    ...parseMatches(page1),
-    ...parseMatches(page2),
-    ...parseMatches(page3)
-  ];
-  const finishedResults = resultsHtml ? parseMatches(resultsHtml) : [];
+  const upcomingResults = upcomingHtmls.flatMap(html => parseMatches(html));
+  const finishedResults = resultsHtmls.flatMap(html => parseMatches(html));
   
   // Use map to dedup
   const allMatchesMap = new Map();
@@ -302,7 +298,7 @@ export function calculateFantasyPoints(stats: {
       points += stats.fd * -3;
       points += stats.deaths * -1;
       if (stats.kills >= 45) points += 10;
-      if (stats.mvp) points += 5;
+      if (stats.mvp) points += 10;
       break;
 
     case 'Centinela':
@@ -321,11 +317,7 @@ export function calculateFantasyPoints(stats: {
       points += stats.fb * 3;
       points += stats.fd * -2;
       points += stats.deaths * -1;
-      if (stats.assists >= 20) {
-        points += 10;
-      } else {
-        points -= 5;
-      }
+      if (stats.assists >= 20) points += 10;
       if (stats.mvp) points += 5;
       break;
   }
@@ -368,7 +360,7 @@ const AGENT_ROLES: Record<string, string> = {
   'jett': 'Duelista', 'raze': 'Duelista', 'phoenix': 'Duelista', 'reyna': 'Duelista', 'yoru': 'Duelista', 'neon': 'Duelista', 'iso': 'Duelista',
   'sova': 'Iniciador', 'breach': 'Iniciador', 'skye': 'Iniciador', 'kayo': 'Iniciador', 'fade': 'Iniciador', 'gekko': 'Iniciador',
   'brimstone': 'Controlador', 'omen': 'Controlador', 'viper': 'Controlador', 'astra': 'Controlador', 'harbor': 'Controlador', 'clove': 'Controlador',
-  'killjoy': 'Centinela', 'cypher': 'Centinela', 'sage': 'Centinela', 'chamber': 'Centinela', 'deadlock': 'Centinela', 'veto': 'Centinela'
+  'killjoy': 'Centinela', 'cypher': 'Centinela', 'sage': 'Centinela', 'chamber': 'Centinela', 'deadlock': 'Centinela', 'vyse': 'Centinela'
 };
 
 export async function scrapeMatchDetails(matchId: string) {
@@ -435,6 +427,7 @@ function processVlrTable($: any, table: any, mapName: string) {
       fk: findIdx(["FK", "FIRST KILLS"]),
       fd: findIdx(["FD", "FIRST DEATHS"]),
       acs: findIdx(["ACS", "AVERAGE COMBAT SCORE"]),
+      cl: findIdx(["CL", "CLUTCHES"]),
     };
 
     dataRows.each((__: any, row: any) => {
@@ -477,7 +470,7 @@ function processVlrTable($: any, table: any, mapName: string) {
             fb: getStat(idx.fk),
             fd: getStat(idx.fd),
             acs: getStat(idx.acs),
-            clutches: 0
+            clutches: getStat(idx.cl)
         });
     });
     return results;

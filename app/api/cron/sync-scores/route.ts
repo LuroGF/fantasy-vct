@@ -180,11 +180,12 @@ export async function GET(request: Request) {
     const playerMap = new Map();
     playersData?.forEach((p) => playerMap.set(p.nickname.toLowerCase(), p.id));
 
+    const { scrapeMatchDetails } = await import('@/lib/vlr');
+
     for (const match of matchToSync) {
       if (!match.vlr_id) continue;
       
       try {
-        const { scrapeMatchDetails } = await import('@/lib/vlr');
         const details = await scrapeMatchDetails(match.vlr_id);
         
         if (!details || details.length === 0) continue;
