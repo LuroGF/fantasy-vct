@@ -363,7 +363,7 @@ const AGENT_ROLES: Record<string, string> = {
   'killjoy': 'Centinela', 'cypher': 'Centinela', 'sage': 'Centinela', 'chamber': 'Centinela', 'deadlock': 'Centinela', 'vyse': 'Centinela'
 };
 
-export async function scrapeMatchDetails(matchId: string) {
+export async function scrapeMatchDetails(matchId: string): Promise<{ stats: any[], status: string } | null> {
     const url = `https://www.vlr.gg/${matchId}`;
     
     try {
@@ -379,11 +379,21 @@ export async function scrapeMatchDetails(matchId: string) {
       const html = await response.text();
       const $ = cheerio.load(html);
       
+      // Determine Status
+      let status = 'upcoming';
+      const headerStatus = $(".match-header-vs-score").text().trim().toLowerCase();
+      if (headerStatus.includes("final") || /\d+/.test(headerStatus)) {
+          status = 'finished';
+      }
+      const liveIndicator = $(".match-header-vs-note").text().toLowerCase();
+      if (liveIndicator.includes("live") || liveIndicator.includes("map")) {
+          status = 'live';
+      }
+
       const allStats: any[] = [];
-      const mapContainers = $(".vm-stats-container .vm-stats-game"); // Individual map containers
+      const mapContainers = $(".vm-stats-container .vm-stats-game"); 
 
       if (!mapContainers.length) {
-          // If no containers, maybe it's a simple Bo1 shown directly
           const table = $("table.wf-table-inset.mod-overview");
           if (table.length) {
               const stats = processVlrTable($, table.first(), "Map 1");
@@ -392,7 +402,6 @@ export async function scrapeMatchDetails(matchId: string) {
       } else {
         mapContainers.each((i, container) => {
             const mapName = $(container).find(".map-name").text().trim() || `Map ${i + 1}`;
-            // Skip "All Maps" to avoid double counting
             if (mapName.toLowerCase().includes("all maps")) return;
 
             const table = $(container).find("table.wf-table-inset.mod-overview");
@@ -403,7 +412,7 @@ export async function scrapeMatchDetails(matchId: string) {
         });
       }
     
-      return allStats;
+      return { stats: allStats, status };
     } catch (error) {
       console.error(`Exception scraping match ${matchId}:`, error);
       return null;

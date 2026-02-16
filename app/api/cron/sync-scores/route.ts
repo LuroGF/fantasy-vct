@@ -33,10 +33,27 @@ export async function GET(request: Request) {
 
     if (gwError) throw gwError;
 
-    let currentGw = activeGw;
+    let currentGw: Database['public']['Tables']['gameweeks']['Row'] | null = activeGw;
+
+    // --- CHECK IF ACTIVE GW SHOULD BE CLOSED ---
+    if (activeGw && activeGw.end_date) {
+        const endDate = new Date(activeGw.end_date);
+        // If the active GW end date is in the past, finalize and deactivate
+        if (now.getTime() > endDate.getTime() + 3600000) { // Give 1h margin
+            console.log(`Cron: Finalizando Jornada ${activeGw.name} (ID: ${activeGw.id}) por fecha de fin alcanzada.`);
+            
+            // 1. Finalize scores (reward budget)
+            await calculateGameweekScores(activeGw.id, true);
+            
+            // 2. Deactivate
+            await (supabaseAdmin.from('gameweeks') as any).update({ is_active: false }).eq('id', activeGw.id);
+            
+            currentGw = null; // Look for the new one below
+        }
+    }
 
     if (!currentGw) {
-      console.log(`Cron: No hay jornada activa. Buscando para la fecha actual: ${now.toISOString()}`);
+      console.log(`Cron: No hay jornada activa (o se acaba de cerrar). Buscando para la fecha actual: ${now.toISOString()}`);
       
       const { data: currentOrUpcoming, error: searchError } = await (supabaseAdmin
         .from('gameweeks')
@@ -51,7 +68,7 @@ export async function GET(request: Request) {
       currentGw = currentOrUpcoming;
 
       if (!currentGw) {
-        console.log("Cron: No se encontró jornada para hoy. Buscando la próxima futura...");
+        console.log("Cron: No se encontró jornada para hoy (lunes?). Buscando la próxima futura...");
         const { data: nextStart } = await (supabaseAdmin
           .from('gameweeks')
           .select('*')
@@ -64,21 +81,20 @@ export async function GET(request: Request) {
 
       if (currentGw) {
           console.log(`Cron: Activando Jornada: ${currentGw.name} (ID: ${currentGw.id})`);
+          // Deactivate ANY other just in case
+          await (supabaseAdmin.from('gameweeks') as any).update({ is_active: false }).neq('id', currentGw.id);
+          // Activate this one
           await (supabaseAdmin.from('gameweeks') as any).update({ is_active: true }).eq('id', currentGw.id);
           
           // Reset weekly transfer counter and current week points for all participants
           console.log(`Cron: Nueva jornada detectada. Reseteando contadores de transferencias...`);
           await supabaseAdmin.from('league_participants').update({ 
-              transfers_made_this_week: 0,
-              // We don't reset total_points here because total_points is the SEASON CUMULATIVE 
-              // but we might want a 'last_gw_points' field if we had it. 
-              // For now, transfers is the main reset.
+              transfers_made_this_week: 0
           } as any);
           
-          // Mark as active for the rest of this execution
           currentGw.is_active = true;
       } else {
-         console.log("Cron: No hay ninguna jornada (actual ni futura) registrada en la BBDD.");
+         console.log("Cron: No hay ninguna jornada registrada en la BBDD.");
          return NextResponse.json({ message: "No hay jornadas registradas" });
       }
     }
@@ -162,11 +178,16 @@ export async function GET(request: Request) {
       .eq('gameweek_id', currentGw.id) as any);
 
     const matchToSync = (allGwMatches as any[])?.filter(m => {
+        const mTime = m.match_date ? new Date(m.match_date).getTime() : 0;
+        const isPast = mTime > 0 && now.getTime() > mTime;
+
         // If live, sync
         if (m.status === 'live') return true;
         
+        // If upcoming but it's in the past (> 30m ago), it definitely should have finished or be live
+        if (m.status === 'upcoming' && isPast && now.getTime() > mTime + 1800000) return true;
+
         // If upcoming and close (< 30m), sync (maybe lineups?)
-        const mTime = m.match_date ? new Date(m.match_date).getTime() : 0;
         if (m.status === 'upcoming' && now.getTime() > mTime - 1800000 && now.getTime() < mTime + 7200000) return true;
 
         // If finished but no stats, sync
@@ -186,20 +207,26 @@ export async function GET(request: Request) {
       if (!match.vlr_id) continue;
       
       try {
-        const details = await scrapeMatchDetails(match.vlr_id);
+        const result = await scrapeMatchDetails(match.vlr_id);
         
+        if (!result) continue;
+        const { stats: details, status: currentStatus } = result;
+
+        // Update status if it changed (especially for past upcoming matches)
+        if (currentStatus && match.status !== currentStatus) {
+            console.log(`Cron: Updating match ${match.vlr_id} status: ${match.status} -> ${currentStatus}`);
+            await (supabaseAdmin.from('matches') as any).update({ status: currentStatus }).eq('id', match.id);
+            match.status = currentStatus;
+        }
+
         if (!details || details.length === 0) continue;
 
         const performaceUpserts = [];
         
         for (const d of details) {
             let dbPlayerId = playerMap.get(d.nickname.toLowerCase());
-            // Create player if missing logic (Simplified from previous)
+            // ... (rest of player creation logic)
             if (!dbPlayerId) {
-                 // Try to create... (omitted detailed creation for brevity, assuming scrapeMatchDetails is enough or handled previously)
-                 // But wait, the previous code had complex creation logic. I should keep it.
-                 // Re-implementing simplified version:
-                 
                  let teamId = null;
                  const tag = d.teamTag?.toUpperCase();
                  const teamA = (match as any).team_a_data;
@@ -239,8 +266,6 @@ export async function GET(request: Request) {
                     agent_role: d.agent_role,
                     mvp: false
                 });
-
-
             }
         }
 
@@ -249,10 +274,9 @@ export async function GET(request: Request) {
             const finalData = performaceUpserts.map(p => ({ ...p, mvp: p.acs === maxAcs }));
             
             await supabaseAdmin.from('player_performances').upsert(finalData as any, { onConflict: 'match_id,player_id,map_name' });
-
             
-            // Ensure status is finished
-            if (match.status !== 'finished') {
+            // Re-ensure finish status if we have stats
+            if (match.status !== 'finished' && currentStatus !== 'live') {
                 await (supabaseAdmin.from('matches') as any).update({ status: 'finished' }).eq('id', match.id);
             }
             console.log(`Cron: Stats saved for ${match.vlr_id}`);
