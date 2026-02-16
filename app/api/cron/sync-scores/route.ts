@@ -1,11 +1,17 @@
-
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { calculateGameweekScores } from "@/lib/actions/scoring";
 import { Database } from "@/types/supabase";
 import { fetchVlrMatches } from "@/lib/vlr";
 
 export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   try {
     const now = new Date();
     // Force Madrid Time for reference
