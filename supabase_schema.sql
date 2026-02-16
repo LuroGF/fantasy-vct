@@ -111,10 +111,13 @@ CREATE TABLE IF NOT EXISTS public.player_performances (
   fb integer DEFAULT 0,
   fd integer DEFAULT 0,
   acs integer DEFAULT 0,
+  map_name text DEFAULT 'Map 1',
   mvp boolean DEFAULT false,
   fantasy_points integer DEFAULT 0,
+  agent_name text,
+  agent_role text,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT player_performances_match_player_unique UNIQUE (match_id, player_id)
+  CONSTRAINT player_performances_match_player_map_unique UNIQUE (match_id, player_id, map_name)
 );
 
 -- Participant Scores History
