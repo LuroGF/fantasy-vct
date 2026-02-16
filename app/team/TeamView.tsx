@@ -281,11 +281,11 @@ export default function TeamView({
           <div className="grid grid-cols-2 gap-4 relative">
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-v-red/30 transition-colors group">
                <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-v-red/60">Presupuesto</p>
-               <p className="text-2xl font-black italic tracking-tighter text-white group-hover:scale-105 origin-left transition-transform">{(activeParticipation.current_budget / 1000000).toFixed(1)}M VP</p>
+               <p className="text-2xl font-black italic tracking-wider text-white group-hover:scale-105 origin-left transition-transform">{(activeParticipation.current_budget / 1000000).toFixed(1)}M VP</p>
             </div>
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-white/20 transition-colors group">
                <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-white/60">Agentes</p>
-               <p className="text-2xl font-black italic tracking-tighter text-white group-hover:scale-105 origin-left transition-transform">{roster.length} / 10</p>
+               <p className="text-2xl font-black italic tracking-wider text-white group-hover:scale-105 origin-left transition-transform">{roster.length} / 10</p>
             </div>
             <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-v-red shadow-[0_0_10px_rgba(255,70,85,0.5)]" />
           </div>
@@ -636,7 +636,7 @@ export default function TeamView({
           <div className="v-panel w-full max-w-xs p-6 space-y-6 border-t-4 border-v-white animate-in zoom-in-95 duration-200">
             <div className="space-y-2 text-center">
               <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">Confirmación</p>
-              <h3 className="text-xl font-black italic uppercase leading-tight">{confirmDialog.title}</h3>
+              <h3 className="text-xl font-black italic uppercase leading-tight tracking-wider">{confirmDialog.title}</h3>
               <p className="text-xs text-v-white/60 leading-relaxed">{confirmDialog.message}</p>
             </div>
 

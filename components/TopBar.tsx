@@ -72,7 +72,7 @@ export default function TopBar() {
             
             <div className="flex items-center gap-4 relative z-10">
                  <div className="flex flex-col">
-                    <span className="text-[11px] font-black italic text-v-red leading-none tracking-tighter sm:text-xs">VCT FANTASY // TERMINAL</span>
+                    <span className="text-[11px] font-black italic text-v-red leading-none tracking-wider sm:text-xs">VCT FANTASY // TERMINAL</span>
                     <div className="flex items-center gap-2 mt-1">
                         <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
                         <span className="text-[7px] font-black uppercase text-green-500/60 tracking-[0.3em] font-sans">EN LÍNEA</span>

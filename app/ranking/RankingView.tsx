@@ -128,7 +128,7 @@ export function RankingView({
                                 </span>
                                 <div className="flex flex-col">
                                     <div className="flex items-center gap-2">
-                                        <span className={`text-sm font-black uppercase tracking-tight italic ${row.profile_id === profileId ? "text-v-red" : "text-v-white"}`}>
+                                        <span className={`text-sm font-black uppercase tracking-wider italic ${row.profile_id === profileId ? "text-v-red" : "text-v-white"}`}>
                                             {row.profiles.username}
                                             {row.profile_id === profileId && " (Tú)"}
                                         </span>
@@ -180,7 +180,7 @@ export function RankingView({
                                         locked ? "bg-v-red/5 border-v-red/40" : "bg-v-white/5 border-v-white/10"
                                     }`}>
                                         <div className="flex flex-col">
-                                            <span className="text-sm font-black uppercase italic tracking-tight flex items-center gap-2">
+                                            <span className="text-sm font-black uppercase italic tracking-wider flex items-center gap-2">
                                                 {player.nickname}
                                                 {locked && <span className="text-[8px] bg-v-red text-v-white px-1 leading-tight py-0.5">🛡️ BLINDADO</span>}
                                             </span>
@@ -194,7 +194,7 @@ export function RankingView({
                                             <button 
                                                 onClick={() => setConfirmPay({ player })}
                                                 disabled={loading || locked}
-                                                className={`px-4 py-2 text-[10px] font-black uppercase italic tracking-tighter transition-all ${
+                                                className={`px-4 py-2 text-[10px] font-black uppercase italic tracking-wider transition-all ${
                                                     locked ? "bg-v-white/5 text-v-white/20 cursor-not-allowed" : "bg-v-white text-v-navy hover:bg-v-red hover:text-v-white"
                                                 }`}
                                             >

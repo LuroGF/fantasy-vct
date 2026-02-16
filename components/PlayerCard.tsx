@@ -73,7 +73,7 @@ export function PlayerCard({
                 className="inline-block hover:text-v-red transition-colors focus:outline-none max-w-full"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-xl sm:text-2xl tracking-tighter flex items-center gap-2 truncate">
+                <h3 className="text-xl sm:text-2xl tracking-wider flex items-center gap-2 truncate">
                   <span className="truncate">{player.nickname}</span>
                   <div className="flex gap-1 shrink-0">
                     {isLocked && <span title="Protegido" className="text-v-red animate-pulse text-xs">🛡️</span>}
@@ -105,15 +105,15 @@ export function PlayerCard({
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-1 bg-white/5 rounded-sm p-2 mb-3">
              <div className="text-center">
-                <span className="block text-[6px] uppercase text-white/40 font-black tracking-tighter">Points</span>
+                <span className="block text-[6px] uppercase text-white/40 font-black tracking-wider">Points</span>
                 <span className="text-xs font-black italic text-v-red">{stats.avgPoints ?? 0}</span>
              </div>
              <div className="text-center border-x border-white/5">
-                <span className="block text-[6px] uppercase text-white/40 font-black tracking-tighter">ACS</span>
+                <span className="block text-[6px] uppercase text-white/40 font-black tracking-wider">ACS</span>
                 <span className="text-xs font-black italic">{stats.acs ?? 0}</span>
              </div>
              <div className="text-center">
-                <span className="block text-[6px] uppercase text-white/40 font-black tracking-tighter">K/D</span>
+                <span className="block text-[6px] uppercase text-white/40 font-black tracking-wider">K/D</span>
                 <span className="text-xs font-black italic">{stats.kd ?? 0}</span>
              </div>
           </div>
