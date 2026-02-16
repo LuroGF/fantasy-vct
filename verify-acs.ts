@@ -22,14 +22,17 @@ async function test() {
 
   try {
     console.log(`Scraping match ${matchId}...`);
-    const data = await scrapeMatchDetails(matchId);
+    const result = await scrapeMatchDetails(matchId);
     
-    if (!data) {
+    if (!result) {
       console.log("No data returned");
       return;
     }
 
+    const { stats: data, status } = result;
+
     console.log("Stats found:", data.length);
+    console.log("Match status:", status);
     if (data.length > 0) {
       console.log("First player stats:", JSON.stringify(data[0], null, 2));
       const hasAcs = data.some(p => p.acs && p.acs > 0);
