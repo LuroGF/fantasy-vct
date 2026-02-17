@@ -33,7 +33,7 @@ export async function DashboardMatchList() {
     return (
         <div className="space-y-4">
             <div className="flex items-end justify-between px-1">
-                <h2 className="text-2xl italic tracking-tighter">PARTIDOS</h2>
+                <h2 className="text-2xl italic tracking-wider">PARTIDOS</h2>
                 <Link
                     href="/schedule"
                     className="text-[10px] font-black uppercase text-v-red hover:tracking-widest transition-all mb-1"
@@ -57,7 +57,7 @@ export async function DashboardMatchList() {
                                     <div className="absolute -left-1 -bottom-3 text-3xl sm:text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
                                         {teamA.substring(0, 3)}
                                     </div>
-                                    <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-tighter truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:translate-x-1">
+                                    <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:translate-x-1">
                                         {teamA}
                                     </span>
                                 </div>
@@ -102,7 +102,7 @@ export async function DashboardMatchList() {
                                      <div className="absolute -right-1 -bottom-3 text-3xl sm:text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
                                         {(teamB ?? "TBD").substring(0, 3)}
                                     </div>
-                                    <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-tighter truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:-translate-x-1">
+                                    <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:-translate-x-1">
                                         {teamB ?? "TBD"}
                                     </span>
                                 </div>
@@ -130,7 +130,7 @@ export function DashboardMatchListSkeleton() {
     return (
         <div className="space-y-4">
              <div className="flex items-end justify-between px-1">
-                <h2 className="text-2xl italic tracking-tighter">PARTIDOS</h2>
+                <h2 className="text-2xl italic tracking-wider">PARTIDOS</h2>
                 <span className="text-[10px] font-black uppercase text-v-white/20">Cargando...</span>
             </div>
             <div className="grid gap-3">

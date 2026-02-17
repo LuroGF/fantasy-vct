@@ -2,7 +2,19 @@
   "crons": [
     {
       "path": "/api/cron/sync-scores",
-      "schedule": "0 0 * * *"
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/scrape/players",
+      "schedule": "0 2 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/cron/sync-scores/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/scrape/players/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }

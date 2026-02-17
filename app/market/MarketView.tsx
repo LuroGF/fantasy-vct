@@ -396,7 +396,7 @@ export default function MarketView({
                                           Vendedor: <span className="text-white/80">{auction.profiles?.username || "SISTEMA"}</span>
                                        </p>
                                     </div>
-                                    <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter leading-none">{auction.pro_players?.nickname}</h3>
+                                    <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-wider leading-none">{auction.pro_players?.nickname}</h3>
                                     {myBid && (
                                        <div className="inline-flex items-center gap-2 mt-2 bg-v-red px-2 py-0.5 rounded-sm">
                                           <span className="text-[7px] font-black uppercase text-white tracking-widest whitespace-nowrap">TU OFERTA: {(myBid.bid_amount / 1000000).toFixed(1)}M VP</span>
@@ -482,7 +482,7 @@ export default function MarketView({
                             {rival.profiles?.username?.substring(0, 2).toUpperCase()}
                           </div>
                           <div className="flex-1">
-                            <h3 className="text-sm font-black italic uppercase tracking-tighter">{rival.profiles?.username}</h3>
+                            <h3 className="text-sm font-black italic uppercase tracking-wider">{rival.profiles?.username}</h3>
                             <p className="text-[7px] font-black uppercase text-v-white/40">{rival.total_points || 0} PUNTOS</p>
                           </div>
                         </div>

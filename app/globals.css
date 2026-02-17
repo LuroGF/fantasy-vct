@@ -59,6 +59,7 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.02em;
 }
 
 /* Premium Glassmorphism Panel */
@@ -98,7 +99,7 @@ body {
 /* Typography */
 h1, h2, h3 {
   font-family: var(--font-valorant);
-  @apply font-black uppercase italic tracking-tighter;
+  @apply font-black uppercase italic tracking-wider;
 }
 
 .text-role-Duelista { color: var(--duelista); }

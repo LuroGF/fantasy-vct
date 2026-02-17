@@ -44,7 +44,7 @@ export async function GET() {
       const topAgentImg = row.find(".mod-agents img").first().attr("src") || "";
       let role = "Duelista"; // Default
       if (topAgentImg.includes("omen") || topAgentImg.includes("brimstone") || topAgentImg.includes("astra") || topAgentImg.includes("viper") || topAgentImg.includes("clove")) role = "Controlador";
-      if (topAgentImg.includes("sage") || topAgentImg.includes("cypher") || topAgentImg.includes("killjoy") || topAgentImg.includes("deadlock")|| topAgentImg.includes("veto") || topAgentImg.includes("vyse")) role = "Centinela";
+      if (topAgentImg.includes("sage") || topAgentImg.includes("cypher") || topAgentImg.includes("killjoy") || topAgentImg.includes("deadlock") || topAgentImg.includes("vyse")) role = "Centinela";
       if (topAgentImg.includes("sova") || topAgentImg.includes("breach") || topAgentImg.includes("skye") || topAgentImg.includes("kayo") || topAgentImg.includes("gekko") || topAgentImg.includes("fade")) role = "Iniciador";
 
       if (nickname && teamTag && nickname !== "" && EMEA_TIER1_TEAMS.includes(teamTag)) {

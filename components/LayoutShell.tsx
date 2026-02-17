@@ -46,20 +46,6 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         {!isAuthPage && <Navbar />}
         {!isAuthPage && <ScrollToTopButton />}
 
-        {/* Corner Decorative Accents */}
-        {/* <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden">
-           <div className={cn(
-             "absolute top-0 left-0 w-8 h-8 transition-all duration-300",
-             !isAuthPage ? "lg:left-72" : "left-0"
-           )}>
-              <div className="absolute top-4 left-4 w-4 h-px bg-v-red/40" />
-              <div className="absolute top-4 left-4 w-px h-4 bg-v-red/40" />
-           </div>
-           <div className="absolute top-0 right-0 w-8 h-8">
-              <div className="absolute top-4 right-4 w-4 h-px bg-v-red/40" />
-              <div className="absolute top-4 right-4 w-px h-4 bg-v-red/40" />
-           </div>
-        </div> */}
       </div>
     </div>
   );

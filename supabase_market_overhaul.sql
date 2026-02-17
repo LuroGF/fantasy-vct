@@ -79,10 +79,12 @@ BEGIN
 
     IF v_count = 0 THEN
         -- Generate 5 random players that are NOT already owned by ANYONE in the league
+        -- AND ARE NOT LEGENDS (Legends only for finals)
         INSERT INTO public.personal_market (league_id, profile_id, player_id, offer_price)
         SELECT p_league_id, p_profile_id, p.id, p.market_value
         FROM public.pro_players p
-        WHERE NOT EXISTS (
+        WHERE p.is_legend = false
+        AND NOT EXISTS (
             SELECT 1 FROM public.user_rosters ur 
             WHERE ur.league_id = p_league_id AND ur.player_id = p.id
         )

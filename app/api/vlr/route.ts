@@ -9,11 +9,12 @@ export async function GET(request: Request) {
   // Scrape specific match and Sync Stats
   if (matchId) {
     try {
-      const details = await scrapeMatchDetails(matchId);
-      if (!details) {
+      const result = await scrapeMatchDetails(matchId);
+      if (!result) {
         console.error(`Match ${matchId}: Scrape returned null (likely 404 or rate limit)`);
         return NextResponse.json({ error: "Scrape failed - match not found or rate limited" }, { status: 404 });
       }
+      const { stats: details, status: currentStatus } = result;
       if (details.length === 0) {
         console.warn(`Match ${matchId}: No player stats found (match may not have started yet)`);
         return NextResponse.json({ error: "No stats available yet" }, { status: 404 });
@@ -54,7 +55,12 @@ export async function GET(request: Request) {
               deaths: d.deaths,
               assists: d.assists,
               fb: d.fb,
+              fd: d.fd || 0,
               clutches: d.clutches,
+              acs: d.acs || 0,
+              agent_name: d.agent_name,
+              agent_role: d.agent_role,
+              map_name: d.map_name || "Map 1" // Ensure map_name is included for unique constraint
           };
         })
         .filter((p): p is any => p !== null);
@@ -62,15 +68,17 @@ export async function GET(request: Request) {
       if (performanceData.length > 0) {
           const { error } = await supabaseAdmin
             .from('player_performances')
-            .upsert(performanceData as any, { onConflict: 'match_id,player_id' });
+            .upsert(performanceData as any, { onConflict: 'match_id,player_id,map_name' });
           
           if (error) {
               console.error("Error saving stats:", error);
               return NextResponse.json({ error: "DB Error", details: error }, { status: 500 });
           }
           
-          // Si hemos subido estadísticas, marcamos el partido como finished obligatoriamente
-          await (supabaseAdmin.from('matches') as any).update({ status: 'finished' }).eq('id', (matchData as any).id);
+          // Update status if it's not live
+          if (currentStatus && currentStatus !== 'live') {
+              await (supabaseAdmin.from('matches') as any).update({ status: 'finished' }).eq('id', (matchData as any).id);
+          }
       }
 
       return NextResponse.json({ 
