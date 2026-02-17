@@ -59,7 +59,7 @@ return (
                   name="email"
                   type="email"
                   required
-                  placeholder="tu@agencia.com"
+                  placeholder="tu@correo.com"
                   className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
                 />
               </div>

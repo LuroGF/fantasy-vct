@@ -90,7 +90,7 @@ export default function RegisterPage() {
             className="v-btn-primary w-full py-4 text-sm mt-4 shadow-xl shadow-v-red/20 group disabled:opacity-50"
           >
             <span className="flex items-center justify-center gap-2">
-              {loading ? "PROCESANDO..." : "Finalizar Registro"}
+              {loading ? "PROCESANDO..." : "Crear cuenta"}
               {!loading && (
                 <svg
                   className="w-4 h-4 group-hover:translate-x-1 transition-transform"
