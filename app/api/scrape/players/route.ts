@@ -20,6 +20,18 @@ interface ScrapedPlayer {
 
 export async function GET() {
   try {
+    // 0. Obtener equipos EMEA registrados para filtrar dinámicamente
+    const { data: dbTeams } = await supabaseAdmin
+      .from('pro_teams')
+      .select('tag')
+      .eq('region', 'EMEA');
+    
+    const emeaTags = new Set(dbTeams?.map(t => t.tag.toUpperCase()) || []);
+    // Fallback por si la base de datos está vacía inicialmente
+    if (emeaTags.size === 0) {
+      ["FNC", "VIT", "TH", "KC", "NAVI", "BBL", "FUT", "GX", "KOI", "TL", "M8"].forEach(t => emeaTags.add(t));
+    }
+
     const response = await fetch(VLR_STATS_URL, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -40,50 +52,47 @@ export async function GET() {
       const teamTag = row.find(".stats-player-country").first().text().trim().toUpperCase();
       const rating = parseFloat(row.find("td.mod-color-sq").first().text().trim()) || 0;
       
-      // Intentar inferir rol por el agente más jugado (está en una imagen pequeña)
+      // Intentar inferir rol por el agente más jugado
       const topAgentImg = row.find(".mod-agents img").first().attr("src") || "";
-      let role = "Duelista"; // Default
+      let role = "Duelista";
       if (topAgentImg.includes("omen") || topAgentImg.includes("brimstone") || topAgentImg.includes("astra") || topAgentImg.includes("viper") || topAgentImg.includes("clove")) role = "Controlador";
       if (topAgentImg.includes("sage") || topAgentImg.includes("cypher") || topAgentImg.includes("killjoy") || topAgentImg.includes("deadlock") || topAgentImg.includes("vyse")) role = "Centinela";
       if (topAgentImg.includes("sova") || topAgentImg.includes("breach") || topAgentImg.includes("skye") || topAgentImg.includes("kayo") || topAgentImg.includes("gekko") || topAgentImg.includes("fade")) role = "Iniciador";
 
-      if (nickname && teamTag && nickname !== "" && EMEA_TIER1_TEAMS.includes(teamTag)) {
+      // Filtramos por equipos que sabemos que son de EMEA (o los principales)
+      if (nickname && teamTag && nickname !== "" && emeaTags.has(teamTag)) {
         players.push({
           nickname,
           teamTag,
           rating,
           role,
-          // Precio basado en el rating (ej: rating 1.20 = 24M)
           market_value: Math.floor(rating * 20) * 1000000
         });
       }
     });
 
-    console.log(`Scraper: Encontrados ${players.length} jugadores después de filtrar por EMEA Tier 1.`);
+    console.log(`Scraper: Encontrados ${players.length} jugadores después de filtrar por equipos EMEA.`);
 
     if (players.length === 0) {
       return NextResponse.json({ 
         success: true, 
         count: 0,
-        message: "No se encontraron jugadores de EMEA Tier 1. Revisa los filtros o la URL." 
+        message: "No se encontraron jugadores. Revisa los filtros o la URL." 
       });
     }
 
-    // 1. Procesar Equipos Únicos
+    // 1. Procesar Equipos (Asegurar que existen)
     const uniqueTeamTags = Array.from(new Set(players.map(p => p.teamTag)));
-    const teamUpserts = uniqueTeamTags.map(tag => ({ name: tag, tag }));
+    const teamUpserts = uniqueTeamTags.map(tag => ({ name: tag, tag, region: 'EMEA' }));
     
-    const { error: teamError } = await supabaseAdmin
+    await supabaseAdmin
       .from('pro_teams')
       .upsert(teamUpserts as any, { onConflict: 'tag' });
     
-    if (teamError) throw teamError;
-
-    // Obtenemos los IDs de los equipos para relacionarlos
     const { data: teamsData } = await supabaseAdmin.from('pro_teams').select('id, tag').returns<{ id: string; tag: string }[]>();
     const teamMap = new Map(teamsData?.map(t => [t.tag, t.id]));
 
-    // 2. Procesar Jugadores (Deduplicar por nickname)
+    // 2. Procesar Jugadores
     const uniquePlayersMap = new Map();
     for (const p of players) {
       if (!uniquePlayersMap.has(p.nickname) || p.rating > uniquePlayersMap.get(p.nickname).rating) {
@@ -97,7 +106,7 @@ export async function GET() {
       team_id: teamMap.get(p.teamTag),
       role: p.role,
       market_value: p.market_value
-    })).filter(p => p.team_id !== undefined); // Solo insertar si el equipo existe
+    })).filter(p => p.team_id !== undefined);
 
     console.log(`Scraper: Preparados ${playerUpserts.length} jugadores para upsert.`);
 
@@ -110,7 +119,7 @@ export async function GET() {
     return NextResponse.json({ 
       success: true, 
       count: playerUpserts.length,
-      message: `${playerUpserts.length} jugadores de EMEA Tier 1 actualizados correctamente.` 
+      message: `${playerUpserts.length} jugadores actualizados correctamente.` 
     });
 
   } catch (error: unknown) {

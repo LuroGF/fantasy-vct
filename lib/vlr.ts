@@ -428,8 +428,11 @@ function processVlrTable($: any, table: any, mapName: string) {
     const headers = headerRow.find("th").map((_: any, th: any) => $(th).text().trim().toUpperCase()).get();
     const findIdx = (names: string[]) => headers.findIndex((h: string) => names.includes(h));
     
+    // El agente suele no tener nombre en el header (th vacío), así que buscamos la columna 
+    // que suele estar entre Player y Kills que contenga imágenes.
+    let agentColIdx = 1; // Default
+    
     const idx = {
-      agent: 1, // Usually index 1 for agent image
       k: findIdx(["K", "KILL", "KILLS"]),
       d: findIdx(["D", "DEATH", "DEATHS"]),
       a: findIdx(["A", "ASSIST", "ASSISTS"]),
@@ -441,7 +444,7 @@ function processVlrTable($: any, table: any, mapName: string) {
 
     dataRows.each((__: any, row: any) => {
         const cols = $(row).find("td");
-        if (cols.length < headers.length) return;
+        if (cols.length < 5) return;
 
         const playerCell = $(cols[0]);
         const playerLink = playerCell.find("a").attr("href") || "";
@@ -453,17 +456,28 @@ function processVlrTable($: any, table: any, mapName: string) {
         const teamTag = playerCell.find(".ge-text-light").text().trim();
         if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
 
-        // Agent Extraction
-        const agentCell = $(cols[1]); 
-        const agentImg = agentCell.find("img");
-        const agentName = agentImg.attr("title")?.toLowerCase() || "";
+        // Detección dinámica de agente: buscamos una imagen de agente en las primeras columnas
+        let agentName = "";
+        for (let i = 1; i <= 2; i++) {
+           const img = $(cols[i]).find("img");
+           if (img.length > 0) {
+              const title = img.attr("title")?.toLowerCase();
+              if (title && AGENT_ROLES[title]) {
+                 agentName = title;
+                 break;
+              }
+           }
+        }
+        
         const agentRole = AGENT_ROLES[agentName] || "";
 
         const getStat = (colIdx: number) => {
-            if (colIdx === -1) return 0;
+            if (colIdx === -1 || colIdx >= cols.length) return 0;
             const col = $(cols[colIdx]);
             const val = col.find(".mod-both").first().text().trim() || col.text().trim();
-            return parseInt(val.replace(/[^\d]/g, "")) || 0;
+            // Limpiar texto para obtener solo números (ej: "20 / 10" -> 20)
+            const cleanVal = val.split('/')[0].trim().replace(/[^\d]/g, "");
+            return parseInt(cleanVal) || 0;
         };
         
         results.push({
