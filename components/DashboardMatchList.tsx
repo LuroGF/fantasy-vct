@@ -54,12 +54,28 @@ export async function DashboardMatchList() {
                             <div className="flex items-stretch h-16 sm:h-20 overflow-hidden">
                                 {/* Team A */}
                                 <div className="flex-1 flex items-center px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0">
-                                    <div className="absolute -left-1 -bottom-3 text-3xl sm:text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
-                                        {getTeamTag(teamA)}
+                                    <div className="flex items-center gap-3 relative z-10 group-hover:translate-x-1 transition-all duration-300">
+                                        <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-white/5 p-1 rounded-sm border border-white/5">
+                                            <img 
+                                                src={`/equipos/${getTeamTag(teamA) === 'FNC' ? 'FNATIC' : 
+                                                       getTeamTag(teamA) === 'TL' ? 'TeamLiquid' :
+                                                       getTeamTag(teamA) === 'GX' ? 'Giantx' :
+                                                       getTeamTag(teamA) === 'TH' ? 'Heretics' :
+                                                       getTeamTag(teamA) === 'KC' ? 'KarmineCorp' :
+                                                       getTeamTag(teamA) === 'M8' ? 'GentleMates' :
+                                                       getTeamTag(teamA) === 'NAVI' ? 'NAVI' :
+                                                       getTeamTag(teamA) === 'FUT' ? 'FUT' :
+                                                       getTeamTag(teamA) === 'BBL' ? 'BBL' :
+                                                       getTeamTag(teamA)}.png`}
+                                                alt=""
+                                                className="w-full h-full object-contain"
+                                                onError={(e) => { e.currentTarget.parentElement!.style.display = 'none' }}
+                                            />
+                                        </div>
+                                        <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
+                                            {teamA}
+                                        </span>
                                     </div>
-                                    <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:translate-x-1">
-                                        {teamA}
-                                    </span>
                                 </div>
 
                                 {/* Center Info */}
@@ -99,12 +115,28 @@ export async function DashboardMatchList() {
 
                                 {/* Team B */}
                                 <div className="flex-1 flex items-center justify-end px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0 text-right">
-                                     <div className="absolute -right-1 -bottom-3 text-3xl sm:text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
-                                        {getTeamTag(teamB ?? "TBD")}
+                                    <div className="flex items-center gap-3 relative z-10 group-hover:-translate-x-1 transition-all duration-300 justify-end">
+                                        <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
+                                            {teamB ?? "TBD"}
+                                        </span>
+                                        <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-white/5 p-1 rounded-sm border border-white/5">
+                                            <img 
+                                                src={`/equipos/${getTeamTag(teamB) === 'FNC' ? 'FNATIC' : 
+                                                       getTeamTag(teamB) === 'TL' ? 'TeamLiquid' :
+                                                       getTeamTag(teamB) === 'GX' ? 'Giantx' :
+                                                       getTeamTag(teamB) === 'TH' ? 'Heretics' :
+                                                       getTeamTag(teamB) === 'KC' ? 'KarmineCorp' :
+                                                       getTeamTag(teamB) === 'M8' ? 'GentleMates' :
+                                                       getTeamTag(teamB) === 'NAVI' ? 'NAVI' :
+                                                       getTeamTag(teamB) === 'FUT' ? 'FUT' :
+                                                       getTeamTag(teamB) === 'BBL' ? 'BBL' :
+                                                       getTeamTag(teamB)}.png`}
+                                                alt=""
+                                                className="w-full h-full object-contain"
+                                                onError={(e) => { e.currentTarget.parentElement!.style.display = 'none' }}
+                                            />
+                                        </div>
                                     </div>
-                                    <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:-translate-x-1">
-                                        {teamB ?? "TBD"}
-                                    </span>
                                 </div>
                             </div>
                         </div>

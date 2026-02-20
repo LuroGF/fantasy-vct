@@ -14,7 +14,8 @@ export async function getCasters() {
     console.error("Error fetching casters:", error);
     return [];
   }
-  return data;
+  console.log(`Fetched ${data?.length || 0} casters from DB`);
+  return data || [];
 }
 
 export async function getActiveCasters(leagueId: string, profileId: string, gameweekId: number) {

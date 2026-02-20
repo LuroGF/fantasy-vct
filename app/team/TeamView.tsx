@@ -37,6 +37,7 @@ export default function TeamView({
   const [inventory, setInventory] = useState(initialInventory);
   const [activePowerUps, setActivePowerUps] = useState(initialActivePowerUps);
   const [activeCasters, setActiveCasters] = useState(initialActiveCasters);
+  const [availableCasters, setAvailableCasters] = useState(casters);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
   const [auctions, setAuctions] = useState<any[]>([]);
@@ -65,21 +66,23 @@ export default function TeamView({
       const { getUserFullRoster } = await import("@/lib/actions/roster");
       const { fetchActiveAuctions } = await import("@/lib/actions/market");
       const { getUserInventory, getActivePowerUps } = await import("@/lib/actions/inventory");
-      const { getActiveCasters } = await import("@/lib/actions/casters");
+      const { getActiveCasters, getCasters } = await import("@/lib/actions/casters");
       
-      const [rosterData, auctionsData, inventoryData, powerUpsData, casterData] = await Promise.all([
+      const [rosterData, auctionsData, inventoryData, powerUpsData, activeCasterData, casterList] = await Promise.all([
         getUserFullRoster(activeLeagueId, profileId),
         fetchActiveAuctions(activeLeagueId),
         getUserInventory(activeLeagueId, profileId),
         getActivePowerUps(activeLeagueId, profileId),
-        activeGameweekId ? getActiveCasters(activeLeagueId, profileId, activeGameweekId) : Promise.resolve([])
+        activeGameweekId ? getActiveCasters(activeLeagueId, profileId, activeGameweekId) : Promise.resolve([]),
+        getCasters()
       ]);
       
       setRoster(rosterData);
       setAuctions(auctionsData);
       setInventory(inventoryData);
       setActivePowerUps(powerUpsData);
-      setActiveCasters(casterData);
+      setActiveCasters(activeCasterData);
+      setAvailableCasters(casterList);
       setLoading(false);
     }
     if (activeLeagueId) loadData();
@@ -422,7 +425,7 @@ export default function TeamView({
         </div>
 
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-            {casters?.length > 0 ? casters.map((caster) => {
+            {availableCasters?.length > 0 ? availableCasters.map((caster) => {
                 const isActive = activeCasters.some(ac => ac.caster_id === caster.id);
                 return (
                     <button 
