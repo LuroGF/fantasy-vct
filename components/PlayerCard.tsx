@@ -76,7 +76,7 @@ export function PlayerCard({
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 className="text-xl sm:text-2xl tracking-wider flex items-center gap-2">
-                  <span className="truncate pr-2">{player.nickname}</span>
+                  <span className="truncate pr-4">{player.nickname}</span>
                   <div className="flex gap-1 shrink-0">
                     {isLocked && <span title="Protegido" className="text-v-red animate-pulse text-xs">🛡️</span>}
                     {isCaptain && <span title="Capitán" className="text-role-iniciador text-xs">©️</span>}

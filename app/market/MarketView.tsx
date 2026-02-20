@@ -866,13 +866,13 @@ export default function MarketView({
                 disabled={loading}
                 className="w-full py-4 bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10"
               >
-                Ejecutar Operación
+                Realizar acción
               </button>
               <button 
                 onClick={() => setConfirmDialog({ show: false, title: "", message: "", onConfirm: null })}
                 className="w-full py-2 text-[8px] font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest"
               >
-                Abortar
+                Cancelar
               </button>
             </div>
           </div>

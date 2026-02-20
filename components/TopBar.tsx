@@ -87,7 +87,7 @@ export default function TopBar() {
 
             <div className="flex items-center gap-3 sm:gap-6 relative z-10">
                 <div className="flex flex-col items-end">
-                    <span className="text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">Agente Autorizado</span>
+                    <span className="text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">Usuario</span>
                     <span className="text-[11px] font-black uppercase italic text-white leading-tight sm:text-xs">{user.user_metadata?.username || "OPERATOR"}</span>
                 </div>
                 
@@ -99,7 +99,7 @@ export default function TopBar() {
                             haptic.light();
                             setShowNotifications(!showNotifications);
                         }}
-                        className={`relative p-2 rounded-sm transition-all outline-none ${showNotifications ? 'bg-v-red text-white' : 'hover:bg-white/5 text-white/60'}`}
+                        className={`relative p-2 rounded-sm cursor-pointer transition-all outline-none ${showNotifications ? 'bg-v-red text-white' : 'hover:bg-white/5 text-white/60'}`}
                     >
                         <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
                         <AnimatePresence>

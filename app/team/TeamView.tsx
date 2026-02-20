@@ -294,7 +294,7 @@ export default function TeamView({
           <div className="grid grid-cols-2 gap-4 relative">
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-v-red/30 transition-colors group">
                <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-v-red/60">Presupuesto</p>
-               <p className="text-2xl font-black italic tracking-wider text-white group-hover:scale-105 origin-left transition-transform">{(activeParticipation.current_budget / 1000000).toFixed(1)}M VP</p>
+               <p className="text-2xl max-sm:text-xl font-black italic tracking-wider text-white group-hover:scale-105 origin-left transition-transform">{(activeParticipation.current_budget / 1000000).toFixed(1)}M VP</p>
             </div>
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-white/20 transition-colors group">
                <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-white/60">Agentes</p>
@@ -667,13 +667,13 @@ export default function TeamView({
                 disabled={loading}
                 className="w-full py-4 bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10"
               >
-                Ejecutar Operación
+                Realizar acción
               </button>
               <button 
                 onClick={() => setConfirmDialog({ show: false, title: "", message: "", onConfirm: null })}
                 className="w-full py-2 text-[8px] font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest"
               >
-                Abortar
+                Cancelar
               </button>
             </div>
           </div>

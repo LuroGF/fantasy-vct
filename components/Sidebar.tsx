@@ -34,19 +34,19 @@ return (
                     overflow-y-auto pointer-events-auto">
     <div className="flex h-full w-full flex-col p-4">
       {/* Brand / Header */}
-      <div className="mb-4 px-2 pt-2">
+      {/* <div className="mb-4 px-2 pt-2">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-8 bg-v-red" />
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-v-white font-oswald">
-              VCF Terminal
+              VCF FANTASY
             </p>
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-v-white/40">
               Navegación
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Items */}
       <nav className="flex flex-1 flex-col gap-1">
