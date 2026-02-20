@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 import TeamView from "./TeamView";
 
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+import { getUserInventory, getActivePowerUps } from "@/lib/actions/inventory";
+import { getCasters, getActiveCasters } from "@/lib/actions/casters";
 
 export default async function TeamPage() {
   const session = await getSession();
@@ -18,9 +20,6 @@ export default async function TeamPage() {
   const activeLeagueId = activeLeagueItem?.league_id;
   const roster = activeLeagueId ? await getUserFullRoster(activeLeagueId, session.user.id) : [];
 
-  // Fetch Inventory and Active Powerups
-  const { getUserInventory, getActivePowerUps } = await import("@/lib/actions/inventory");
-  const { getCasters, getActiveCasters } = await import("@/lib/actions/casters");
 
   const inventory = activeLeagueId ? await getUserInventory(activeLeagueId, session.user.id) : [];
   const activePowerUps = activeLeagueId ? await getActivePowerUps(activeLeagueId, session.user.id) : [];

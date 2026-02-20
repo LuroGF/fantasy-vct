@@ -139,7 +139,7 @@ export function RankingView({
                                             return (
                                                 <span key={p.id} className={`text-[7px] px-1.5 py-0.5 font-black uppercase italic border ${
                                                     locked ? "border-v-red/50 bg-v-red/10 text-v-red" : "border-v-white/10 bg-v-white/5 text-v-white/40"
-                                                } rounded-sm whitespace-nowrap`}>
+                                                } rounded-sm whitespace-nowrap pr-2`}>
                                                     {locked && "🛡️ "}{p.nickname}
                                                 </span>
                                             );
@@ -180,9 +180,9 @@ export function RankingView({
                                         locked ? "bg-v-red/5 border-v-red/40" : "bg-v-white/5 border-v-white/10"
                                     }`}>
                                         <div className="flex flex-col">
-                                            <span className="text-sm font-black uppercase italic tracking-wider flex items-center gap-2">
+                                            <span className="text-sm font-black uppercase italic tracking-wider flex items-center gap-2 pr-2">
                                                 {player.nickname}
-                                                {locked && <span className="text-[8px] bg-v-red text-v-white px-1 leading-tight py-0.5">🛡️ BLINDADO</span>}
+                                                {locked && <span className="text-[8px] bg-v-red text-v-white px-1 leading-tight py-0.5 shrink-0">🛡️ BLINDADO</span>}
                                             </span>
                                             <span className="text-[9px] text-v-white/40 font-bold uppercase tracking-widest leading-none mt-1">{player.role} // {player.pro_teams?.tag || "FA"}</span>
                                         </div>

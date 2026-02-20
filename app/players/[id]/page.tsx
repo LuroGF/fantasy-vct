@@ -58,7 +58,7 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
             
             <div>
               <div className="flex items-center gap-2 mb-1">
-                 <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none">{player.nickname}</h2>
+                 <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none pr-4">{player.nickname}</h2>
                  {stats.total_mvps > 0 && (
                    <span className="bg-yellow-500/20 text-yellow-500 text-[8px] font-black px-1.5 py-0.5 border border-yellow-500/50 rounded uppercase">
                      {stats.total_mvps}x MVP

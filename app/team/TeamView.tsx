@@ -122,6 +122,19 @@ export default function TeamView({
     return activePowerUps.some(ap => ap.target_player_id === playerId && ap.powerup_types?.code === 'CAPTAIN');
   };
 
+  const getBoostedRoles = useMemo(() => {
+    return activeCasters.map(ac => {
+      const code = ac.casters.buff_code;
+      if (code === 'KAQUKA_TACTICS') return 'Iniciador';
+      if (code === 'URI_CONTROL') return 'Centinela';
+      if (code === 'IKER_HEROIC') return 'Duelista';
+      if (code === 'LUIGI_STATS') return 'Controlador';
+      return null;
+    }).filter(Boolean);
+  }, [activeCasters]);
+
+  const hasUlisesBoost = useMemo(() => activeCasters.some(ac => ac.casters.buff_code === 'ULISES_HYPE'), [activeCasters]);
+
   async function handleActivate(powerUpTypeId: string, targetPlayerId?: string) {
     setConfirmDialog({
       show: true,
@@ -409,7 +422,7 @@ export default function TeamView({
         </div>
 
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-            {casters.map((caster) => {
+            {casters?.length > 0 ? casters.map((caster) => {
                 const isActive = activeCasters.some(ac => ac.caster_id === caster.id);
                 return (
                     <button 
@@ -436,7 +449,11 @@ export default function TeamView({
                         )}
                     </button>
                 );
-            })}
+            }) : (
+                <div className="w-full py-6 text-center border-2 border-dashed border-white/5 opacity-20 rounded-lg">
+                    <p className="text-[10px] font-black uppercase tracking-widest italic">No hay analistas disponibles</p>
+                </div>
+            )}
         </div>
 
         {(selectedCaster || activeCasters.length > 0) && (
@@ -526,6 +543,7 @@ export default function TeamView({
                   isLocked={isLocked(r.player_id)}
                   isCaptain={isCaptain(r.player_id)}
                   inAuction={auctions.some(a => a.player_id === r.player_id && a.seller_id === profileId)}
+                  isBoosted={(getBoostedRoles as any).includes(r.pro_players.role) || hasUlisesBoost}
                 />
             </div>
           ))}

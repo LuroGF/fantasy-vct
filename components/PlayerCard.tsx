@@ -27,6 +27,7 @@ interface PlayerCardProps {
   isLocked?: boolean;
   isCaptain?: boolean;
   inAuction?: boolean;
+  isBoosted?: boolean;
 }
 
 export function PlayerCard({ 
@@ -40,7 +41,8 @@ export function PlayerCard({
   secondActionClassName = "v-btn-secondary",
   isLocked,
   isCaptain,
-  inAuction
+  inAuction,
+  isBoosted
 }: PlayerCardProps) {
 
   const stats = player.stats || { acs: 0, kd: 0, avgPoints: 0 };
@@ -73,11 +75,12 @@ export function PlayerCard({
                 className="inline-block hover:text-v-red transition-colors focus:outline-none max-w-full"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-xl sm:text-2xl tracking-wider flex items-center gap-2 truncate">
-                  <span className="truncate">{player.nickname}</span>
+                <h3 className="text-xl sm:text-2xl tracking-wider flex items-center gap-2">
+                  <span className="truncate pr-2">{player.nickname}</span>
                   <div className="flex gap-1 shrink-0">
                     {isLocked && <span title="Protegido" className="text-v-red animate-pulse text-xs">🛡️</span>}
                     {isCaptain && <span title="Capitán" className="text-role-iniciador text-xs">©️</span>}
+                    {isBoosted && <span title="Analista Activo" className="text-amber-500 text-[8px] border border-amber-500/30 px-1 font-black animate-pulse">BOOST</span>}
                     {inAuction && <span className="text-[7px] bg-v-red text-white px-1.5 py-0.5 rounded-sm tracking-widest font-black self-center uppercase shrink-0">DRAFT</span>}
                   </div>
                 </h3>

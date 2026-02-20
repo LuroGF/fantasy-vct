@@ -370,7 +370,7 @@ export default function MarketView({
                                           Vendedor: <span className="text-white/80">{auction.profiles?.username || "SISTEMA"}</span>
                                        </p>
                                     </div>
-                                    <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-wider leading-none">{auction.pro_players?.nickname}</h3>
+                                    <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-wider leading-none pr-2 truncate">{auction.pro_players?.nickname}</h3>
                                     {myBid && (
                                        <div className="inline-flex items-center gap-2 mt-2 bg-v-red px-2 py-0.5 rounded-sm">
                                           <span className="text-[7px] font-black uppercase text-white tracking-widest whitespace-nowrap">TU OFERTA: {(myBid.bid_amount / 1000000).toFixed(1)}M VP</span>
@@ -472,7 +472,7 @@ export default function MarketView({
                               <div className="flex items-center gap-3 relative z-10">
                                 <div className="w-10 text-[9px] font-black uppercase text-v-red tracking-widest border-r border-white/5">{player.pro_teams?.tag || "FA"}</div>
                                 <div>
-                                  <p className="text-sm font-black uppercase italic leading-none group-hover:text-v-red transition-colors">{player.nickname}</p>
+                                  <p className="text-sm font-black uppercase italic leading-none group-hover:text-v-red transition-colors pr-2 truncate">{player.nickname}</p>
                                   <p className="text-[7px] font-black uppercase text-v-white/30 mt-1">{player.role}</p>
                                 </div>
                               </div>

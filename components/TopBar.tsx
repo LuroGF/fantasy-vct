@@ -17,6 +17,7 @@ export default function TopBar() {
     const [bonusStatus, setBonusStatus] = useState<{ canClaim: boolean }>({ canClaim: false });
     const [showNotifications, setShowNotifications] = useState(false);
     const [claiming, setClaiming] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
     const [claimMessage, setClaimMessage] = useState<string | null>(null);
 
     useEffect(() => {
@@ -24,10 +25,14 @@ export default function TopBar() {
             const session = await getSession();
             if (session) {
                 setUser(session.user);
-                const count = await getUnreadCount(session.user.id);
-                setUnreadCount(count);
                 const bonus = await getBonusStatus(session.user.id);
                 setBonusStatus(bonus);
+                
+                const { getUserNotifications, getUnreadCount } = await import("@/lib/actions/notifications");
+                const count = await getUnreadCount(session.user.id);
+                setUnreadCount(count);
+                const list = await getUserNotifications(session.user.id);
+                setNotifications(list.slice(0, 5));
             }
         }
         load();
@@ -166,8 +171,19 @@ export default function TopBar() {
                                                 </div>
                                             )}
 
+                                            {/* System Notifications List */}
+                                            {!bonusStatus.canClaim && notifications.map((n) => (
+                                                <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <p className="text-[10px] font-black uppercase text-v-red italic">{n.title}</p>
+                                                        <span className="text-[7px] text-white/20">{new Date(n.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-white/70 leading-tight">{n.message}</p>
+                                                </div>
+                                            ))}
+
                                             {/* Empty State */}
-                                            {!bonusStatus.canClaim && unreadCount === 0 && (
+                                            {!bonusStatus.canClaim && unreadCount === 0 && notifications.length === 0 && (
                                                 <div className="p-10 text-center space-y-3">
                                                     <div className="text-3xl opacity-10">📡</div>
                                                     <p className="text-[9px] uppercase text-white/20 font-black tracking-[0.3em] italic">
