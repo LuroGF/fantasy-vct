@@ -13,89 +13,21 @@ export async function createTradeOffer(
 ) {
   const supabase = await createClient();
   try {
-    // 1. Validate Ownership
-    if (senderPlayerId) {
-      const { data: senderRoster } = await supabase
-        .from('user_rosters')
-        .select('id')
-        .eq('league_id', leagueId)
-        .eq('profile_id', senderId)
-        .eq('player_id', senderPlayerId)
-        .single();
-      if (!senderRoster) throw new Error("No posees el agente que ofreces.");
-    }
-
-    if (receiverPlayerId) {
-      const { data: receiverRoster } = await supabase
-        .from('user_rosters')
-        .select('id')
-        .eq('league_id', leagueId)
-        .eq('profile_id', receiverId)
-        .eq('player_id', receiverPlayerId)
-        .single();
-      if (!receiverRoster) throw new Error("El destinatario no posee el agente solicitado.");
-    }
-
     if (!senderPlayerId && !receiverPlayerId) {
       throw new Error("El intercambio debe involucrar al menos un agente.");
     }
 
-    // 2. Validate Budget (if applicable)
-    if (cashOffer > 0) {
-      const { data: sender } = await supabase
-        .from('league_participants')
-        .select('current_budget')
-        .eq('league_id', leagueId)
-        .eq('profile_id', senderId)
-        .single();
-        
-      // Also check committed funds
-      const { data: committedBids } = await supabase
-        .from('user_bids')
-        .select('bid_amount, market_auctions!inner(status)')
-        .eq('profile_id', senderId)
-        .eq('market_auctions.status', 'active');
-      const committed = committedBids?.reduce((sum, b) => sum + Number(b.bid_amount), 0) || 0;
-      
-      if ((sender?.current_budget - committed) < cashOffer) {
-        throw new Error("Fondos insuficientes para realizar esta oferta.");
-      }
-    } else if (cashOffer < 0) {
-      // FIX Bug #4: Receiver must pay, check their committed funds too
-      const { data: receiver } = await supabase
-        .from('league_participants')
-        .select('current_budget')
-        .eq('league_id', leagueId)
-        .eq('profile_id', receiverId)
-        .single();
-      
-      const { data: receiverCommittedBids } = await supabase
-        .from('user_bids')
-        .select('bid_amount, market_auctions!inner(status)')
-        .eq('profile_id', receiverId)
-        .eq('market_auctions.status', 'active');
-      const receiverCommitted = receiverCommittedBids?.reduce((sum, b) => sum + Number(b.bid_amount), 0) || 0;
-      
-      if ((receiver?.current_budget - receiverCommitted) < Math.abs(cashOffer)) {
-        throw new Error("El destinatario no tiene fondos suficientes para esta oferta.");
-      }
-    }
-    
-    // 3. Create Offer
-    const { error } = await supabase
-      .from('trade_offers')
-      .insert({
-        league_id: leagueId,
-        sender_id: senderId,
-        receiver_id: receiverId,
-        sender_player_id: senderPlayerId,
-        receiver_player_id: receiverPlayerId,
-        cash_offer: cashOffer,
-        status: 'pending',
-        expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() // 48h
-      });
+    const { data: result, error: rpcError } = await supabase.rpc('handle_create_trade_offer', {
+        p_league_id: leagueId,
+        p_sender_id: senderId,
+        p_receiver_id: receiverId,
+        p_sender_player_id: senderPlayerId,
+        p_receiver_player_id: receiverPlayerId,
+        p_cash_offer: cashOffer
+    });
 
-    if (error) throw error;
+    if (rpcError) throw new Error("Error en la transmisión del intercambio.");
+    if (!result?.success) throw new Error(result?.message || "No se pudo crear la oferta.");
 
     revalidatePath("/market");
     revalidatePath("/team");

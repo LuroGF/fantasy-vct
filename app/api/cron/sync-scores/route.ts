@@ -21,13 +21,17 @@ export async function GET(request: Request) {
     console.log(`Cron: Sync Start. Madrid Time: ${madridTime.toISOString()} (${madridHour}h)`);
 
     // 0. SCRAPE & SYNC MATCHES (Ensure DB is up to date)
-    // This adds new matches and updates dates
+    const { fetchVlrMatches, scrapeMatchDetails } = await import("@/lib/vlr");
+    const { getMarketLockStatus, autoCreateMissingGameweeks } = await import("@/lib/gameweek-logic");
+
     try {
-        console.log("Cron: Actualizando lista de partidos desde VLR...");
-        await fetchVlrMatches();
+        console.log("Cron: Actualizando lista de partidos desde VLR y autogenerando jornadas...");
+        await Promise.all([
+          fetchVlrMatches(),
+          autoCreateMissingGameweeks(supabaseAdmin)
+        ]);
     } catch (e) {
-        console.error("Cron: Error scraping matches:", e);
-        // Continue execution, we can still process existing matches
+        console.error("Cron: Error in pre-sync steps:", e);
     }
 
     // 1. Obtener jornada activa
@@ -44,124 +48,52 @@ export async function GET(request: Request) {
     // --- CHECK IF ACTIVE GW SHOULD BE CLOSED ---
     if (activeGw && activeGw.end_date) {
         const endDate = new Date(activeGw.end_date);
-        // If the active GW end date is in the past, finalize and deactivate
-        if (now.getTime() > endDate.getTime() + 3600000) { // Give 1h margin
+        if (now.getTime() > endDate.getTime() + 3600000) { // 1h margin after Sunday
             console.log(`Cron: Finalizando Jornada ${activeGw.name} (ID: ${activeGw.id}) por fecha de fin alcanzada.`);
-            
-            // 1. Finalize scores (reward budget)
             await calculateGameweekScores(activeGw.id, true);
-            
-            // 2. Deactivate
             await (supabaseAdmin.from('gameweeks') as any).update({ is_active: false }).eq('id', activeGw.id);
-            
-            currentGw = null; // Look for the new one below
+            currentGw = null;
         }
     }
 
     if (!currentGw) {
-      console.log(`Cron: No hay jornada activa (o se acaba de cerrar). Buscando para la fecha actual: ${now.toISOString()}`);
-      
-      const { data: currentOrUpcoming, error: searchError } = await (supabaseAdmin
+      console.log(`Cron: Buscando jornada para activar...`);
+      const { data: nextStart } = await (supabaseAdmin
         .from('gameweeks')
         .select('*')
         .lte('start_date', now.toISOString())
-        .gte('end_date', now.toISOString())
+        .order('start_date', { ascending: false })
         .limit(1) as any)
         .maybeSingle();
-
-      if (searchError) console.error("Cron: Error buscando jornada actual:", searchError);
       
-      currentGw = currentOrUpcoming;
-
-      if (!currentGw) {
-        console.log("Cron: No se encontró jornada para hoy (lunes?). Buscando la próxima futura...");
-        const { data: nextStart } = await (supabaseAdmin
-          .from('gameweeks')
-          .select('*')
-          .gt('start_date', now.toISOString())
-          .order('start_date', { ascending: true })
-          .limit(1) as any)
-          .maybeSingle();
-        currentGw = nextStart;
-      }
+      currentGw = nextStart;
 
       if (currentGw) {
           console.log(`Cron: Activando Jornada: ${currentGw.name} (ID: ${currentGw.id})`);
-          // Deactivate ANY other just in case
           await (supabaseAdmin.from('gameweeks') as any).update({ is_active: false }).neq('id', currentGw.id);
-          // Activate this one
-          await (supabaseAdmin.from('gameweeks') as any).update({ is_active: true }).eq('id', currentGw.id);
+          await (supabaseAdmin.from('gameweeks') as any).update({ is_active: true, is_locked: false }).eq('id', currentGw.id);
           
-          // Reset weekly transfer counter and current week points for all participants
-          console.log(`Cron: Nueva jornada detectada. Reseteando contadores de transferencias...`);
-          await supabaseAdmin.from('league_participants').update({ 
-              transfers_made_this_week: 0
-          } as any);
-          
+          // Reset weekly transfer counter
+          await supabaseAdmin.from('league_participants').update({ transfers_made_this_week: 0 } as any);
           currentGw.is_active = true;
       } else {
-         console.log("Cron: No hay ninguna jornada registrada en la BBDD.");
-         return NextResponse.json({ message: "No hay jornadas registradas" });
+         return NextResponse.json({ message: "No hay jornadas registradas para activar" });
       }
     }
     
-    // De aquí en adelante usamos currentGw
     const activeGwId = currentGw.id;
-    console.log(`Cron: Procesando Jornada Activa ID: ${activeGwId} (${currentGw.name})`);
     
-    // 1. Obtener partidos de la jornada
-    const { data: gwMatches, error: matchesError } = await (supabaseAdmin
-      .from('matches')
-      .select('match_date, status, vlr_id')
-      .eq('gameweek_id', activeGwId) as any);
-
-    if (matchesError) console.error("Cron: Error cargando partidos de la jornada:", matchesError);
-      
-    let shouldLock = false; 
+    // --- B. UNIFORM LOCK LOGIC ---
+    // Instead of custom logic, use the same logic as the frontend
+    const lockStatus = await getMarketLockStatus(supabaseAdmin);
     
-    // --- WEEKLY CYCLE: LOCK ON TUE-THU (MADRID TIME) ---
-    const dayOfWeek = madridTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-    // Core competition days are Tuesday, Wednesday, Thursday
-    const isCoreMatchDays = (dayOfWeek >= 2 && dayOfWeek <= 4); 
-    
-    if (isCoreMatchDays) {
-        shouldLock = true;
+    if (currentGw.is_locked !== lockStatus.locked) {
+      console.log(`Cron: Transición de Bloqueo: ${currentGw.is_locked ? "CERRADO" : "ABIERTO"} -> ${lockStatus.locked ? "CERRADO" : "ABIERTO"} (Motivo: ${lockStatus.reason})`);
+      await (supabaseAdmin.from('gameweeks') as any).update({ is_locked: lockStatus.locked }).eq('id', currentGw.id);
+      currentGw.is_locked = lockStatus.locked;
     }
 
-    // --- DYNAMIC LOCK (5h before ANY match start) ---
-    if (gwMatches && gwMatches.length > 0) {
-        const nowMs = now.getTime();
-        const hasLive = gwMatches.some((m: any) => m.status === 'live');
-        
-        // Lock if any match starts in less than 5 hours (18,000,000 ms) OR if match is already live
-        const startsSoon = gwMatches.some((m: any) => {
-            if (m.status !== 'upcoming' || !m.match_date) return false;
-            const startTime = new Date(m.match_date).getTime();
-            const hoursDiff = (startTime - nowMs) / 3600000;
-            return startTime > nowMs && hoursDiff < 5;
-        });
-
-        if (hasLive || startsSoon) {
-            shouldLock = true;
-            if (startsSoon && !isCoreMatchDays) {
-                 console.log(`Cron: Bloqueo dinámico activado (Partido detectado en <5h)`);
-            }
-        }
-    }
-
-    // --- LATE MONDAY LOCK ---
-    // If it's Monday after 23:59, we lock for Tuesday prep
-    if (dayOfWeek === 1 && madridHour >= 23 && madridTime.getMinutes() >= 55) {
-        shouldLock = true;
-    }
-
-    if (currentGw.is_locked !== shouldLock) {
-      console.log(`Cron: Transición de Bloqueo: ${currentGw.is_locked ? "CERRADO" : "ABIERTO"} -> ${shouldLock ? "CERRADO" : "ABIERTO"}`);
-      await (supabaseAdmin.from('gameweeks') as any).update({ is_locked: shouldLock }).eq('id', currentGw.id);
-      (currentGw as any).is_locked = shouldLock;
-    }
-
-    // --- B. VINCULAR PARTIDOS ---
+    // --- C. LINK MATCHES TO ACTIVE GW ---
     await (supabaseAdmin
       .from('matches') as any)
       .update({ gameweek_id: currentGw.id })
@@ -207,7 +139,6 @@ export async function GET(request: Request) {
     const playerMap = new Map();
     playersData?.forEach((p) => playerMap.set(p.nickname.toLowerCase(), p.id));
 
-    const { scrapeMatchDetails } = await import('@/lib/vlr');
 
     for (const match of matchToSync) {
       if (!match.vlr_id) continue;
@@ -270,14 +201,20 @@ export async function GET(request: Request) {
                     fb: d.fb, fd: d.fd || 0, acs: d.acs || 0, clutches: d.clutches,
                     agent_name: d.agent_name,
                     agent_role: d.agent_role,
-                    mvp: false
+                    mvp: d.mvp || false
                 });
             }
         }
 
         if (performaceUpserts.length > 0) {
-            const maxAcs = Math.max(...performaceUpserts.map(p => p.acs));
-            const finalData = performaceUpserts.map(p => ({ ...p, mvp: p.acs === maxAcs }));
+            // MVP fallback: if none scraped, use highest ACS
+            const hasScrapedMvp = performaceUpserts.some(p => p.mvp);
+            let finalData = performaceUpserts;
+            
+            if (!hasScrapedMvp) {
+                const maxAcs = Math.max(...performaceUpserts.map(p => p.acs));
+                finalData = performaceUpserts.map(p => ({ ...p, mvp: (p.acs === maxAcs && p.acs > 0) }));
+            }
             
             await supabaseAdmin.from('player_performances').upsert(finalData as any, { onConflict: 'match_id,player_id,map_name' });
             

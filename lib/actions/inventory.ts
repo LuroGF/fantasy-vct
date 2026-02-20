@@ -80,75 +80,16 @@ export async function buyPowerUp(leagueId: string, profileId: string, powerUpCod
     
     if (iError || !item) throw new Error("Artículo no encontrado");
 
-    // 2. Check Points Balance
-    const { data: participant, error: pError } = await supabase
-      .from("league_participants")
-      .select("total_points")
-      .eq("league_id", leagueId)
-      .eq("profile_id", profileId)
-      .single();
+    // 2. Call Atomic RPC
+    const { data: result, error: rpcError } = await supabase.rpc('handle_buy_powerup', {
+        p_league_id: leagueId,
+        p_profile_id: profileId,
+        p_powerup_type_id: item.id,
+        p_price: item.base_price
+    });
 
-    if (pError || !participant) throw new Error("Error verificando puntos");
-    
-    const currentPoints = Number(participant.total_points || 0);
-    const price = Number(item.base_price);
-
-    if (currentPoints < price) {
-      throw new Error(`Puntos insuficientes (Tienes ${currentPoints}, necesitas ${price})`);
-    }
-
-    // 3. Process Purchase (Transaction)
-    
-    // A. Deduct Points
-    const { error: bError } = await supabase
-      .from("league_participants")
-      .update({ total_points: currentPoints - price })
-      .eq("league_id", leagueId)
-      .eq("profile_id", profileId);
-
-    if (bError) throw bError;
-
-    // B. Add to Inventory (Upsert)
-    // First check logic ( upsert might be tricky with unique constraints involving league/profile/type)
-    // We already defined unique constraint in DB migration.
-    
-    // We need to fetch existing to increment or handle upsert manually or use upsert
-    // Let's use upsert with onConflict. But we need current quantity.
-    // Easier to select then insert/update.
-    
-    const { data: existing } = await supabase
-        .from("user_inventory")
-        .select("id, quantity")
-        .eq("league_id", leagueId)
-        .eq("profile_id", profileId)
-        .eq("powerup_type_id", item.id)
-        .single();
-    
-    if (existing) {
-        await supabase
-          .from("user_inventory")
-          .update({ quantity: existing.quantity + 1 })
-          .eq("id", existing.id);
-    } else {
-        await supabase
-          .from("user_inventory")
-          .insert({
-              league_id: leagueId,
-              profile_id: profileId,
-              powerup_type_id: item.id,
-              quantity: 1
-          });
-    }
-
-    // C. Record Market Transaction (Optional but good for history)
-    await supabase.from("market_transactions")
-       .insert({
-           league_id: leagueId,
-           profile_id: profileId,
-           type: 'buy_item',
-           price: item.base_price,
-           player_id: null
-       });
+    if (rpcError) throw new Error("Error en la transmisión de datos.");
+    if (!result?.success) throw new Error(result?.message || "No se pudo realizar la compra.");
 
     revalidatePath("/shop");
     revalidatePath("/market");

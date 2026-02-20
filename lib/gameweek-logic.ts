@@ -134,3 +134,58 @@ export async function getMarketLockStatus(supabase: SupabaseClient, leagueId?: s
     return { locked: false };
 }
 
+/**
+ * Ensures there are always future gameweeks available.
+ * Usually run by CRON.
+ */
+export async function autoCreateMissingGameweeks(supabase: SupabaseClient) {
+    const { data: latest } = await supabase
+        .from('gameweeks')
+        .select('name, end_date')
+        .order('end_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    const now = new Date();
+    let startDate: Date;
+    let nextNum = 1;
+
+    if (latest) {
+        startDate = new Date(latest.end_date);
+        startDate.setSeconds(startDate.getSeconds() + 1); // Start right after
+        const match = latest.name.match(/\d+/);
+        if (match) nextNum = parseInt(match[0]) + 1;
+    } else {
+        // Start from last Monday if nothing exists
+        startDate = new Date();
+        const diff = startDate.getDay() === 0 ? 6 : startDate.getDay() - 1;
+        startDate.setDate(startDate.getDate() - diff);
+        startDate.setHours(0, 0, 0, 0);
+    }
+
+    // If latest gameweek ends in less than 7 days, create 2 more
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+    if (!latest || new Date(latest.end_date) < sevenDaysFromNow) {
+        console.log("Gameweek Logic: Creando jornadas futuras...");
+        for (let i = 0; i < 2; i++) {
+            const end = new Date(startDate);
+            end.setDate(end.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+
+            await supabase.from('gameweeks').insert({
+                name: `Jornada ${nextNum}`,
+                start_date: startDate.toISOString(),
+                end_date: end.toISOString(),
+                is_active: false,
+                is_locked: false
+            } as any);
+
+            startDate = new Date(end);
+            startDate.setSeconds(startDate.getSeconds() + 1);
+            nextNum++;
+        }
+    }
+}
+

@@ -213,15 +213,33 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
           .update({ global_points: globalTotal } as any)
           .eq("id", p.profile_id);
 
-        // --- FIXED: ONLY REWARD IF FINALIZED ---
+        // --- FIXED: ONLY REWARD IF FINALIZED AND NOT ALREADY REWARDED ---
         if (finalize) {
-          const reward = Math.floor(p.points_earned! * 50000);
-          const { data: currentP } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', p.league_id).eq('profile_id', p.profile_id).single();
-          if (currentP) {
-              await supabaseAdmin.from('league_participants')
-                  .update({ current_budget: Number(currentP.current_budget) + reward } as any)
-                  .eq('league_id', p.league_id)
-                  .eq('profile_id', p.profile_id);
+          const { data: scoreEntry } = await supabaseAdmin
+            .from('participant_scores_history')
+            .select('rewarded')
+            .eq('league_id', p.league_id)
+            .eq('profile_id', p.profile_id)
+            .eq('gameweek_id', gameweekId)
+            .single();
+
+          if (scoreEntry && !scoreEntry.rewarded) {
+            const reward = Math.floor(p.points_earned! * 50000);
+            const { data: currentP } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', p.league_id).eq('profile_id', p.profile_id).single();
+            if (currentP) {
+                await supabaseAdmin.from('league_participants')
+                    .update({ current_budget: Number(currentP.current_budget) + reward } as any)
+                    .eq('league_id', p.league_id)
+                    .eq('profile_id', p.profile_id);
+                
+                // Mark as rewarded
+                await supabaseAdmin
+                  .from('participant_scores_history')
+                  .update({ rewarded: true } as any)
+                  .eq('league_id', p.league_id!)
+                  .eq('profile_id', p.profile_id!)
+                  .eq('gameweek_id', gameweekId);
+            }
           }
         }
       }
@@ -281,12 +299,19 @@ async function updateGameweekRanks(gameweekId: number, finalize: boolean = false
               else if (up.rank_in_league === 3) bonus = 750000;
 
               if (bonus > 0) {
-                  const { data: current } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', up.league_id!).eq('profile_id', up.profile_id!).single();
-                  if (current) {
-                      await supabaseAdmin.from('league_participants')
-                          .update({ current_budget: Number(current.current_budget) + bonus } as any)
-                          .eq('league_id', up.league_id!)
-                          .eq('profile_id', up.profile_id!);
+                  // Check if ALREADY rewarded for this rank in this GW
+                  const { data: scoreEntry } = await supabaseAdmin.from('participant_scores_history').select('rewarded').eq('league_id', up.league_id!).eq('profile_id', up.profile_id!).eq('gameweek_id', gameweekId).single();
+                  
+                  if (scoreEntry && !scoreEntry.rewarded) {
+                      const { data: current } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', up.league_id!).eq('profile_id', up.profile_id!).single();
+                      if (current) {
+                          await supabaseAdmin.from('league_participants')
+                              .update({ current_budget: Number(current.current_budget) + bonus } as any)
+                              .eq('league_id', up.league_id!)
+                              .eq('profile_id', up.profile_id!);
+                          
+                          await supabaseAdmin.from('participant_scores_history').update({ rewarded: true } as any).eq('league_id', up.league_id!).eq('profile_id', up.profile_id!).eq('gameweek_id', gameweekId);
+                      }
                   }
               }
           }

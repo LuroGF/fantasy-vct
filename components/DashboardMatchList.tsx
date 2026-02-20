@@ -1,4 +1,4 @@
-import { fetchVlrMatches } from "@/lib/vlr";
+import { fetchVlrMatches, getTeamTag } from "@/lib/vlr";
 import Link from "next/link";
 
 export async function DashboardMatchList() {
@@ -55,7 +55,7 @@ export async function DashboardMatchList() {
                                 {/* Team A */}
                                 <div className="flex-1 flex items-center px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0">
                                     <div className="absolute -left-1 -bottom-3 text-3xl sm:text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
-                                        {teamA.substring(0, 3)}
+                                        {getTeamTag(teamA)}
                                     </div>
                                     <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:translate-x-1">
                                         {teamA}
@@ -100,7 +100,7 @@ export async function DashboardMatchList() {
                                 {/* Team B */}
                                 <div className="flex-1 flex items-center justify-end px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0 text-right">
                                      <div className="absolute -right-1 -bottom-3 text-3xl sm:text-4xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
-                                        {(teamB ?? "TBD").substring(0, 3)}
+                                        {getTeamTag(teamB ?? "TBD")}
                                     </div>
                                     <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate relative z-10 group-hover:text-v-red transition-all duration-300 group-hover:-translate-x-1">
                                         {teamB ?? "TBD"}

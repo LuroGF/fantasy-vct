@@ -14,6 +14,23 @@ export type VlrMatch = {
   eta?: string;
 };
 
+export interface PlayerStats {
+  vlr_id: string;
+  nickname: string;
+  teamTag: string;
+  map_name: string;
+  agent_name: string;
+  agent_role: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  fb: number;
+  fd: number;
+  acs: number;
+  clutches: number;
+  mvp?: boolean;
+}
+
 export type VlrPayload = {
   stats: { label: string; value: string }[];
   upcomingMatches: VlrMatch[];
@@ -22,23 +39,53 @@ export type VlrPayload = {
 
 const TEAM_ALIASES: Record<string, string> = {
   "FNATIC": "FNC",
+  "FNC": "FNC",
+  "VITALITY": "VIT",
+  "VIT": "VIT",
   "TEAM VITALITY": "VIT",
+  "HERETICS": "TH",
+  "TH": "TH",
   "TEAM HERETICS": "TH",
   "KARMINE CORP": "KC",
+  "KC": "KC",
   "NAVI": "NAVI",
   "NATUS VINCERE": "NAVI",
-  "BBL ESPORTS": "BBL",
-  "FUT ESPORTS": "FUT",
+  "BBL": "BBL",
+  "FUT": "FUT",
   "GIANTX": "GX",
+  "GX": "GX",
   "KOI": "KOI",
-  "PCIFIC ESPORTS": "PCF",
+  "MOVISTAR KOI": "KOI",
+  "LIQUID": "TL",
+  "TL": "TL",
   "TEAM LIQUID": "TL",
   "GENTLE MATES": "M8",
-  "ULF ESPORTS": "ULF",
+  "M8": "M8",
 };
 
 function cleanText(value: string | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? "";
+}
+
+function normalizeTeamName(name: string) {
+  let clean = name.toUpperCase()
+    .replace(/^TEAM\s+/i, "")
+    .replace(/\s+ESPORTS$/i, "")
+    .replace(/\s+CLUB$/i, "")
+    .trim();
+  
+  // Specific fixes
+  if (clean === "VIT") return "VITALITY";
+  if (clean === "TH") return "HERETICS";
+  if (clean === "KC") return "KARMINE CORP";
+  if (clean === "NAVI") return "Natus Vincere";
+  
+  return clean;
+}
+
+export function getTeamTag(name: string) {
+    const upper = name.toUpperCase();
+    return TEAM_ALIASES[upper] || name.substring(0, 3).toUpperCase();
 }
 
 function parseVlrDate(vlrDate: string, vlrTime: string): { date: Date, raw: boolean } | null {
@@ -139,7 +186,10 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
           const time = cleanText(card.find(".match-item-time").first().text());
           const eta = cleanText(card.find(".match-item-eta").first().text());
           const event = cleanText(card.find(".match-item-event").first().text());
-          const teams = card.find(".match-item-vs-team-name").map((__, team) => cleanText($(team).text())).get().filter(Boolean);
+          const teams = card.find(".match-item-vs-team-name").map((__, team) => {
+            const raw = cleanText($(team).text());
+            return normalizeTeamName(raw);
+          }).get().filter(Boolean);
           const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
           
           const eventUpper = event.toUpperCase();
@@ -194,11 +244,14 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
 
   if (referenceMatch && referenceMatch.date) {
     // Parse ETA
-    // "2h 30m" -> hours=2, minutes=30
-    const parts = referenceMatch.eta!.match(/(\d+)h\s*(\d+)?m?/);
-    if (parts) {
-        const h = parseInt(parts[1]);
-        const m = parseInt(parts[2] || "0");
+    // Parse ETA: support "2h 30m", "43m", "2h"
+    const hoursMatch = referenceMatch.eta!.match(/(\d+)h/);
+    const minsMatch = referenceMatch.eta!.match(/(\d+)m/);
+    
+    const h = hoursMatch ? parseInt(hoursMatch[1]) : 0;
+    const m = minsMatch ? parseInt(minsMatch[1]) : 0;
+    
+    if (h > 0 || m > 0) {
         const etaMs = (h * 60 * 60 * 1000) + (m * 60 * 1000);
         
         const now = Date.now();
@@ -363,7 +416,7 @@ const AGENT_ROLES: Record<string, string> = {
   'killjoy': 'Centinela', 'cypher': 'Centinela', 'sage': 'Centinela', 'chamber': 'Centinela', 'deadlock': 'Centinela', 'vyse': 'Centinela'
 };
 
-export async function scrapeMatchDetails(matchId: string): Promise<{ stats: any[], status: string } | null> {
+export async function scrapeMatchDetails(matchId: string): Promise<{ stats: PlayerStats[], status: string } | null> {
     const url = `https://www.vlr.gg/${matchId}`;
     
     try {
@@ -419,8 +472,8 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: any[
     }
 }
 
-function processVlrTable($: any, table: any, mapName: string) {
-    const results: any[] = [];
+function processVlrTable($: any, table: any, mapName: string): PlayerStats[] {
+    const results: PlayerStats[] = [];
     const rows = $(table).find("tr");
     const headerRow = rows.first();
     const dataRows = rows.slice(1);
@@ -451,10 +504,20 @@ function processVlrTable($: any, table: any, mapName: string) {
         const playerId = playerLink.split("/")[2] || "";
         
         let nickname = playerCell.find(".text-of").text().trim();
-        if (!nickname) nickname = playerCell.text().trim().split("\n")[0].trim();
+        if (!nickname) {
+            // Fallback: take the first text node (usually the nickname) and ignore children (like the tag)
+            nickname = playerCell.contents().filter((_: any, el: any) => el.type === 'text').text().trim();
+            if (!nickname) nickname = playerCell.text().trim().split("\n")[0].trim();
+        }
         
+        // Remove Tag from Nickname if it leaked in (e.g. "[FNC] Boaster" -> "Boaster")
+        nickname = nickname.replace(/^\[.*?\]\s*/, "").replace(/\s+\[.*?\]$/, "").trim();
+
         const teamTag = playerCell.find(".ge-text-light").text().trim();
         if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
+
+        // MVP Detection: check for .mod-vlr-mvp class or "MVP" text
+        const isMvp = playerCell.find(".mod-vlr-mvp").length > 0 || playerCell.text().includes("MVP");
 
         // Detección dinámica de agente: buscamos una imagen de agente en las primeras columnas
         let agentName = "";
@@ -493,7 +556,8 @@ function processVlrTable($: any, table: any, mapName: string) {
             fb: getStat(idx.fk),
             fd: getStat(idx.fd),
             acs: getStat(idx.acs),
-            clutches: getStat(idx.cl)
+            clutches: getStat(idx.cl),
+            mvp: isMvp
         });
     });
     return results;
@@ -568,17 +632,20 @@ export async function syncMatchesToDb(matches: VlrMatch[]) {
         const parts = m.teams.split(" vs ");
         if (parts.length < 2) continue;
 
-        let nameA = parts[0]?.toUpperCase() || "";
-        let nameB = parts[1]?.toUpperCase() || "";
+        const rawNameA = parts[0].trim();
+        const rawNameB = parts[1].trim();
         
-        const tagA = TEAM_ALIASES[nameA] || nameA;
-        const tagB = TEAM_ALIASES[nameB] || nameB;
+        const nameA = normalizeTeamName(rawNameA);
+        const nameB = normalizeTeamName(rawNameB);
         
-        let teamAId = teamMap.get(nameA) || teamMap.get(tagA);
-        let teamBId = teamMap.get(nameB) || teamMap.get(tagB);
+        const tagA = TEAM_ALIASES[nameA.toUpperCase()] || nameA.substring(0, 4).toUpperCase();
+        const tagB = TEAM_ALIASES[nameB.toUpperCase()] || nameB.substring(0, 4).toUpperCase();
         
-        if (!teamAId) teamAId = await getOrCreateTeam(parts[0]);
-        if (!teamBId) teamBId = await getOrCreateTeam(parts[1]);
+        let teamAId = teamMap.get(nameA.toUpperCase()) || teamMap.get(tagA);
+        let teamBId = teamMap.get(nameB.toUpperCase()) || teamMap.get(tagB);
+        
+        if (!teamAId) teamAId = await getOrCreateTeam(nameA);
+        if (!teamBId) teamBId = await getOrCreateTeam(nameB);
         
         if (!teamAId || !teamBId) {
             continue;

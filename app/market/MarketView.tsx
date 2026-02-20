@@ -174,28 +174,14 @@ export default function MarketView({
 
   const roles = ["Duelista", "Iniciador", "Controlador", "Centinela"];
 
-  // Filtering Logic
-  const filteredPersonalMarket = useMemo(() => 
-    personalMarket.filter(item => item.player?.nickname?.toLowerCase().includes(searchTerm.toLowerCase())),
-    [personalMarket, searchTerm]
-  );
+  const filteredPersonalMarket = useMemo(() => personalMarket, [personalMarket]);
 
   const filteredAuctions = useMemo(() => 
-    auctions.filter(item => {
-        const matchesSearch = item.pro_players?.nickname?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesRole = !activeFilter || item.pro_players?.role === activeFilter;
-        return matchesSearch && matchesRole;
-    }),
-    [auctions, searchTerm, activeFilter]
+    auctions.filter(item => !activeFilter || item.pro_players?.role === activeFilter),
+    [auctions, activeFilter]
   );
 
-  const filteredRivals = useMemo(() => 
-    rivals.map(r => ({
-        ...r,
-        roster: r.roster.filter((p: any) => p.nickname?.toLowerCase().includes(searchTerm.toLowerCase()))
-    })).filter(r => r.roster.length > 0 || searchTerm === ""),
-    [rivals, searchTerm]
-  );
+  const filteredRivals = useMemo(() => rivals, [rivals]);
   
   const myRoster = useMemo(() => {
       return initialLeagueRosters.filter(r => r.profile_id === profileId).map(r => r.pro_players);
@@ -252,18 +238,6 @@ export default function MarketView({
 
       {/* Search & Tabs */}
       <div className="v-panel p-4 space-y-4">
-        <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-v-white/20 group-focus-within:text-v-red transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-            <input 
-                type="text"
-                placeholder="BUSCAR AGENTE..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-v-navy/50 border border-white/5 pl-10 pr-4 py-3 text-[10px] font-black uppercase italic tracking-widest focus:border-v-red focus:bg-v-red/5 outline-none transition-all placeholder:text-v-white/10"
-            />
-        </div>
 
         <div className="flex bg-v-navy/80 p-1 border border-white/10 rounded-sm overflow-x-auto scrollbar-hide relative">
           {[

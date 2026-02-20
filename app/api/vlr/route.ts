@@ -60,6 +60,7 @@ export async function GET(request: Request) {
               acs: d.acs || 0,
               agent_name: d.agent_name,
               agent_role: d.agent_role,
+              mvp: d.mvp || false,
               map_name: d.map_name || "Map 1" // Ensure map_name is included for unique constraint
           };
         })
