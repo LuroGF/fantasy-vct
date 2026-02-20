@@ -4,8 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function getCasters() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const { supabaseAdmin } = await import("@/utils/supabase/admin");
+  const { data, error } = await supabaseAdmin
     .from("casters")
     .select("*")
     .order("base_price", { ascending: true });
@@ -14,13 +14,13 @@ export async function getCasters() {
     console.error("Error fetching casters:", error);
     return [];
   }
-  console.log(`Fetched ${data?.length || 0} casters from DB`);
+  console.log(`Fetched ${data?.length || 0} casters from DB (Admin Mode)`);
   return data || [];
 }
 
 export async function getActiveCasters(leagueId: string, profileId: string, gameweekId: number) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const { supabaseAdmin } = await import("@/utils/supabase/admin");
+  const { data, error } = await supabaseAdmin
     .from("active_casters")
     .select("*, casters(*)")
     .eq("league_id", leagueId)
