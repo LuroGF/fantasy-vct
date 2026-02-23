@@ -106,6 +106,9 @@ export function PlayerCard({
                                player.pro_teams.tag === 'NAVI' ? 'NAVI' :
                                player.pro_teams.tag === 'FUT' ? 'FUT' :
                                player.pro_teams.tag === 'BBL' ? 'BBL' :
+                               player.pro_teams.tag === 'VIT' ? 'Vitality' :
+                               player.pro_teams.tag === 'ULF' ? 'ULF' :
+                               player.pro_teams.tag === 'PCF' ? 'PCIFIC' :
                                player.pro_teams.tag}.png`}
                         alt={player.pro_teams.tag}
                         className="w-full h-full object-contain"
