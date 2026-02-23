@@ -95,7 +95,7 @@ export function PlayerCard({
               >
                 <div className="flex items-center gap-3">
                   {player.pro_teams?.tag && (
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/5 p-1 rounded-sm border border-white/5 shrink-0 flex items-center justify-center">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/15 p-1 rounded-sm border border-white/5 shrink-0 flex items-center justify-center">
                       <img 
                         src={`/equipos/${player.pro_teams.tag === 'FNC' ? 'FNATIC' : 
                                player.pro_teams.tag === 'TL' ? 'TeamLiquid' :

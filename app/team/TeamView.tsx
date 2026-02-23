@@ -424,7 +424,7 @@ export default function TeamView({
             )}
         </div>
 
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-4 overflow-x-auto p-2 scrollbar-hide">
             {availableCasters?.length > 0 ? availableCasters.map((caster) => {
                 const isActive = activeCasters.some(ac => ac.caster_id === caster.id);
                 return (
