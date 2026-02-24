@@ -39,7 +39,7 @@ export async function getPersonalMarket(leagueId: string, profileId: string) {
       p_profile_id: profileId 
     });
 
-  if (error) {
+  if (error || !data) {
     console.error("Error fetching personal market:", error);
     return [];
   }
@@ -144,13 +144,13 @@ export async function fetchActiveAuctions(leagueId: string, profileId?: string) 
       .eq('profile_id', profileId);
     
     const revealSet = new Set(reveals?.map((r: any) => r.auction_id));
-    return data.map((a: any) => ({
+    return (data || []).map((a: any) => ({
       ...a,
       is_revealed: revealSet.has(a.id)
     }));
   }
 
-  return data;
+  return data || [];
 }
 
 export async function revealAuction(leagueId: string, profileId: string, auctionId: string) {

@@ -183,7 +183,9 @@ export default function MarketView({
   const filteredRivals = useMemo(() => rivals, [rivals]);
   
   const myRoster = useMemo(() => {
-      return initialLeagueRosters.filter(r => r.profile_id === profileId).map(r => r.pro_players);
+      return initialLeagueRosters
+        .filter(r => r.profile_id === profileId && r.pro_players)
+        .map(r => r.pro_players);
   }, [initialLeagueRosters, profileId]);
 
   const incomingTrades = useMemo(() => trades.filter(t => t.receiver_id === profileId), [trades, profileId]);
@@ -472,7 +474,7 @@ export default function MarketView({
                               <div className="flex items-center gap-4 relative z-10">
                                   <div className="text-right border-r border-white/5 pr-4">
                                   <p className="text-[7px] font-black uppercase text-v-white/30 mb-0.5">Reasignación</p>
-                                  <p className="text-sm font-black italic text-v-red">{(player.release_clause / 1000000).toFixed(1)}M VP</p>
+                                  <p className="text-sm font-black italic text-v-red">{(Number(player.release_clause || player.market_value || 0) / 1000000).toFixed(1)}M VP</p>
                                 </div>
                               <div className="flex flex-col gap-1">
                                 <button
@@ -524,7 +526,7 @@ export default function MarketView({
                               <div key={trade.id} className="v-panel p-4 border-l-4 border-green-500 bg-v-navy/40 relative">
                                   <div className="flex justify-between items-start mb-4">
                                       <div>
-                                         <p className="text-[9px] font-black uppercase text-v-white/40 tracking-widest">De: {trade.sender?.username}</p>
+                                         <p className="text-[9px] font-black uppercase text-v-white/40 tracking-widest">De: {trade.sender?.username || 'Desconocido'}</p>
                                          <p className="text-[9px] font-black uppercase text-v-white/20 tracking-widest italic">{new Date(trade.created_at).toLocaleDateString()}</p>
                                       </div>
                                       <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
@@ -592,7 +594,7 @@ export default function MarketView({
                               <div key={trade.id} className="v-panel p-4 border-l-4 border-v-white/20 bg-v-navy/40 opacity-80 hover:opacity-100 transition-opacity">
                                    <div className="flex justify-between items-start mb-4">
                                       <div>
-                                         <p className="text-[9px] font-black uppercase text-v-white/40 tracking-widest">Para: {trade.receiver?.username}</p>
+                                         <p className="text-[9px] font-black uppercase text-v-white/40 tracking-widest">Para: {trade.receiver?.username || 'Desconocido'}</p>
                                          <p className="text-[9px] font-black uppercase text-v-white/20 tracking-widest italic">{new Date(trade.created_at).toLocaleDateString()}</p>
                                       </div>
                                       <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${

@@ -268,10 +268,12 @@ export async function getLeagueClassification(leagueId: string) {
   const rosterMap = new Map();
   rosters.forEach((r: any) => {
     if (!rosterMap.has(r.profile_id)) rosterMap.set(r.profile_id, []);
-    rosterMap.get(r.profile_id).push({
-        ...r.pro_players,
-        release_clause: r.release_clause
-    });
+    if (r.pro_players) {
+        rosterMap.get(r.profile_id).push({
+            ...r.pro_players,
+            release_clause: r.release_clause
+        });
+    }
   });
 
   // 5. Obtener bloqueos (LOCK) activos en esta liga/semana

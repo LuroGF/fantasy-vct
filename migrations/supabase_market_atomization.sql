@@ -387,3 +387,81 @@ EXCEPTION
         RETURN json_build_object('success', false, 'message', SQLERRM);
 END;
 $$;
+
+-- 7. ACCEPT TRADE OFFER ATOMIC
+CREATE OR REPLACE FUNCTION accept_trade_offer_atomic(
+    p_offer_id UUID,
+    p_receiver_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_offer RECORD;
+    v_sender_budget BIGINT;
+    v_receiver_budget BIGINT;
+    v_sender_roster_count INT;
+    v_receiver_roster_count INT;
+    v_sender_player_role TEXT;
+    v_receiver_player_role TEXT;
+BEGIN
+    -- 1. Lock and Validate Offer
+    SELECT * INTO v_offer FROM public.trade_offers WHERE id = p_offer_id FOR UPDATE;
+    IF v_offer IS NULL OR v_offer.status != 'pending' THEN
+        RETURN json_build_object('success', false, 'error', 'Oferta no disponible.');
+    END IF;
+    IF v_offer.receiver_id != p_receiver_id THEN
+        RETURN json_build_object('success', false, 'error', 'No eres el destinatario de esta oferta.');
+    END IF;
+
+    -- 2. Lock Participants
+    SELECT current_budget INTO v_sender_budget FROM public.league_participants 
+    WHERE league_id = v_offer.league_id AND profile_id = v_offer.sender_id FOR UPDATE;
+    SELECT current_budget INTO v_receiver_budget FROM public.league_participants 
+    WHERE league_id = v_offer.league_id AND profile_id = v_offer.receiver_id FOR UPDATE;
+
+    -- 3. Check Budgets
+    IF v_offer.cash_offer > 0 AND v_sender_budget < v_offer.cash_offer THEN
+        RETURN json_build_object('success', false, 'error', 'El ofertante ya no tiene fondos suficientes.');
+    END IF;
+    IF v_offer.cash_offer < 0 AND v_receiver_budget < ABS(v_offer.cash_offer) THEN
+        RETURN json_build_object('success', false, 'error', 'No tienes fondos suficientes para pagar.');
+    END IF;
+
+    -- 4. Execute Transfers
+    -- Sender -> Receiver
+    IF v_offer.sender_player_id IS NOT NULL THEN
+        DELETE FROM public.user_rosters WHERE league_id = v_offer.league_id AND profile_id = v_offer.sender_id AND player_id = v_offer.sender_player_id;
+        INSERT INTO public.user_rosters (league_id, profile_id, player_id, acquisition_price, slot_type, is_starter, is_active)
+        VALUES (v_offer.league_id, v_offer.receiver_id, v_offer.sender_player_id, 0, 'substitute', false, true);
+    END IF;
+
+    -- Receiver -> Sender
+    IF v_offer.receiver_player_id IS NOT NULL THEN
+        DELETE FROM public.user_rosters WHERE league_id = v_offer.league_id AND profile_id = v_offer.receiver_id AND player_id = v_offer.receiver_player_id;
+        INSERT INTO public.user_rosters (league_id, profile_id, player_id, acquisition_price, slot_type, is_starter, is_active)
+        VALUES (v_offer.league_id, v_offer.sender_id, v_offer.receiver_player_id, 0, 'substitute', false, true);
+    END IF;
+
+    -- 5. Execute Cash Transfer
+    IF v_offer.cash_offer != 0 THEN
+        UPDATE public.league_participants SET current_budget = current_budget - v_offer.cash_offer WHERE league_id = v_offer.league_id AND profile_id = v_offer.sender_id;
+        UPDATE public.league_participants SET current_budget = current_budget + v_offer.cash_offer WHERE league_id = v_offer.league_id AND profile_id = v_offer.receiver_id;
+    END IF;
+
+    -- 6. Log Transactions
+    IF v_offer.sender_player_id IS NOT NULL OR v_offer.receiver_player_id IS NOT NULL THEN
+        INSERT INTO public.market_transactions (league_id, profile_id, player_id, type, price)
+        VALUES (v_offer.league_id, v_offer.sender_id, v_offer.sender_player_id, 'trade', ABS(v_offer.cash_offer));
+    END IF;
+
+    -- 7. Update Offer State
+    UPDATE public.trade_offers SET status = 'accepted' WHERE id = p_offer_id;
+
+    RETURN json_build_object('success', true, 'message', 'Intercambio completado.');
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN json_build_object('success', false, 'error', SQLERRM);
+END;
+$$;

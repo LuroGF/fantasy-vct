@@ -42,7 +42,7 @@ export default async function MarketPage() {
     fetchActiveAuctions(activeLeagueId),
     supabase
       .from("user_rosters")
-      .select("*, profiles(username)")
+      .select("*, profiles(username), pro_players(*, pro_teams(tag))")
       .eq("league_id", activeLeagueId),
     supabase
       .from("active_powerups")

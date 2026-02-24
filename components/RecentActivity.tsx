@@ -37,6 +37,8 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
       case 'sell': return { icon: UserMinus, color: 'text-v-red', label: 'Baja' };
       case 'clause_paid': return { icon: Zap, color: 'text-v-role-iniciador', label: 'Reasignación' };
       case 'buy_item': return { icon: Cpu, color: 'text-v-role-controlador', label: 'Suministro' };
+      case 'trade': return { icon: UserPlus, color: 'text-blue-400', label: 'Intercambio' };
+      case 'auction_sold': return { icon: Zap, color: 'text-amber-400', label: 'Subasta' };
       default: return { icon: UserPlus, color: 'text-v-white/50', label: 'Operación' };
     }
   };

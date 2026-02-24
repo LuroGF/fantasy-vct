@@ -119,5 +119,5 @@ export async function getTrades(leagueId: string, userId: string) {
         console.error(error);
         return [];
     }
-    return offers;
+    return offers || [];
 }
