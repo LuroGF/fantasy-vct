@@ -101,22 +101,23 @@ export async function cancelTradeOffer(offerId: string, userId: string) {
 }
 
 export async function getTrades(leagueId: string, userId: string) {
-    const supabase = await createClient();
-    const { data: offers, error } = await supabase
+    const { supabaseAdmin } = await import("@/utils/supabase/admin");
+    const { data: offers, error } = await supabaseAdmin
         .from('trade_offers')
         .select(`
-            *,
-            sender_player:pro_players!trade_offers_sender_player_id_fkey(id, nickname, role, pro_teams(tag)),
-            receiver_player:pro_players!trade_offers_receiver_player_id_fkey(id, nickname, role, pro_teams(tag)),
-            sender:profiles!trade_offers_sender_id_fkey(username),
-            receiver:profiles!trade_offers_receiver_id_fkey(username)
+            id, league_id, sender_id, receiver_id, sender_player_id, receiver_player_id, 
+            cash_offer, status, created_at, expires_at,
+            sender_player:pro_players!sender_player_id(id, nickname, role),
+            receiver_player:pro_players!receiver_player_id(id, nickname, role),
+            sender:profiles!sender_id(username),
+            receiver:profiles!receiver_id(username)
         `)
         .eq('league_id', leagueId)
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error(error);
+        console.error("DEBUG TRADES ERROR:", error);
         return [];
     }
     return offers || [];
