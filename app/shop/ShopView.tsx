@@ -3,6 +3,8 @@
 import { useState, useTransition, useEffect, useMemo } from "react";
 import { PowerUpCard } from "@/components/PowerUpCard";
 import { buyPowerUp, getUserInventory } from "@/lib/actions/inventory";
+import { FeedbackBanner } from "@/components/FeedbackBanner";
+import { useRouter } from "next/navigation";
 
 import { haptic } from "@/lib/utils/haptics";
 
@@ -15,10 +17,11 @@ interface ShopViewProps {
 
 export function ShopView({ initialLeagues, userId, powerUps, initialInventory }: ShopViewProps) {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagues[0]?.league_id || initialLeagues[0]?.leagues?.id);
   const [inventory, setInventory] = useState(initialInventory);
   const [loadingInv, setLoadingInv] = useState(false);
-  const [status, setStatus] = useState({ type: "", message: "" });
+  const [status, setStatus] = useState<{ type: string; message: string } | null>(null);
 
   // Derive active participation to get points and league name
   const activeParticipation = useMemo(() => 
@@ -40,15 +43,17 @@ export function ShopView({ initialLeagues, userId, powerUps, initialInventory }:
     if (!confirm(`¿Confirmar compra del Power-Up ${powerUpCode}?`)) return;
 
     haptic.medium();
+    setStatus(null);
     startTransition(async () => {
        const res = await buyPowerUp(activeLeagueId, userId, powerUpCode);
        if (res.success) {
          haptic.success();
          setStatus({ type: "success", message: res.message || "Compra realizada" });
-         document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-         setTimeout(() => window.location.reload(), 1500);
+         router.refresh();
+         // Update inventory locally too for immediate feedback
+         const updatedInv = await getUserInventory(activeLeagueId, userId);
+         setInventory(updatedInv || []);
        } else {
-
          haptic.error();
          setStatus({ type: "error", message: res.error as string });
        }
@@ -61,16 +66,7 @@ export function ShopView({ initialLeagues, userId, powerUps, initialInventory }:
   };
 
   return (
-<div
-        className="
-  mx-auto
-  w-full
-  max-w-md sm:max-w-xl lg:max-w-4xl
-  px-4 sm:px-6
-  flex flex-col gap-8
-  animate-in fade-in slide-in-from-bottom-4 duration-700 py-6
-"
-      >      
+    <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-4xl px-4 sm:px-6 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 py-6">      
       {/* League Selector */}
       <div className="v-panel p-4 space-y-2">
         <label className="text-[8px] font-black uppercase text-v-white/40 ml-1 tracking-[0.2em]">Tienda Operativa en:</label>
@@ -95,20 +91,11 @@ export function ShopView({ initialLeagues, userId, powerUps, initialInventory }:
         )}
       </div>
 
-      {status.message && (
-        <div className={`v-panel p-3 text-[10px] font-black uppercase text-center tracking-widest animate-in slide-in-from-top-2 duration-300 ${
-          status.type === 'error' ? 'border-v-red text-v-red' : 
-          status.type === 'success' ? 'border-green-500 text-green-500' :
-          'border-v-white/20 text-v-white/50'
-        }`}>
-           {">>>"} {status.message}
-        </div>
-      )}
+      <FeedbackBanner status={status} />
 
       {/* Grid */}
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ${loadingInv ? 'opacity-50 pointer-events-none' : ''}`}>
         {powerUps.map((item) => (
-
           <PowerUpCard 
             key={item.id} 
             item={item} 

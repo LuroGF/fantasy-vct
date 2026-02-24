@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getPowerUpTypes, getUserInventory } from "@/lib/actions/inventory";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { ShopView } from "./ShopView";
-import { createClient } from "@/utils/supabase/server";
+import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +25,16 @@ export default async function ShopPage() {
   const powerUps = await getPowerUpTypes();
   const inventory = await getUserInventory(activeLeague.league_id, session.user.id);
   
-  return <ShopView 
-    initialLeagues={leagues} 
-    userId={session.user.id}
-    powerUps={powerUps} 
-    initialInventory={inventory || []} 
-  />;
-
+  return (
+    <ClientRefreshWrapper>
+      <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-4xl px-4 sm:px-6 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 py-6">
+        <ShopView 
+          initialLeagues={leagues} 
+          userId={session.user.id}
+          powerUps={powerUps} 
+          initialInventory={inventory || []} 
+        />
+      </div>
+    </ClientRefreshWrapper>
+  );
 }

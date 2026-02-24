@@ -52,6 +52,7 @@ export function PlayerCard({
     'Iniciador': 'border-role-iniciador',
     'Controlador': 'border-role-controlador',
     'Centinela': 'border-role-centinela',
+    'Flex': 'border-white/40',
   };
 
   const currentRoleColor = (roleColors as any)[player.role] || 'border-white/20';
@@ -108,7 +109,7 @@ export function PlayerCard({
                                player.pro_teams.tag === 'BBL' ? 'BBL' :
                                player.pro_teams.tag === 'VIT' ? 'Vitality' :
                                player.pro_teams.tag === 'ULF' ? 'ULF' :
-                               player.pro_teams.tag === 'PCIF' ? 'PCIFIC' :
+                               player.pro_teams.tag === 'PCIF' ? 'Pacific' :
                                player.pro_teams.tag}.png`}
                         alt={player.pro_teams.tag}
                         className="w-full h-full object-contain"
@@ -170,7 +171,7 @@ export function PlayerCard({
             <button 
               onClick={(e) => { e.stopPropagation(); onAction(); }}
               disabled={actionDisabled}
-              className={`${actionClassName} flex-1 sm:flex-none !px-3 !py-2 !text-[10px] disabled:opacity-30 disabled:grayscale`}
+              className={`${actionClassName} flex-1 sm:flex-none px-3! py-2! text-[10px]! disabled:opacity-30 disabled:grayscale`}
             >
               {actionLabel}
             </button>
@@ -178,7 +179,7 @@ export function PlayerCard({
           {onSecondAction && (
             <button 
               onClick={(e) => { e.stopPropagation(); onSecondAction(); }}
-              className={`${secondActionClassName} flex-1 sm:flex-none !px-3 !py-2 !text-[10px] hover:border-v-red hover:text-v-red`}
+              className={`${secondActionClassName} flex-1 sm:flex-none px-3! py-2! text-[10px]! hover:border-v-red hover:text-v-red`}
             >
               {secondActionLabel}
             </button>

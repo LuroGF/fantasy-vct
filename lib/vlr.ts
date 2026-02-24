@@ -47,13 +47,17 @@ const TEAM_ALIASES: Record<string, string> = {
   "TH": "TH",
   "TEAM HERETICS": "TH",
   "KARMINE CORP": "KC",
+  "K-CORP": "KC",
   "KC": "KC",
   "NAVI": "NAVI",
   "NATUS VINCERE": "NAVI",
   "BBL": "BBL",
+  "BBL ESPORTS": "BBL",
   "FUT": "FUT",
+  "FUT ESPORTS": "FUT",
   "GIANTX": "GX",
   "GX": "GX",
+  "GIANTS": "GX",
   "KOI": "KOI",
   "MOVISTAR KOI": "KOI",
   "LIQUID": "TL",
@@ -61,6 +65,7 @@ const TEAM_ALIASES: Record<string, string> = {
   "TEAM LIQUID": "TL",
   "GENTLE MATES": "M8",
   "M8": "M8",
+  "GENTLEMATES": "M8",
 };
 
 function cleanText(value: string | undefined) {

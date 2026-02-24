@@ -47,10 +47,17 @@
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
+      "name": "Tienda",
+      "short_name": "Tienda",
+      "description": "Comprar mejoras y consumibles",
+      "url": "/shop",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Clasificación",
       "short_name": "Ranking",
       "description": "Ver clasificación de tu liga",
-      "url": "/leaderboard",
+      "url": "/ranking",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],

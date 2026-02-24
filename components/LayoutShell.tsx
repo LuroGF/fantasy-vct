@@ -28,7 +28,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
           !isAuthPage && "lg:pl-72"
         )}
       >
-        {/* TopBar móvil (hidden on auth pages if desired, but user mainly complained about displacement) */}
+        {/* TopBar móvil */}
         {!isAuthPage && <TopBar />}
 
         {/* SCROLL AQUÍ */}

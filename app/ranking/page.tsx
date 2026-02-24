@@ -3,6 +3,7 @@ import { getSession } from "@/lib/actions/auth";
 import { redirect } from "next/navigation";
 import { getLeagueClassification, getUserLeagues } from "@/lib/actions/leagues";
 import { RankingView } from "./RankingView";
+import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 
 export default async function RankingPage() {
   const session = await getSession();
@@ -23,21 +24,23 @@ export default async function RankingPage() {
   const { standings, activeLocks } = await getLeagueClassification(activeLeagueId);
 
   return (
-    <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl py-4 flex flex-col gap-6">
-      <div className="flex items-end justify-between px-4 sm:px-6">
-        <div>
-          <h1 className="text-4xl leading-none italic uppercase font-black">Clasificación</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Líderes de Operación</p>
+    <ClientRefreshWrapper>
+      <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl py-6 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex items-end justify-between px-4 sm:px-6">
+          <div>
+            <h1 className="text-4xl leading-none italic uppercase font-black">Clasificación</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Líderes de Operación</p>
+          </div>
         </div>
-      </div>
 
-      <RankingView 
-        initialStandings={standings} 
-        initialLocks={activeLocks}
-        profileId={session.user.id} 
-        initialLeagues={leagues}
-        initialLeagueId={activeLeagueId}
-      />
-    </div>
+        <RankingView 
+          initialStandings={standings} 
+          initialLocks={activeLocks}
+          profileId={session.user.id} 
+          initialLeagues={leagues}
+          initialLeagueId={activeLeagueId}
+        />
+      </div>
+    </ClientRefreshWrapper>
   );
 }

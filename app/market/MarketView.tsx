@@ -6,6 +6,7 @@ import { buyPlayer, buyFromPersonalMarket, payClause, placeBid, createAuction, g
 import { createTradeOffer, getTrades, acceptTradeOffer, rejectTradeOffer, cancelTradeOffer } from "@/lib/actions/trades";
 import { PlayerCard } from "@/components/PlayerCard";
 import { useState, useMemo, useEffect } from "react";
+import { FeedbackBanner } from "@/components/FeedbackBanner";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -31,7 +32,7 @@ export default function MarketView({
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [isFinal, setIsFinal] = useState(false);
   const [legends, setLegends] = useState<any[]>([]);
-  const [status, setStatus] = useState({ type: "", message: "" });
+  const [status, setStatus] = useState<{ type: string; message: string } | null>(null);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [personalMarket, setPersonalMarket] = useState(initialPersonalMarket);
@@ -120,7 +121,7 @@ export default function MarketView({
   const handleAction = async (actionFn: () => Promise<any>) => {
     haptic.medium();
     setLoading(true);
-    setStatus({ type: "", message: "" });
+    setStatus(null);
     try {
       const res = await actionFn();
       if (res.success) {
@@ -131,12 +132,10 @@ export default function MarketView({
       } else {
         haptic.error();
         setStatus({ type: "error", message: res.error || "Error en la operación" });
-        document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (e) {
       haptic.error();
       setStatus({ type: "error", message: "Error inesperado" });
-      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setLoading(false);
   };
@@ -302,13 +301,7 @@ export default function MarketView({
         )}
       </div>
 
-      {status.message && (
-        <div className={`v-panel p-3 text-[10px] font-black uppercase text-center tracking-widest animate-in slide-in-from-top-2 duration-300 ${
-          status.type === 'error' ? 'border-v-red text-v-red' : 'border-green-500 text-green-500'
-        }`}>
-           {status.message}
-        </div>
-      )}
+      <FeedbackBanner status={status} />
 
       {/* Content Area */}
       <div className="space-y-6">
@@ -411,7 +404,7 @@ export default function MarketView({
                                        amount: (Math.max(auction.current_bid, myBid?.bid_amount || 0) + 500000).toString()
                                      });
                                    }}
-                                   className="v-btn-primary flex-1 !py-3 !text-[10px] italic shadow-xl"
+                                   className="v-btn-primary flex-1 py-3! text-[10px]! italic shadow-xl"
                                  >
                                    {myBid ? "MODIFICAR OFERTA" : "ENVIAR OFERTA ANÓNIMA"}
                                  </button>

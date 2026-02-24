@@ -13,7 +13,7 @@
   --valorant-white: #ece8e1;
   --valorant-dark-gray: #1f2326;
   --valorant-light-gray: #7b8084;
-  
+
   /* Role Colors */
   --duelista: #00f0ff;
   --iniciador: #ffea00;
@@ -28,7 +28,7 @@
   --color-v-navy: var(--valorant-navy);
   --color-v-white: var(--valorant-white);
   --color-v-gray: var(--valorant-dark-gray);
-  
+
   --color-role-duelista: var(--duelista);
   --color-role-iniciador: var(--iniciador);
   --color-role-controlador: var(--controlador);
@@ -36,10 +36,10 @@
 
   --font-valorant: "Oswald", sans-serif;
   --font-sans: "Inter", sans-serif;
-  
+
   --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
   --shadow-red: 0 0 20px rgba(255, 70, 85, 0.2);
-  
+
   --animate-shimmer: shimmer 2s infinite;
 }
 
@@ -50,9 +50,17 @@ html {
 
 body {
   background-color: var(--background);
-  background-image: 
-    radial-gradient(circle at 0% 0%, rgba(255, 70, 85, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 100% 100%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+  background-image:
+    radial-gradient(
+      circle at 0% 0%,
+      rgba(255, 70, 85, 0.08) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 100% 100%,
+      rgba(0, 240, 255, 0.05) 0%,
+      transparent 40%
+    ),
     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   color: var(--valorant-white);
   min-height: 100vh;
@@ -75,20 +83,27 @@ body {
 /* Valorant-style sharp buttons */
 @utility v-btn {
   @apply relative inline-flex items-center justify-center px-8 py-4 font-black uppercase tracking-[0.15em] transition-all duration-300 overflow-hidden active:scale-95;
-  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  clip-path: polygon(
+    12px 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%,
+    0 12px
+  );
   font-family: var(--font-valorant);
 }
 
 @utility v-btn-primary {
   @apply v-btn bg-v-red text-white hover:brightness-110 hover:shadow-red;
-  
+
   &::after {
-    content: '';
-    @apply absolute inset-0 bg-white/20 translate-x-[-100%] transition-transform duration-500 skew-x-12;
+    content: "";
+    @apply absolute inset-0 bg-white/20 -translate-x-full transition-transform duration-500 skew-x-12;
   }
-  
+
   &:hover::after {
-    @apply translate-x-[100%];
+    @apply translate-x-full;
   }
 }
 
@@ -97,15 +112,28 @@ body {
 }
 
 /* Typography */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   font-family: var(--font-valorant);
   @apply font-black uppercase italic tracking-wider;
 }
 
-.text-role-Duelista { color: var(--duelista); }
-.text-role-Iniciador { color: var(--iniciador); }
-.text-role-Controlador { color: var(--controlador); }
-.text-role-Centinela { color: var(--centinela); }
+.text-role-Duelista {
+  color: var(--duelista);
+}
+.text-role-Iniciador {
+  color: var(--iniciador);
+}
+.text-role-Controlador {
+  color: var(--controlador);
+}
+.text-role-Centinela {
+  color: var(--centinela);
+}
+.text-role-Flex {
+  color: var(--valorant-light-gray);
+}
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
@@ -123,22 +151,42 @@ h1, h2, h3 {
 
 /* Animations */
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes scan {
-  0% { top: 0% }
-  100% { top: 100% }
+  0% {
+    top: 0%;
+  }
+  100% {
+    top: 100%;
+  }
 }
 
 @keyframes glitch-skew {
-  0% { transform: skew(0deg); }
-  20% { transform: skew(-2deg); }
-  40% { transform: skew(3deg); }
-  60% { transform: skew(-1deg); }
-  80% { transform: skew(2deg); }
-  100% { transform: skew(0deg); }
+  0% {
+    transform: skew(0deg);
+  }
+  20% {
+    transform: skew(-2deg);
+  }
+  40% {
+    transform: skew(3deg);
+  }
+  60% {
+    transform: skew(-1deg);
+  }
+  80% {
+    transform: skew(2deg);
+  }
+  100% {
+    transform: skew(0deg);
+  }
 }
 
 .animate-scan {
@@ -152,7 +200,7 @@ h1, h2, h3 {
 @utility v-card-animated {
   @apply relative overflow-hidden bg-v-gray/40 backdrop-blur-xl border border-white/5 rounded-sm transition-all duration-500;
   &::before {
-    content: '';
+    content: "";
     @apply absolute top-0 left-0 w-1 h-full bg-v-red scale-y-0 transition-transform duration-500 origin-top;
   }
   &:hover {
@@ -175,12 +223,25 @@ h1, h2, h3 {
 @media (max-width: 640px) {
   .v-btn {
     @apply px-6 py-3 text-[10px];
-    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+    clip-path: polygon(
+      8px 0,
+      100% 0,
+      100% calc(100% - 8px),
+      calc(100% - 8px) 100%,
+      0 100%,
+      0 8px
+    );
   }
-  
-  h1 { @apply text-3xl; }
-  h2 { @apply text-xl; }
-  h3 { @apply text-lg; }
+
+  h1 {
+    @apply text-3xl;
+  }
+  h2 {
+    @apply text-xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
 }
 
 /* Redefine v-panel for better contrast */

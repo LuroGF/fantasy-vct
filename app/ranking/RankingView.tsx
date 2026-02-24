@@ -7,6 +7,8 @@ import { haptic } from "@/lib/utils/haptics";
 import { useRouter } from "next/navigation";
 import { getLeagueClassification } from "@/lib/actions/leagues";
 
+import { FeedbackBanner } from "@/components/FeedbackBanner";
+
 interface RankingViewProps {
     initialStandings: any[];
     initialLocks: string[];
@@ -100,13 +102,7 @@ export function RankingView({
                 </select>
             </div>
 
-            {status && (
-                <div className={`p-4 border-l-2 font-black uppercase text-xs animate-in slide-in-from-top-2 duration-300 ${
-                    status.type === 'success' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-v-red/10 border-v-red text-v-red'
-                }`}>
-                    {status.message}
-                </div>
-            )}
+            <FeedbackBanner status={status} />
 
             <div className={`v-panel p-4 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div className="flex items-center justify-between mb-4">
@@ -166,7 +162,7 @@ export function RankingView({
                     <div className="v-panel max-w-lg w-full max-h-[80vh] overflow-y-auto flex flex-col p-6 gap-6 scrollbar-hide">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-black italic uppercase italic leading-none">Escuadra de {selectedTeam.profiles.username}</h2>
+                                <h2 className="text-2xl font-black italic uppercase leading-none">Escuadra de {selectedTeam.profiles.username}</h2>
                                 <p className="text-[8px] uppercase tracking-widest text-v-red font-black mt-1">Inteligencia de Mercado</p>
                             </div>
                             <button onClick={() => setSelectedTeam(null)} className="v-btn-secondary px-3 py-1 text-[8px]">Cerrar</button>
@@ -211,7 +207,7 @@ export function RankingView({
 
             {/* Confirmación de Pago */}
             {confirmPay && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
                     <div className="v-panel max-w-xs w-full p-6 text-center space-y-6 border-t-4 border-v-red">
                         <div className="space-y-2 text-center">
                             <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">Confirmación</p>

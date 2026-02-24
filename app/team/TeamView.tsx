@@ -6,6 +6,7 @@ import { setStarterStatus, getUserFullRoster } from "@/lib/actions/roster";
 import Link from "next/link";
 import { haptic } from "@/lib/utils/haptics";
 import { useRouter } from "next/navigation";
+import { FeedbackBanner } from "@/components/FeedbackBanner";
 
 interface TeamViewProps {
   initialRoster: any[];
@@ -38,7 +39,7 @@ export default function TeamView({
   const [activePowerUps, setActivePowerUps] = useState(initialActivePowerUps);
   const [activeCasters, setActiveCasters] = useState(initialActiveCasters);
   const [availableCasters, setAvailableCasters] = useState(casters);
-  const [status, setStatus] = useState({ type: "", message: "" });
+  const [status, setStatus] = useState<{ type: string; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [auctions, setAuctions] = useState<any[]>([]);
   const [selectedPowerUp, setSelectedPowerUp] = useState<any>(null);
@@ -49,6 +50,8 @@ export default function TeamView({
     player: null,
     price: ""
   });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   const [confirmDialog, setConfirmDialog] = useState<{ show: boolean; title: string; message: string; onConfirm: (() => void) | null }>({
     show: false,
     title: "",
@@ -86,7 +89,7 @@ export default function TeamView({
       setLoading(false);
     }
     if (activeLeagueId) loadData();
-  }, [activeLeagueId, profileId, activeGameweekId]);
+  }, [activeLeagueId, profileId, activeGameweekId, refreshTrigger]);
 
   async function handleHireCaster(casterId: string, nickname: string) {
     setConfirmDialog({
@@ -103,7 +106,8 @@ export default function TeamView({
           haptic.success();
           setStatus({ type: "success", message: `Contrato firmado con ${nickname}` });
           setSelectedCaster(null);
-          window.location.reload();
+          setRefreshTrigger(prev => prev + 1);
+          router.refresh(); // Replace reload with refresh
         } else {
           haptic.error();
           setStatus({ type: "error", message: res.error as string });
@@ -152,12 +156,11 @@ export default function TeamView({
         if (res.success) {
           haptic.success();
           setStatus({ type: "success", message: res.message || "Carta activada" });
-          document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-          window.location.reload(); 
+          setRefreshTrigger(prev => prev + 1);
+          router.refresh();
         } else {
           haptic.error();
           setStatus({ type: "error", message: res.error as string });
-          document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
         }
         setSelectedPowerUp(null);
         setLoading(false);
@@ -178,13 +181,11 @@ export default function TeamView({
         // Check limits
         if (newSlot === 'starter' && starters.length >= 5) {
             setStatus({ type: "error", message: "Máximo 5 titulares." });
-            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
             setLoading(false);
             return;
         }
         if (newSlot === 'substitute' && substitutes.length >= 5) {
             setStatus({ type: "error", message: "Máximo 5 suplentes." });
-            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
             setLoading(false);
             return;
         }
@@ -197,16 +198,15 @@ export default function TeamView({
           setRoster(prev => prev.map(r => 
             r.player_id === player_id ? { ...r, slot_type: newSlot, is_starter: newSlot === 'starter' } : r
           ));
+          setRefreshTrigger(prev => prev + 1);
           router.refresh(); // Sync potential swaps
           setStatus({ 
             type: "success", 
             message: `${nickname} movido a ${newSlot === 'starter' ? 'Titulares' : 'Suplentes'}` 
           });
-          document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
           haptic.error();
           setStatus({ type: "error", message: res.error as string });
-          document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
         }
         setLoading(false);
       }
@@ -233,21 +233,18 @@ export default function TeamView({
     if (isNaN(startingPrice) || startingPrice <= 0) {
       haptic.error();
       setStatus({ type: "error", message: "Precio inválido" });
-      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (startingPrice < minPrice) {
       haptic.error();
       setStatus({ type: "error", message: `Precio mínimo: ${(minPrice / 1000000).toFixed(2)}M VP (valor base - 20%)` });
-      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (startingPrice > maxPrice) {
       haptic.error();
       setStatus({ type: "error", message: `Precio máximo: ${(maxPrice / 1000000).toFixed(2)}M VP (valor base + 15%)` });
-      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -261,12 +258,11 @@ export default function TeamView({
     if (res.success) {
       haptic.success();
       setStatus({ type: "success", message: `Subasta de ${player.nickname} creada. Duración: 24h` });
-      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => window.location.reload(), 1500);
+      setRefreshTrigger(prev => prev + 1);
+      router.refresh();
     } else {
       haptic.error();
       setStatus({ type: "error", message: res.error as string });
-      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setLoading(false);
   }
@@ -308,15 +304,7 @@ export default function TeamView({
         )}
       </div>
 
-      {status.message && (
-        <div className={`v-panel p-3 text-[10px] font-black uppercase text-center tracking-widest animate-in slide-in-from-top-2 duration-300 ${
-          status.type === 'error' ? 'border-v-red text-v-red' : 
-          status.type === 'success' ? 'border-green-500 text-green-500' :
-          'border-v-white/20 text-v-white/50'
-        }`}>
-           {">>>"} {status.message}
-        </div>
-      )}
+      <FeedbackBanner status={status} />
 
       {/* Inventario de Cartas */}
       <div className="v-panel p-4 space-y-4">
