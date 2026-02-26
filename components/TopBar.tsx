@@ -133,7 +133,9 @@ export default function TopBar() {
                                     <div className="v-panel bg-v-gray/95 border-v-red/20 shadow-2xl p-0 overflow-hidden">
                                         <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">Notificaciones</h3>
-                                            <span className="text-[8px] font-black text-white/20">SYSTEM v2.0</span>
+                                            <span className="text-[8px] font-black text-white/20">
+                                                {unreadCount > 0 ? `${unreadCount} NUEVA${unreadCount > 1 ? 'S' : ''}` : 'SYSTEM v2.0'}
+                                            </span>
                                         </div>
                                         
                                         <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
@@ -175,7 +177,10 @@ export default function TopBar() {
                                             {!bonusStatus.canClaim && notifications.map((n) => (
                                                 <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
                                                     <div className="flex justify-between items-start mb-1">
-                                                        <p className="text-[10px] font-black uppercase text-v-red italic">{n.title}</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                          <p className="text-[10px] font-black uppercase text-v-red italic">{n.title}</p>
+                                                          {!n.is_read && <span className="text-[7px] px-1 py-0.5 bg-v-red text-white uppercase font-black tracking-wider">Nuevo</span>}
+                                                        </div>
                                                         <span className="text-[7px] text-white/20">{new Date(n.created_at).toLocaleDateString()}</span>
                                                     </div>
                                                     <p className="text-[10px] text-white/70 leading-tight">{n.message}</p>
@@ -210,4 +215,3 @@ export default function TopBar() {
         </header>
     );
 }
-

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { validatePlayerActionAvailability } from "./player-action-guards";
 
 export async function createTradeOffer(
   leagueId: string, 
@@ -15,6 +16,26 @@ export async function createTradeOffer(
   try {
     if (!senderPlayerId && !receiverPlayerId) {
       throw new Error("El intercambio debe involucrar al menos un agente.");
+    }
+
+    if (senderPlayerId) {
+      await validatePlayerActionAvailability({
+        supabase,
+        leagueId,
+        playerId: senderPlayerId,
+        actionLabel: "ofrecerlo en intercambio",
+        ignorePendingTradeForProfileId: senderId,
+      });
+    }
+
+    if (receiverPlayerId) {
+      await validatePlayerActionAvailability({
+        supabase,
+        leagueId,
+        playerId: receiverPlayerId,
+        actionLabel: "solicitarlo en intercambio",
+        ignorePendingTradeForProfileId: receiverId,
+      });
     }
 
     const { data: result, error: rpcError } = await supabase.rpc('handle_create_trade_offer', {
