@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { validatePlayerActionAvailability } from "./player-action-guards";
 
 export interface Team {
   tag: string;
@@ -185,6 +186,14 @@ export async function revealAuction(leagueId: string, profileId: string, auction
 export async function createAuction(leagueId: string, profileId: string, playerId: string, startingPrice: number) {
   const supabase = await createClient();
   try {
+    await validatePlayerActionAvailability({
+      supabase,
+      leagueId,
+      playerId,
+      actionLabel: "subastarlo",
+      ignorePendingTradeForProfileId: profileId,
+    });
+
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // 24h auction
 
@@ -248,6 +257,14 @@ export async function withdrawBid(auctionId: string, profileId: string) {
 export async function sellPlayer(leagueId: string, profileId: string, playerId: string) {
   const supabase = await createClient();
   try {
+    await validatePlayerActionAvailability({
+      supabase,
+      leagueId,
+      playerId,
+      actionLabel: "liberarlo",
+      ignorePendingTradeForProfileId: profileId,
+    });
+
     const { data: playerData } = await supabase
         .from('pro_players')
         .select('market_value, nickname')
