@@ -19,6 +19,7 @@ interface PlayerCardProps {
   };
   onAction?: () => void;
   actionLabel?: string;
+  actionSubLabel?: string;
   actionDisabled?: boolean;
   actionClassName?: string;
   onSecondAction?: () => void;
@@ -34,6 +35,7 @@ export function PlayerCard({
   player, 
   onAction, 
   actionLabel = "Asignar",
+  actionSubLabel,
   actionDisabled = false,
   actionClassName = "v-btn-primary",
   onSecondAction,
@@ -58,9 +60,8 @@ export function PlayerCard({
   const currentRoleColor = (roleColors as any)[player.role] || 'border-white/20';
 
   return (
-    <div className={`v-panel border-l-4 ${currentRoleColor} group hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all overflow-hidden`}>
-      {/* Background Decor */}
-      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+    <div className={`v-panel relative border-l-4 ${currentRoleColor} group hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all overflow-hidden`}>      {/* Background Decor */}
+      <div className="absolute top-0 right-0 group-hover:opacity-10 transition-opacity" style={{ opacity: 0.015 }}>
          {player.pro_teams?.tag ? (
            <img 
              src={`/equipos/${player.pro_teams.tag === 'FNC' ? 'FNATIC' : 
@@ -72,9 +73,12 @@ export function PlayerCard({
                     player.pro_teams.tag === 'NAVI' ? 'NAVI' :
                     player.pro_teams.tag === 'FUT' ? 'FUT' :
                     player.pro_teams.tag === 'BBL' ? 'BBL' :
+                    player.pro_teams.tag === 'VIT' ? 'Vitality' :
+                    player.pro_teams.tag === 'ULF' ? 'ULF' :
+                    player.pro_teams.tag === 'PCIF' ? 'PCIFIC' :
                     player.pro_teams.tag}.png`}
              alt=""
-             className="w-24 h-24 object-contain grayscale brightness-200"
+             className="w-48 h-48 object-contain grayscale brightness-200"
              onError={(e) => { e.currentTarget.style.display = 'none' }}
            />
          ) : (
@@ -109,7 +113,7 @@ export function PlayerCard({
                                player.pro_teams.tag === 'BBL' ? 'BBL' :
                                player.pro_teams.tag === 'VIT' ? 'Vitality' :
                                player.pro_teams.tag === 'ULF' ? 'ULF' :
-                               player.pro_teams.tag === 'PCIF' ? 'Pacific' :
+                               player.pro_teams.tag === 'PCIF' ? 'PCIFIC' :
                                player.pro_teams.tag}.png`}
                         alt={player.pro_teams.tag}
                         className="w-full h-full object-contain"
@@ -128,7 +132,7 @@ export function PlayerCard({
                   </h3>
                 </div>
               </Link>
-              <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
+              <div className="flex items-center gap-2 mt-0.5 ml-11 lg:ml-14 overflow-hidden">
                 <span className="text-[9px] font-black uppercase tracking-[0.15em] text-v-red truncate">
                   {player.pro_teams?.tag || "Free Agent"}
                 </span>
@@ -149,7 +153,7 @@ export function PlayerCard({
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-1 bg-white/5 rounded-sm p-2 mb-3">
+          <div className="grid grid-cols-3 gap-1 bg-white/5 rounded-sm p-2 mt-3">
              <div className="text-center">
                 <span className="block text-[6px] uppercase text-white/40 font-black tracking-wider">Points</span>
                 <span className="text-xs font-black italic text-v-red">{stats.avgPoints ?? 0}</span>
@@ -171,15 +175,23 @@ export function PlayerCard({
             <button 
               onClick={(e) => { e.stopPropagation(); onAction(); }}
               disabled={actionDisabled}
-              className={`${actionClassName} flex-1 sm:flex-none px-3! py-2! text-[10px]! disabled:opacity-30 disabled:grayscale`}
+              className={`${actionClassName}  flex-1 lg:flex lg:flex-col sm:flex-none px-3! py-2! text-[10px]! disabled:opacity-30 disabled:grayscale`}
             >
-              {actionLabel}
+                <span className="text-[10px] font-black uppercase tracking-wider">
+                  {actionLabel}
+                </span>
+
+                {!!actionSubLabel && (
+                  <span className="text-[10px] pl-1 lg:pl-0 font-black uppercase tracking-wider">
+                    {actionSubLabel}
+                  </span>
+                )}
             </button>
           )}
           {onSecondAction && (
             <button 
               onClick={(e) => { e.stopPropagation(); onSecondAction(); }}
-              className={`${secondActionClassName} flex-1 sm:flex-none px-3! py-2! text-[10px]! hover:border-v-red hover:text-v-red`}
+              className={`${secondActionClassName} flex flex-col sm:flex-none px-3! py-2! text-[10px]! hover:border-v-red hover:text-v-red`}
             >
               {secondActionLabel}
             </button>

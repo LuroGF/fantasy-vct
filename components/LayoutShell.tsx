@@ -35,7 +35,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         <main
           id="main-content"
           className={cn(
-            "w-full overflow-y-auto overscroll-contain lg:pb-2 custom-scrollbar relative z-10",
+            "w-full overflow-y-auto overscroll-contain custom-scrollbar relative z-10",
             !isAuthPage ? "h-[calc(100%-7.5rem)] lg:h-[calc(100%-3.5rem)]" : "h-full"
           )}
         >
