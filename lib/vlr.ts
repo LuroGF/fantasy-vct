@@ -146,6 +146,8 @@ function parseVlrDate(vlrDate: string, vlrTime: string): { date: Date, raw: bool
 }
 
 export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayload> {
+  const upcomingPageCount = Math.min(Math.max(limitPages, 1), 3);
+
   const fetchPage = async (url: string) => {
     const response = await fetch(url, {
       headers: {
@@ -159,8 +161,8 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
   };
 
   const promises = [fetchPage(VLR_MATCHES_URL)];
-  if (limitPages >= 2) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=2`));
-  if (limitPages >= 3) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=3`));
+  if (upcomingPageCount >= 2) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=2`));
+  if (upcomingPageCount >= 3) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=3`));
   
   // Results pages
   promises.push(fetchPage("https://www.vlr.gg/matches/results"));
@@ -170,9 +172,8 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
   const responses = await Promise.all(promises);
   
   // Upcoming matches are usually the first few pages (1 to 3)
-  const upcomingHtmls = responses.slice(0, 3);
-  // Results are the rest (4 to 6)
-  const resultsHtmls = responses.slice(3);
+  const upcomingHtmls = responses.slice(0, upcomingPageCount);
+  const resultsHtmls = responses.slice(upcomingPageCount);
 
   if (upcomingHtmls.length === 0) throw new Error("VLR page 1 fetch failed");
   

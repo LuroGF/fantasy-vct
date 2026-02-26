@@ -10,6 +10,30 @@ const EMEA_TIER1_TEAMS = [
   "FNC", "VIT", "TH", "KC", "NAVI", "BBL", "FUT", "GX", "GIA", "KOI", "TL", "M8", "GENTLE MATES", "HERETICS", "GIANTX"
 ];
 
+const TEAM_ALIASES: Record<string, string> = {
+  "FNATIC": "FNC",
+  "TEAM VITALITY": "VIT",
+  "VITALITY": "VIT",
+  "HERETICS": "TH",
+  "TEAM HERETICS": "TH",
+  "KARMINE CORP": "KC",
+  "NATUS VINCERE": "NAVI",
+  "BBL ESPORTS": "BBL",
+  "FUT ESPORTS": "FUT",
+  "GIANTX": "GX",
+  "GIANTS": "GX",
+  "MOVISTAR KOI": "KOI",
+  "TEAM LIQUID": "TL",
+  "LIQUID": "TL",
+  "GENTLE MATES": "M8",
+  "GENTLEMATES": "M8",
+};
+
+function normalizeTeamTag(raw: string) {
+  const clean = raw.replace(/\s+/g, " ").trim().toUpperCase();
+  return TEAM_ALIASES[clean] || clean;
+}
+
 interface ScrapedPlayer {
   nickname: string;
   teamTag: string;
@@ -29,7 +53,7 @@ export async function GET() {
     const emeaTags = new Set(dbTeams?.map(t => t.tag.toUpperCase()) || []);
     // Fallback por si la base de datos está vacía inicialmente
     if (emeaTags.size === 0) {
-      ["FNC", "VIT", "TH", "KC", "NAVI", "BBL", "FUT", "GX", "KOI", "TL", "M8"].forEach(t => emeaTags.add(t));
+      EMEA_TIER1_TEAMS.forEach(t => emeaTags.add(normalizeTeamTag(t)));
     }
 
     const response = await fetch(VLR_STATS_URL, {
@@ -49,7 +73,9 @@ export async function GET() {
       const row = $(el);
       
       const nickname = row.find(".text-of").first().text().trim();
-      const teamTag = row.find(".stats-player-country").first().text().trim().toUpperCase();
+      // VLR ha cambiado este campo varias veces. Leemos múltiples selectores de fallback.
+      const rawTeamTag = row.find(".stats-player-country, .ge-text-light, .mod-player .ge-text-light").first().text().trim();
+      const teamTag = normalizeTeamTag(rawTeamTag);
       const rating = parseFloat(row.find("td.mod-color-sq").first().text().trim()) || 0;
       
       // Intentar inferir rol por el agente más jugado

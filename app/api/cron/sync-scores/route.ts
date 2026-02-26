@@ -4,7 +4,6 @@ export const revalidate = 0;
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { calculateGameweekScores } from "@/lib/actions/scoring";
 import { Database } from "@/types/supabase";
-import { fetchVlrMatches } from "@/lib/vlr";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -97,9 +96,10 @@ export async function GET(request: Request) {
     await (supabaseAdmin
       .from('matches') as any)
       .update({ gameweek_id: currentGw.id })
-      .is('gameweek_id', null)
       .gte('match_date', currentGw.start_date)
-      .lte('match_date', currentGw.end_date);
+      .lte('match_date', currentGw.end_date)
+      .not('status', 'eq', 'finished')
+      .or(`gameweek_id.is.null,gameweek_id.neq.${currentGw.id}`);
 
     // --- C. SYNC SCORES (PROCESS LIVE MATCHES) ---
     // --- C. SYNC SCORES (PROCESS LIVE MATCHES) ---
