@@ -377,5 +377,5 @@ BEGIN
 
     -- Update market_transactions types
     ALTER TABLE public.market_transactions DROP CONSTRAINT IF EXISTS market_transactions_type_check;
-    ALTER TABLE public.market_transactions ADD CONSTRAINT market_transactions_type_check CHECK (type IN ('buy', 'sell', 'clause_paid', 'buy_item'));
+    ALTER TABLE public.market_transactions ADD CONSTRAINT market_transactions_type_check CHECK (type IN ('buy', 'sell', 'clause_paid', 'buy_item', 'hire_caster'));
 END $$;

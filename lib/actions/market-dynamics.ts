@@ -80,8 +80,8 @@ export async function updateMarketValues() {
 
       let newValue = (3000000 + pointsContrib) * trendMultiplier * demandMultiplier;
 
-      // Clamping: 1.5M to 65M
-      newValue = Math.max(1500000, Math.min(65000000, newValue));
+      // Clamping: 1.5M to 120M
+      newValue = Math.max(1500000, Math.min(120000000, newValue));
       
       // Precision: Round to nearest 100k
       newValue = Math.round(newValue / 100000) * 100000;
