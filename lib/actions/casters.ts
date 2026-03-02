@@ -38,6 +38,10 @@ export async function getActiveCasters(leagueId: string, profileId: string, game
 export async function hireCaster(leagueId: string, profileId: string, gameweekId: number, casterId: string) {
   const supabase = await createClient();
   try {
+    if (!gameweekId) {
+        throw new Error("No hay una jornada activa para contratar analistas en este momento.");
+    }
+
     // 0. Real-time Lock Check (Match Day protection)
     const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
     const lockStatus = await getMarketLockStatus(supabase);
@@ -100,7 +104,7 @@ export async function hireCaster(leagueId: string, profileId: string, gameweekId
     await supabase.from("market_transactions").insert({
       league_id: leagueId,
       profile_id: profileId,
-      type: 'buy_item', // Using existing type or adding 'hire_caster'
+      type: 'hire_caster', 
       price: caster.base_price
     });
 
