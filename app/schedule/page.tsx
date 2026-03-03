@@ -35,7 +35,7 @@ export default async function SchedulePage() {
         <div className="flex items-end justify-between px-1">
           <div>
             <h1 className="text-4xl leading-none italic uppercase">Agenda</h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Operaciones Semanales</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Jornada Semanal</p>
           </div>
         </div>
         <div className="v-panel text-center py-20 opacity-40">

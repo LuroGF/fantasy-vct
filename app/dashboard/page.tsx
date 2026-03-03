@@ -133,10 +133,10 @@ export default async function DashboardPage() {
               href="/team"
               className="v-btn-primary flex-1 shadow-xl shadow-v-red/20 group"
             >
-              <span className="flex items-center justify-center gap-1 text-xs sm:text-[10px] lg:text-base">
+              <span className="flex items-center justify-center gap-1 text-xs text-[10px] lg:text-base">
                 Editar equipo
                 <svg
-                  className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                  className="w-3 lg:w-5 h-3 lg:h-5 group-hover:translate-x-1 transition-transform"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -154,8 +154,8 @@ export default async function DashboardPage() {
               href="/players"
               className="v-panel flex-1 flex items-center justify-center gap-2 bg-v-white/5 border-white/10 hover:border-v-white transition-all group"
             >
-              <span className="text-[10px] font-black uppercase tracking-widest text-v-white italic group-hover:text-v-red transition-colors flex items-center gap-2">
-                <Award className="w-3 h-3" /> Ojeador
+              <span className="text-[10px] lg:text-base font-black uppercase tracking-widest text-v-white italic group-hover:text-v-red transition-colors flex items-center gap-2">
+                <Award className="w-3 lg:w-5 h-3 lg:h-5" /> Ojeador
               </span>
             </Link>
           </div>
