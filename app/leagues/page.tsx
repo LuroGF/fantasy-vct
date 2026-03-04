@@ -105,7 +105,7 @@ export default function LeaguesPage() {
           <div>
             <h1 className="text-4xl leading-none italic uppercase">Ligas</h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red mt-1">
-              Gestión de Divisiones VCF
+              Gestión de Ligas VCF
             </p>
           </div>
           <StatusBadge label="S3-ACTIVE" variant="red" />
@@ -126,7 +126,7 @@ export default function LeaguesPage() {
                 }}
                 className="v-btn-primary py-4 text-[10px] shadow-lg shadow-v-red/10 active:scale-95 transition-all"
               >
-                Crear División
+                Crear Liga
               </button>
               <button
                 onClick={() => {
@@ -135,7 +135,7 @@ export default function LeaguesPage() {
                 }}
                 className="v-btn-secondary py-4 text-[10px] active:scale-95 transition-all"
               >
-                Unirse a Código
+                Unirse con Código
               </button>
             </div>
 

@@ -28,13 +28,13 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
   const { player, stats } = data;
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500 pb-20">
+    <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-4xl px-4 sm:px-6 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 py-6">
       {/* Header / Nav */}
       <div className="flex items-center gap-2 px-1">
         <Link href="/market" className="text-v-white/40 hover:text-v-white transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </Link>
-        <h1 className="text-xl font-black italic uppercase text-v-white/40 tracking-wider">Perfil de Agente</h1>
+        <h1 className="text-xl font-black italic uppercase text-v-white/40 tracking-wider">Perfil del Jugador</h1>
       </div>
 
       {/* Player Header Card */}

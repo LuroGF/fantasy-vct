@@ -515,7 +515,7 @@ export default function TeamView({
         <h2 className="text-2xl italic tracking-tighter uppercase px-1">Quinteto Titular <span className="text-sm font-black text-v-red ml-2">{starters.length}/5</span></h2>
         <div className="grid gap-3">
           {starters.map((r) => (
-            <div key={r.player_id} className="border-l-4 border-v-red pl-2">
+            <div key={r.player_id} className="pl-2">
                 <PlayerCard 
                   player={{...r.pro_players, releaseClause: r.release_clause}} 
                   onAction={() => {

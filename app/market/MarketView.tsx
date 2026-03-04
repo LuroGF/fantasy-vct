@@ -327,7 +327,10 @@ export default function MarketView({
                         onConfirm: () => handleAction(() => buyFromPersonalMarket(activeLeagueId, profileId, offer.player_id, offer.id))
                       });
                   }}
-                  actionLabel={offer.is_purchased ? "Adquirido" : `Reclutar ${(offer.offer_price / 1000000).toFixed(1)}M VP`}
+                  actionLabel={offer.is_purchased ? "Adquirido" : "Reclutar"}
+                  actionSubLabel={
+                    offer.is_purchased ? "" : `${(offer.offer_price / 1000000).toFixed(1)}M VP`
+                  }
                   actionDisabled={offer.is_purchased}
                 />
               ))}
