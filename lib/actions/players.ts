@@ -13,6 +13,7 @@ export async function getScoutingPlayers() {
             nickname,
             role,
             market_value,
+            photo_url,
             pro_teams (
                 id,
                 tag,

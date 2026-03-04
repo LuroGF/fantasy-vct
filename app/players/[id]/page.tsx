@@ -43,16 +43,31 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
         
         <div className="p-5 flex items-start justify-between relative z-10">
           <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 bg-v-navy border-2 flex items-center justify-center overflow-hidden ${
-                player.role === 'Duelista' ? 'border-cyan-400' :
-                player.role === 'Iniciador' ? 'border-yellow-400' :
-                player.role === 'Controlador' ? 'border-purple-400' :
-                'border-green-400'
+            <div className={`w-16 h-16 bg-v-navy border-2 flex items-center justify-center overflow-hidden shrink-0 ${
+                player.role === 'Duelista' ? 'border-role-duelista' :
+                player.role === 'Iniciador' ? 'border-role-iniciador' :
+                player.role === 'Controlador' ? 'border-role-controlador' :
+                player.role === 'Centinela' ? 'border-role-centinela' :
+                'border-white/20'
             }`}>
               {player.photo_url ? (
                 <img src={player.photo_url} alt={player.nickname} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-xl font-black italic opacity-20">{player.nickname.substring(0, 2).toUpperCase()}</span>
+                <img 
+                  src={`/players/${player.nickname.toLowerCase()}.png`} 
+                  alt={player.nickname} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      const span = document.createElement('span');
+                      span.className = "text-xl font-black italic opacity-20";
+                      span.innerText = player.nickname.substring(0, 2).toUpperCase();
+                      parent.appendChild(span);
+                    }
+                  }}
+                />
               )}
             </div>
             
@@ -100,12 +115,6 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
            <p className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.2em]">Score de Combate (ACS)</p>
            <p className="text-3xl font-black italic text-cyan-400">{stats.avg_acs}</p>
         </div>
-        {/*
-        <div className="v-panel p-3 flex flex-col items-center justify-center gap-1">
-           <p className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.2em]">Total MVPs</p>
-           <p className="text-2xl font-black italic text-yellow-500">{stats.total_mvps}</p>
-        </div>
-        */}
       </div>
 
       {/* Graph */}

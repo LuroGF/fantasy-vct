@@ -6,6 +6,7 @@ interface PlayerCardProps {
     nickname: string;
     role: string;
     market_value: number;
+    photo_url?: string | null;
     pro_teams: {
       tag: string;
       name: string;
@@ -60,7 +61,8 @@ export function PlayerCard({
   const currentRoleColor = (roleColors as any)[player.role] || 'border-white/20';
 
   return (
-    <div className={`v-panel relative border-l-4 ${currentRoleColor} group hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all overflow-hidden`}>      {/* Background Decor */}
+    <div className={`v-panel relative border-l-4 ${currentRoleColor} group hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all overflow-hidden`}>
+      {/* Background Decor */}
       <div className="absolute top-0 right-0 group-hover:opacity-10 transition-opacity" style={{ opacity: 0.015 }}>
          {player.pro_teams?.tag ? (
            <img 
@@ -99,28 +101,52 @@ export function PlayerCard({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center gap-3">
-                  {player.pro_teams?.tag && (
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/15 p-1 rounded-sm border border-white/5 shrink-0 flex items-center justify-center">
-                      <img 
-                        src={`/equipos/${player.pro_teams.tag === 'FNC' ? 'FNATIC' : 
-                               player.pro_teams.tag === 'TL' ? 'TeamLiquid' :
-                               player.pro_teams.tag === 'GX' ? 'Giantx' :
-                               player.pro_teams.tag === 'TH' ? 'Heretics' :
-                               player.pro_teams.tag === 'KC' ? 'KarmineCorp' :
-                               player.pro_teams.tag === 'M8' ? 'GentleMates' :
-                               player.pro_teams.tag === 'NAVI' ? 'NAVI' :
-                               player.pro_teams.tag === 'FUT' ? 'FUT' :
-                               player.pro_teams.tag === 'BBL' ? 'BBL' :
-                               player.pro_teams.tag === 'VIT' ? 'Vitality' :
-                               player.pro_teams.tag === 'ULF' ? 'ULF' :
-                               player.pro_teams.tag === 'PCIF' ? 'PCIFIC' :
-                               player.pro_teams.tag}.png`}
-                        alt={player.pro_teams.tag}
-                        className="w-full h-full object-contain"
-                        onError={(e) => { e.currentTarget.style.display = 'none' }}
-                      />
+                  <div className="relative shrink-0">
+                    <div className="w-12 h-12 bg-v-navy border border-white/10 overflow-hidden flex items-center justify-center">
+                      {player.photo_url ? (
+                        <img src={player.photo_url} alt={player.nickname} className="w-full h-full object-cover" />
+                      ) : (
+                        /* Fallback to local image or initials */
+                        <img 
+                           src={`/players/${player.nickname.toLowerCase()}.png`} 
+                           alt={player.nickname} 
+                           className="w-full h-full object-cover"
+                           onError={(e) => {
+                             e.currentTarget.style.display = 'none';
+                             const parent = e.currentTarget.parentElement;
+                             if (parent) {
+                               const span = document.createElement('span');
+                               span.className = "text-xl font-black italic opacity-20";
+                               span.innerText = player.nickname.substring(0, 2).toUpperCase();
+                               parent.appendChild(span);
+                             }
+                           }}
+                        />
+                      )}
                     </div>
-                  )}
+                    {/* Team Patch overlay */}
+                    {player.pro_teams?.tag && (
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-v-navy border border-white/20 p-0.5 rounded-sm">
+                         <img 
+                           src={`/equipos/${player.pro_teams.tag === 'FNC' ? 'FNATIC' : 
+                                  player.pro_teams.tag === 'TL' ? 'TeamLiquid' :
+                                  player.pro_teams.tag === 'GX' ? 'Giantx' :
+                                  player.pro_teams.tag === 'TH' ? 'Heretics' :
+                                  player.pro_teams.tag === 'KC' ? 'KarmineCorp' :
+                                  player.pro_teams.tag === 'M8' ? 'GentleMates' :
+                                  player.pro_teams.tag === 'NAVI' ? 'NAVI' :
+                                  player.pro_teams.tag === 'FUT' ? 'FUT' :
+                                  player.pro_teams.tag === 'BBL' ? 'BBL' :
+                                  player.pro_teams.tag === 'VIT' ? 'Vitality' :
+                                  player.pro_teams.tag === 'ULF' ? 'ULF' :
+                                  player.pro_teams.tag === 'PCIF' ? 'PCIFIC' :
+                                  player.pro_teams.tag}.png`}
+                           alt=""
+                           className="w-full h-full object-contain"
+                         />
+                      </div>
+                    )}
+                  </div>
                   <h3 className="text-xl sm:text-2xl tracking-wider flex items-center gap-2">
                     <span className="truncate pr-4">{player.nickname}</span>
                     <div className="flex gap-1 shrink-0">
