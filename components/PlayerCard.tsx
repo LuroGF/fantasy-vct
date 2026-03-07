@@ -201,7 +201,7 @@ export function PlayerCard({
             <button 
               onClick={(e) => { e.stopPropagation(); onAction(); }}
               disabled={actionDisabled}
-              className={`${actionClassName}  flex-1 lg:flex lg:flex-col sm:flex-none px-3! py-2! text-[10px]! disabled:opacity-30 disabled:grayscale`}
+              className={`${actionClassName}  flex-1 lg:flex lg:flex-col sm:flex-none px-3! py-2! text-[10px]! cursor-pointer disabled:opacity-30 disabled:grayscale`}
             >
                 <span className="text-[10px] font-black uppercase tracking-wider">
                   {actionLabel}
@@ -217,7 +217,7 @@ export function PlayerCard({
           {onSecondAction && (
             <button 
               onClick={(e) => { e.stopPropagation(); onSecondAction(); }}
-              className={`${secondActionClassName} flex flex-col sm:flex-none px-3! py-2! text-[10px]! hover:border-v-red hover:text-v-red`}
+              className={`${secondActionClassName} flex flex-col sm:flex-none px-3! py-2! cursor-pointer text-[10px]! hover:border-v-red hover:text-v-red`}
             >
               {secondActionLabel}
             </button>

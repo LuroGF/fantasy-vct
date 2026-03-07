@@ -162,7 +162,7 @@ export function RankingView({
                     <div className="v-panel max-w-lg w-full max-h-[80vh] overflow-y-auto flex flex-col p-6 gap-6 scrollbar-hide">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-black italic uppercase leading-none">Escuadra de {selectedTeam.profiles.username}</h2>
+                                <h2 className="text-2xl font-black italic uppercase leading-none">Equipo de {selectedTeam.profiles.username}</h2>
                                 <p className="text-[8px] uppercase tracking-widest text-v-red font-black mt-1">Inteligencia de Mercado</p>
                             </div>
                             <button onClick={() => setSelectedTeam(null)} className="v-btn-secondary px-3 py-1 text-[8px]">Cerrar</button>

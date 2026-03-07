@@ -32,7 +32,7 @@ return (
     </div> */}
 
     {/* Shell responsive */}
-    <div className="relative min-h-screen w-full px-4 py-10 sm:px-8 sm:py-12 lg:grid lg:place-items-center">
+    <div className="relative min-h-screen w-full px-5 sm:px-6 py-10 sm:py-12 lg:grid lg:place-items-center">
       <div className="w-full max-w-md lg:max-w-lg">
         <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
           {/* Header Section */}
@@ -60,7 +60,7 @@ return (
                   type="email"
                   required
                   placeholder="tu@correo.com"
-                  className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
+                  className="w-full h-14 bg-v-navy/50 border border-white/40 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
                 />
               </div>
 
@@ -73,7 +73,7 @@ return (
                   type="password"
                   required
                   placeholder="••••••••"
-                  className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
+                  className="w-full h-14 bg-v-navy/50 border border-white/40 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
                 />
               </div>
 
@@ -86,7 +86,7 @@ return (
               <button
                 type="submit"
                 disabled={loading}
-                className="v-btn-primary w-full py-4 text-sm mt-4 shadow-xl shadow-v-red/20 group disabled:opacity-50"
+                className="v-btn-primary w-full py-4 text-sm mt-4 shadow-xl shadow-v-red/20 cursor-pointer group disabled:opacity-50"
               >
                 <span className="flex items-center justify-center gap-2">
                   {loading ? "VERIFICANDO..." : "Iniciar Sesión"}
@@ -119,23 +119,23 @@ return (
             </div>
 
 <div className="grid grid-cols-2 gap-4">
-          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-red-600">
+          <button className="v-btn-secondary py-3 text-[10px] cursor-pointer font-black text-white tracking-widest bg-red-600">
             <Image
               src="/logos/RiotLogo.png"
               alt="Logo Riot"
               width={20}
               height={20}
             />
-            <span className="pl-4 black text-white">Iniciar con Riot</span>
+            <span className="pl-4 black">Iniciar con Riot</span>
           </button>
-          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-white">
+          <button className="v-btn-secondary py-3 text-[10px] cursor-pointer font-black text-black hover:text-white tracking-widest bg-white">
             <Image
               src="/logos/GoogleLogo.png"
               alt="Logo Google"
               width={20}
               height={20}
             />{" "}
-              <span className="pl-4 black text-black">Iniciar con Google</span>
+              <span className="pl-4 black">Iniciar con Google</span>
           </button>
         </div>
           </div>

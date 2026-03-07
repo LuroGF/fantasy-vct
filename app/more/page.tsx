@@ -48,7 +48,7 @@ export default function MorePage() {
         <form action={signOut}>
           <button
             type="submit"
-            className="w-full flex items-center justify-between p-4 hover:bg-v-red/10 transition-colors group border-t border-white/10"
+            className="w-full flex items-center justify-between p-4 hover:bg-v-red/10 transition-colors group border-t cursor-pointer border-white/10"
           >
             <span className="text-sm font-black uppercase tracking-widest text-v-red">
               Cerrar sesión
