@@ -148,7 +148,7 @@ export default function LeaguesPage() {
                   className="overflow-hidden"
                 >
                   <div className="v-panel p-4 space-y-4 border-v-red">
-                    <h3 className="text-xl italic">Fundar Nueva Liga</h3>
+                    <h3 className="text-xl italic">Crear Nueva Liga</h3>
                     <input
                       type="text"
                       placeholder="NOMBRE DE LA LIGA..."
@@ -161,7 +161,7 @@ export default function LeaguesPage() {
                         onClick={handleCreate}
                         className="v-btn-primary flex-1 py-2 text-[10px]"
                       >
-                        Confirmar Fundación
+                        Crear liga
                       </button>
                       <button
                         onClick={() => setShowCreate(false)}
@@ -197,7 +197,7 @@ export default function LeaguesPage() {
                         onClick={handleJoin}
                         className="v-btn-primary flex-1 py-2 text-[10px]"
                       >
-                        Sincronizar Acceso
+                        Unirse a liga
                       </button>
                       <button
                         onClick={() => setShowJoin(false)}
@@ -221,7 +221,7 @@ export default function LeaguesPage() {
 
             <div className="space-y-4">
               <h2 className="text-2xl italic tracking-tighter px-1">
-                Tus Divisiones Operativas
+                Tus ligas activas
               </h2>
 
               {loading ? (
@@ -291,7 +291,7 @@ export default function LeaguesPage() {
                       No perteneces a ninguna liga todavía.
                       <br />
                       <span className="text-[8px] uppercase font-black not-italic mt-2 block">
-                        Inicia una nueva operación arriba
+                        Debes crear o unirte a una liga para ver tus ligas activas
                       </span>
                     </div>
                   )}

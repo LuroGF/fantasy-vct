@@ -24,7 +24,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-xl flex flex-col gap-10 py-12 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+    <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-xl px-5 sm:px-6 flex flex-col gap-10 py-12 animate-in fade-in slide-in-from-bottom-6 duration-1000">
       {/* Header Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
@@ -50,7 +50,7 @@ export default function RegisterPage() {
               type="text"
               required
               placeholder="Usuario"
-              className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
+              className="w-full h-14 bg-v-navy/50 border border-white/40 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
           </div>
           <div className="space-y-2">
@@ -62,7 +62,7 @@ export default function RegisterPage() {
               type="email"
               required
               placeholder="tu@correo.com"
-              className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
+              className="w-full h-14 bg-v-navy/50 border border-white/40 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
           </div>
           <div className="space-y-2">
@@ -74,7 +74,7 @@ export default function RegisterPage() {
               type="password"
               required
               placeholder="••••••••"
-              className="w-full h-14 bg-v-navy/50 border border-white/5 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
+              className="w-full h-14 bg-v-navy/50 border border-white/40 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
           </div>
 

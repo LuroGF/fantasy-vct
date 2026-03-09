@@ -354,7 +354,7 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
     revalidatePath("/market");
     revalidatePath("/team");
     revalidatePath("/");
-    return { success: true, message: `Reclutamiento exitoso: ${playerData.nickname} se une a la escuadra.` };
+    return { success: true, message: `Reclutamiento exitoso: ${playerData.nickname} se une al equipo.` };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

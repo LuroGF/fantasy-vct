@@ -272,7 +272,7 @@ export default function TeamView({
       {/* Selector de Liga */}
       <div className="v-panel bg-v-navy/20 border-white/5 p-5 space-y-6">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-black uppercase text-v-red tracking-[0.3em] ml-1">Central de Operaciones</label>
+          <label className="text-[10px] font-black uppercase text-v-red tracking-[0.3em] ml-1">Elige tu liga</label>
           <div className="relative group">
             <select 
               value={activeLeagueId}
@@ -292,12 +292,12 @@ export default function TeamView({
         {activeParticipation && (
           <div className="grid grid-cols-2 gap-4 relative">
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-v-red/30 transition-colors group">
-               <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-v-red/60">Presupuesto</p>
-               <p className="text-2xl max-sm:text-xl font-black italic tracking-wider text-white group-hover:scale-105 origin-left transition-transform">{(activeParticipation.current_budget / 1000000).toFixed(1)}M VP</p>
+               <p className="text-[8px] font-black uppercase text-white/40 mb-1 cursor-default group-hover:text-v-red/60">Presupuesto</p>
+               <p className="text-2xl max-sm:text-xl font-black italic tracking-wider cursor-default text-white group-hover:scale-105 origin-left transition-transform">{(activeParticipation.current_budget / 1000000).toFixed(1)}M VP</p>
             </div>
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-white/20 transition-colors group">
-               <p className="text-[8px] font-black uppercase text-white/40 mb-1 group-hover:text-white/60">Agentes</p>
-               <p className="text-2xl font-black italic tracking-wider text-white group-hover:scale-105 origin-left transition-transform">{roster.length} / 10</p>
+               <p className="text-[8px] font-black uppercase text-white/40 mb-1 cursor-default group-hover:text-white/60">Agentes</p>
+               <p className="text-2xl font-black italic tracking-wider cursor-default text-white group-hover:scale-105 origin-left transition-transform">{roster.length} / 10</p>
             </div>
             <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-v-red shadow-[0_0_10px_rgba(255,70,85,0.5)]" />
           </div>
@@ -366,7 +366,7 @@ export default function TeamView({
                               ? `Ya has activado esta carta en esta jornada. Solo se permite una por tipo.` :
                              selectedPowerUp.powerup_types.code === 'MONEY' ? `¿Activar "${selectedPowerUp.powerup_types.name}" para recibir 5M VP extra ahora?` :
                              selectedPowerUp.powerup_types.code === 'SPY' ? `El "${selectedPowerUp.powerup_types.name}" se utiliza directamente en el Mercado sobre las subastas.` :
-                             `Selecciona un agente de tu escuadra para aplicar "${selectedPowerUp.powerup_types.name}".`}
+                             `Selecciona un agente de tu equipo para aplicar "${selectedPowerUp.powerup_types.name}".`}
                         </p>
                     </div>
                     {selectedPowerUp.powerup_types.code === 'MONEY' && (
@@ -429,7 +429,7 @@ export default function TeamView({
                         {caster.photo_url ? (
                             <img src={caster.photo_url} alt={caster.nickname} className="w-full h-full object-cover rounded-full" />
                         ) : (
-                            <div className="w-full h-full rounded-full bg-v-navy flex items-center justify-center text-v-white font-black italic text-xs">
+                            <div className="w-full h-full rounded-full bg-v-navy flex items-center justify-center text-v-white font-black italic text-xs cursor-pointer">
                                 {caster.nickname.substring(0, 2).toUpperCase()}
                             </div>
                         )}
@@ -483,7 +483,7 @@ export default function TeamView({
                     <button 
                         onClick={() => handleHireCaster(selectedCaster.id, selectedCaster.nickname)}
                         disabled={loading || activeCasters.length >= 2}
-                        className="w-full mt-4 bg-amber-500 text-v-navy py-3 text-[10px] font-black uppercase italic hover:bg-v-white transition-all shadow-lg shadow-amber-500/10 disabled:opacity-50"
+                        className="w-full mt-4 bg-amber-500 text-v-navy py-3 text-[10px] font-black uppercase cursor-pointer italic hover:bg-v-white transition-all shadow-lg shadow-amber-500/10 disabled:opacity-50"
                     >
                         {activeCasters.length >= 2 ? 'MÁXIMO DE CONTRATOS' : loading ? 'FIRMANDO...' : 'FIRMAR CONTRATO DE JORNADA'}
                     </button>

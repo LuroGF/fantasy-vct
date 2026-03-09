@@ -15,9 +15,10 @@ export default async function ShopPage() {
   const leagues = await getUserLeagues(session.user.id);
   if (!leagues || leagues.length === 0) {
       return (
-          <div className="p-4 text-center">
-              <p>Debes unirte a una liga para acceder a la tienda.</p>
-          </div>
+
+      <div className="flex flex-col items-center justify-center py-20 opacity-50 italic">
+        <p>Debes unirte a una liga para acceder al mercado.</p>
+      </div>
       );
   }
   const activeLeague = leagues[0];

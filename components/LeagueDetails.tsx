@@ -69,12 +69,12 @@ export default function LeagueDetails({ leagueId, onBack }: LeagueDetailsProps) 
                 </div>
 
                 <div className="space-y-6 pt-4 border-t border-white/5">
-                    <h2 className="text-2xl italic uppercase tracking-tighter">Escuadras Desplegadas</h2>
+                    <h2 className="text-2xl italic uppercase tracking-tighter">Equipo</h2>
                     <div className="grid gap-6">
                         {data.map((p) => (
                             <div key={p.profiles.id} className="space-y-3">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-black uppercase text-v-white/30 tracking-widest">Escuadrón de</span>
+                                    <span className="text-[10px] font-black uppercase text-v-white/30 tracking-widest">Equipo de</span>
                                     <span className="text-xs font-black italic text-v-red">{p.profiles.username}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">

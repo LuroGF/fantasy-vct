@@ -192,7 +192,7 @@ export default function TopBar() {
                                                 <div className="p-10 text-center space-y-3">
                                                     <div className="text-3xl opacity-10">📡</div>
                                                     <p className="text-[9px] uppercase text-white/20 font-black tracking-[0.3em] italic">
-                                                        Terminal Despejada
+                                                        Sin Notificaciones
                                                     </p>
                                                 </div>
                                             )}
@@ -200,7 +200,7 @@ export default function TopBar() {
                                         <div className="p-2 bg-black/20 text-center">
                                             <button 
                                                 onClick={() => setShowNotifications(false)}
-                                                className="text-[8px] font-black uppercase text-white/20 hover:text-white transition-colors"
+                                                className="text-[8px] font-black uppercase text-white/20 hover:text-white cursor-pointer transition-colors"
                                             >
                                                 [ CERRAR ]
                                             </button>
