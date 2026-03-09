@@ -442,7 +442,7 @@ export default function MarketView({
              ) : activeTab === 'rivals' ? (
                 <div className="space-y-4">
                   <div className="px-1">
-                    <h2 className="text-xl italic uppercase text-v-white/80">Escuadras Rivales</h2>
+                    <h2 className="text-xl italic uppercase text-v-white/80">Equipos Rivales</h2>
                     <p className="text-[8px] uppercase tracking-widest text-v-red font-black">Paga cláusulas para robar agentes</p>
                   </div>
 
@@ -678,7 +678,7 @@ export default function MarketView({
                                   setConfirmDialog({
                                     show: true,
                                     title: "Reclutar Leyenda",
-                                    message: `¿Deseas añadir a ${player.nickname} a tu escuadra por ${(player.market_value / 1000000).toFixed(1)}M VP? Solo disponible para esta final.`,
+                                    message: `¿Deseas añadir a ${player.nickname} a tu equipo por ${(player.market_value / 1000000).toFixed(1)}M VP? Solo disponible para esta final.`,
                                     onConfirm: () => handleAction(() => buyPlayer(activeLeagueId, profileId, player.id))
                                   });
                                 }}
