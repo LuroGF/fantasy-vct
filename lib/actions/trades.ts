@@ -59,10 +59,10 @@ export async function createTradeOffer(
 }
 
 export async function acceptTradeOffer(offerId: string, userId: string) {
-  const supabase = await createClient();
+  const { supabaseAdmin } = await import("@/utils/supabase/admin");
   try {
     // FIX Bug #8: Use atomic RPC function for trade acceptance
-    const { data, error } = await supabase.rpc('accept_trade_offer_atomic', {
+    const { data, error } = await supabaseAdmin.rpc('accept_trade_offer_atomic', {
       p_offer_id: offerId,
       p_receiver_id: userId
     });
@@ -86,17 +86,18 @@ export async function acceptTradeOffer(offerId: string, userId: string) {
 }
 
 export async function rejectTradeOffer(offerId: string, userId: string) {
-    const supabase = await createClient();
+    const { supabaseAdmin } = await import("@/utils/supabase/admin");
     try {
-        const { error } = await supabase
+        const { error, data } = await supabaseAdmin
             .from('trade_offers')
             .update({ status: 'rejected' })
             .eq('id', offerId)
-            // .eq('receiver_id', userId); // Allow reject only if receiver
-            // Wait, maybe confirm user is involved?
-            .or(`receiver_id.eq.${userId},sender_id.eq.${userId}`); // Sender can cancel too? No, separate cancel.
+            .or(`receiver_id.eq.${userId},sender_id.eq.${userId}`)
+            .select();
         
         if (error) throw error;
+        if (!data || data.length === 0) throw new Error("No se pudo rechazar la oferta. Verifique sus permisos.");
+
         revalidatePath("/market");
         return { success: true, message: "Oferta rechazada." };
     } catch (e: any) {
@@ -105,15 +106,18 @@ export async function rejectTradeOffer(offerId: string, userId: string) {
 }
 
 export async function cancelTradeOffer(offerId: string, userId: string) {
-    const supabase = await createClient();
+    const { supabaseAdmin } = await import("@/utils/supabase/admin");
     try {
-        const { error } = await supabase
+        const { error, data } = await supabaseAdmin
             .from('trade_offers')
             .update({ status: 'canceled' })
             .eq('id', offerId)
-            .eq('sender_id', userId);
+            .eq('sender_id', userId)
+            .select();
         
         if (error) throw error;
+        if (!data || data.length === 0) throw new Error("No se pudo cancelar la oferta. Verifique sus permisos.");
+
         revalidatePath("/market");
         return { success: true, message: "Oferta cancelada." };
     } catch (e: any) {
