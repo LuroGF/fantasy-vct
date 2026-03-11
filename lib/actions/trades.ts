@@ -61,8 +61,58 @@ export async function createTradeOffer(
 export async function acceptTradeOffer(offerId: string, userId: string) {
   const { supabaseAdmin } = await import("@/utils/supabase/admin");
   try {
+    const { data: offer } = await supabaseAdmin.from('trade_offers').select('league_id, receiver_id, sender_id, receiver_player_id, sender_player_id').eq('id', offerId).single();
+    if (!offer) throw new Error("Oferta no encontrada");
+
+    // Verificar si el jugador del emisor todavía le pertenece
+    if (offer.sender_player_id) {
+        const { count: isStillOwnedBySender } = await supabaseAdmin.from('user_rosters')
+            .select('*', { count: 'exact', head: true })
+            .eq('league_id', offer.league_id)
+            .eq('profile_id', offer.sender_id)
+            .eq('player_id', offer.sender_player_id);
+            
+        if (!isStillOwnedBySender || isStillOwnedBySender === 0) {
+            await supabaseAdmin.from('trade_offers').update({ status: 'canceled' }).eq('id', offerId);
+            throw new Error("El trade ha sido cancelado porque el emisor ya no posee al agente ofrecido.");
+        }
+    }
+
+    // Verificar si el jugador del receptor todavía le pertenece
+    if (offer.receiver_player_id) {
+        const { count: isStillOwnedByReceiver } = await supabaseAdmin.from('user_rosters')
+            .select('*', { count: 'exact', head: true })
+            .eq('league_id', offer.league_id)
+            .eq('profile_id', offer.receiver_id)
+            .eq('player_id', offer.receiver_player_id);
+            
+        if (!isStillOwnedByReceiver || isStillOwnedByReceiver === 0) {
+            await supabaseAdmin.from('trade_offers').update({ status: 'canceled' }).eq('id', offerId);
+            throw new Error("El trade ha sido cancelado porque ya no posees al agente solicitado.");
+        }
+    }
+
+    const { validateRosterRoleLimits } = await import("./player-action-guards");
+
+    // Validar si el receptor supera el límite al recibir el jugador del emisor
+    if (offer.sender_player_id) {
+        const { data: pReceptorRecibe } = await supabaseAdmin.from('pro_players').select('role').eq('id', offer.sender_player_id).single();
+        if (pReceptorRecibe) {
+            await validateRosterRoleLimits(supabaseAdmin, offer.league_id, offer.receiver_id, pReceptorRecibe.role, offer.receiver_player_id || undefined);
+        }
+    }
+
+    // Validar si el emisor supera el límite al recibir el jugador del receptor
+    if (offer.receiver_player_id) {
+        const { data: pEmisorRecibe } = await supabaseAdmin.from('pro_players').select('role').eq('id', offer.receiver_player_id).single();
+        if (pEmisorRecibe) {
+            await validateRosterRoleLimits(supabaseAdmin, offer.league_id, offer.sender_id, pEmisorRecibe.role, offer.sender_player_id || undefined);
+        }
+    }
+
     // FIX Bug #8: Use atomic RPC function for trade acceptance
     const { data, error } = await supabaseAdmin.rpc('accept_trade_offer_atomic', {
+
       p_offer_id: offerId,
       p_receiver_id: userId
     });

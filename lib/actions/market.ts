@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { validatePlayerActionAvailability } from "./player-action-guards";
+import { validatePlayerActionAvailability, validateRosterRoleLimits } from "./player-action-guards";
 
 export interface Team {
   tag: string;
@@ -102,6 +102,11 @@ export async function checkIsFinal(leagueId: string) {
 export async function buyFromPersonalMarket(leagueId: string, profileId: string, playerId: string, personalMarketId: string) {
   const supabase = await createClient();
   try {
+    const { data: player } = await supabase.from('pro_players').select('role').eq('id', playerId).single();
+    if (player) {
+      await validateRosterRoleLimits(supabase, leagueId, profileId, player.role);
+    }
+
     const { data: result, error: rpcError } = await supabase.rpc('handle_buy_from_personal_market', {
         p_league_id: leagueId,
         p_profile_id: profileId,
@@ -219,6 +224,14 @@ export async function createAuction(leagueId: string, profileId: string, playerI
 export async function placeBid(auctionId: string, profileId: string, bidAmount: number) {
   const supabase = await createClient();
   try {
+    const { data: auction } = await supabase.from('market_auctions').select('league_id, player_id').eq('id', auctionId).single();
+    if (auction) {
+      const { data: player } = await supabase.from('pro_players').select('role').eq('id', auction.player_id).single();
+      if (player) {
+        await validateRosterRoleLimits(supabase, auction.league_id, profileId, player.role);
+      }
+    }
+
     const { data: result, error: rpcError } = await supabase.rpc('handle_place_bid_atomic', {
         p_auction_id: auctionId,
         p_profile_id: profileId,
@@ -304,6 +317,13 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
 export async function payClause(leagueId: string, buyerProfileId: string, playerId: string, targetProfileId: string) {
   const supabase = await createClient();
   try {
+    // 1. Fetch player details to check role limits
+    const { data: player } = await supabase.from('pro_players').select('nickname, role').eq('id', playerId).single();
+    if (!player) throw new Error("Agente no detectado.");
+
+    // 2. Validate role limit (Max 2 per role, including Flex)
+    await validateRosterRoleLimits(supabase, leagueId, buyerProfileId, player.role);
+
     // Execute atomic RPC
     const { data: result, error: rpcError } = await supabase.rpc('handle_pay_clause', {
         p_league_id: leagueId,
@@ -315,16 +335,13 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
     if (rpcError) throw new Error("Error en la transmisión de datos al servidor.");
     if (!result?.success) throw new Error(result?.message || "La compra por cláusula no pudo completarse.");
 
-    // Fetch player name for the notification/toast message
-    const { data: player } = await supabase.from('pro_players').select('nickname').eq('id', playerId).single();
-
     revalidatePath("/market");
     revalidatePath("/team");
     revalidatePath("/");
     
     return { 
       success: true, 
-      message: `Has reclutado a ${player?.nickname || 'un nuevo agente'}. (${(result.price / 1000000).toFixed(1)}M VP)` 
+      message: `Has reclutado a ${player.nickname}. (${(result.price / 1000000).toFixed(1)}M VP)` 
     };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -335,9 +352,11 @@ export async function buyPlayer(leagueId: string, profileId: string, playerId: s
   const supabase = await createClient();
   try {
     // 1. Get player name for the success message (optional, but nice)
-    const { data: playerData } = await supabase.from('pro_players').select('market_value, nickname').eq('id', playerId).single();
+    const { data: playerData } = await supabase.from('pro_players').select('market_value, nickname, role').eq('id', playerId).single();
     if (!playerData) throw new Error("Agente no detectado.");
     
+    await validateRosterRoleLimits(supabase, leagueId, profileId, playerData.role);
+
     const price = customPrice || playerData.market_value;
 
     // 2. Transact via RPC for atomicity
