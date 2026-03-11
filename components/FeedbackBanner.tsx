@@ -16,6 +16,15 @@ export function FeedbackBanner({ status }: FeedbackBannerProps) {
       setTimeout(() => {
         bannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 100);
+
+      // Auto-dismiss after 5 seconds
+      const timer = setTimeout(() => {
+        // We can't directly setStatus here as it's a prop, 
+        // but we can signal back or handle it via a local state if needed.
+        // However, usually the parent should handle it.
+        // For now, let's at least ensure the component knows it should hide.
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, [status]);
 

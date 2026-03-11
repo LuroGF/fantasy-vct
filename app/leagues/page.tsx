@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { FeedbackBanner } from "@/components/FeedbackBanner";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   createLeague,
@@ -22,8 +23,17 @@ export default function LeaguesPage() {
   const [newLeagueName, setNewLeagueName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
-  const [status, setStatus] = useState({ type: "", message: "" });
+  const [status, setStatus] = useState<{ type: string; message: string } | null>(null);
   const router = useRouter();
+
+
+  // Auto-dismiss status banner after 5 seconds
+  useEffect(() => {
+    if (status?.message) {
+      const timer = setTimeout(() => setStatus(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
 
   useEffect(() => {
     async function init() {
@@ -211,13 +221,7 @@ export default function LeaguesPage() {
               )}
             </AnimatePresence>
 
-            {status.message && (
-              <div
-                className={`text-[10px] font-black uppercase text-center p-2 tracking-widest animate-pulse ${status.type === "error" ? "text-v-red" : "text-v-white"}`}
-              >
-                {">>>"} {status.message}
-              </div>
-            )}
+            <FeedbackBanner status={status} />
 
             <div className="space-y-4">
               <h2 className="text-2xl italic tracking-tighter px-1">

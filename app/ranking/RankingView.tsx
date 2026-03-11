@@ -34,6 +34,14 @@ export function RankingView({
     const [confirmPay, setConfirmPay] = useState<{ player: any } | null>(null);
     const router = useRouter();
 
+    // Auto-dismiss status banner after 5 seconds
+    useEffect(() => {
+        if (status) {
+            const timer = setTimeout(() => setStatus(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [status]);
+
     useEffect(() => {
         async function loadClassification() {
             if (activeLeagueId === initialLeagueId && standings === initialStandings) return;

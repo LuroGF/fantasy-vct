@@ -39,6 +39,14 @@ export function ShopView({ initialLeagues, userId, powerUps, initialInventory }:
      if (activeLeagueId) loadInventory();
   }, [activeLeagueId, userId]);
 
+  // Auto-dismiss status banner after 5 seconds
+  useEffect(() => {
+    if (status) {
+      const timer = setTimeout(() => setStatus(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
+
   const handleBuy = (powerUpCode: string) => {
     if (!confirm(`¿Confirmar compra del Power-Up ${powerUpCode}?`)) return;
 

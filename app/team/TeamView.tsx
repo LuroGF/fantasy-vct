@@ -91,6 +91,14 @@ export default function TeamView({
     if (activeLeagueId) loadData();
   }, [activeLeagueId, profileId, activeGameweekId, refreshTrigger]);
 
+  // Auto-dismiss status banner after 5 seconds
+  useEffect(() => {
+    if (status) {
+      const timer = setTimeout(() => setStatus(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
+
   async function handleHireCaster(casterId: string, nickname: string) {
     setConfirmDialog({
       show: true,

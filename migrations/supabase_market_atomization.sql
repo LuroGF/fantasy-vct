@@ -53,7 +53,7 @@ BEGIN
     RETURN json_build_object('success', true);
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'message', SQLERRM);
+        RETURN json_build_object('success', false, 'message', 'Error interno del servidor base de datos.');
 END;
 $$;
 -- UNIFIES BUYING, SELLING, BIDDING AND INVENTORY
@@ -94,14 +94,16 @@ BEGIN
         RETURN json_build_object('success', false, 'message', 'No tienes espacio en tu escuadra para más agentes.');
     END IF;
 
-    -- 3. Role Check (Max 2 of same role)
+    -- 3. Role Check (Max 2 of same role, except Flex)
     SELECT role INTO v_role FROM public.pro_players WHERE id = p_player_id;
-    SELECT count(*) INTO v_role_count FROM public.user_rosters ur
-    JOIN public.pro_players pp ON pp.id = ur.player_id
-    WHERE ur.league_id = p_league_id AND ur.profile_id = p_profile_id AND pp.role = v_role;
-    
-    IF v_role_count >= 2 THEN
-        RETURN json_build_object('success', false, 'message', 'Cupo de rol completo para ' || v_role || '.');
+    IF v_role != 'Flex' THEN
+        SELECT count(*) INTO v_role_count FROM public.user_rosters ur
+        JOIN public.pro_players pp ON pp.id = ur.player_id
+        WHERE ur.league_id = p_league_id AND ur.profile_id = p_profile_id AND pp.role = v_role;
+        
+        IF v_role_count >= 2 THEN
+            RETURN json_build_object('success', false, 'message', 'Cupo de rol completo para ' || v_role || '. El máximo es 2 por posición.');
+        END IF;
     END IF;
 
     -- 4. Market Lock Check & Determine Slot
@@ -137,7 +139,7 @@ BEGIN
     RETURN json_build_object('success', true);
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'message', SQLERRM);
+        RETURN json_build_object('success', false, 'message', 'Error interno del servidor base de datos.');
 END;
 $$;
 
@@ -176,7 +178,7 @@ BEGIN
     RETURN v_buy_result;
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'message', SQLERRM);
+        RETURN json_build_object('success', false, 'message', 'Error interno del servidor base de datos.');
 END;
 $$;
 
@@ -217,7 +219,7 @@ BEGIN
     RETURN json_build_object('success', true);
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'message', SQLERRM);
+        RETURN json_build_object('success', false, 'message', 'Error interno del servidor base de datos.');
 END;
 $$;
 
@@ -269,16 +271,18 @@ BEGIN
     WHERE league_id = v_auction.league_id AND profile_id = p_profile_id;
     
     IF v_roster_count >= 10 THEN
-        RETURN json_build_object('success', false, 'message', 'Tu escuadra está completa.');
+        RETURN json_build_object('success', false, 'message', 'Tu escuadra está completa. No puedes pujar por más agentes.');
     END IF;
 
     SELECT role INTO v_role FROM public.pro_players WHERE id = v_auction.player_id;
-    SELECT count(*) INTO v_role_count FROM public.user_rosters ur
-    JOIN public.pro_players pp ON pp.id = ur.player_id
-    WHERE ur.league_id = v_auction.league_id AND ur.profile_id = p_profile_id AND pp.role = v_role;
+    IF v_role != 'Flex' THEN
+        SELECT count(*) INTO v_role_count FROM public.user_rosters ur
+        JOIN public.pro_players pp ON pp.id = ur.player_id
+        WHERE ur.league_id = v_auction.league_id AND ur.profile_id = p_profile_id AND pp.role = v_role;
 
-    IF v_role_count >= 2 THEN
-        RETURN json_build_object('success', false, 'message', 'Ya tienes el máximo de agentes para el rol ' || v_role || '.');
+        IF v_role_count >= 2 THEN
+            RETURN json_build_object('success', false, 'message', 'Ya tienes el máximo de agentes para el rol ' || v_role || '. Máximo 2 por posición.');
+        END IF;
     END IF;
 
     -- 4. EXECUTE
@@ -297,7 +301,7 @@ BEGIN
     RETURN json_build_object('success', true);
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'message', SQLERRM);
+        RETURN json_build_object('success', false, 'message', 'Error interno del servidor base de datos.');
 END;
 $$;
 
@@ -342,7 +346,7 @@ BEGIN
     RETURN json_build_object('success', true);
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'message', SQLERRM);
+        RETURN json_build_object('success', false, 'message', 'Error interno del servidor base de datos.');
 END;
 $$;
 
@@ -384,7 +388,7 @@ BEGIN
     RETURN json_build_object('success', true);
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'message', SQLERRM);
+        RETURN json_build_object('success', false, 'message', 'Error interno del servidor base de datos.');
 END;
 $$;
 
@@ -462,6 +466,6 @@ BEGIN
     RETURN json_build_object('success', true, 'message', 'Intercambio completado.');
 EXCEPTION
     WHEN OTHERS THEN
-        RETURN json_build_object('success', false, 'error', SQLERRM);
+        RETURN json_build_object('success', false, 'error', 'Error al procesar el intercambio.');
 END;
 $$;
