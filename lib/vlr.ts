@@ -38,35 +38,45 @@ export type VlrPayload = {
 };
 
 const TEAM_ALIASES: Record<string, string> = {
-  "FNATIC": "FNC",
-  "FNC": "FNC",
-  "VITALITY": "VIT",
-  "VIT": "VIT",
-  "TEAM VITALITY": "VIT",
-  "HERETICS": "TH",
-  "TH": "TH",
-  "TEAM HERETICS": "TH",
-  "KARMINE CORP": "KC",
-  "K-CORP": "KC",
-  "KC": "KC",
+  "FNATIC": "FNATIC",
+  "FNC": "FNATIC",
+  "VITALITY": "Vitality",
+  "VIT": "Vitality",
+  "TEAM VITALITY": "Vitality",
+  "HERETICS": "Heretics",
+  "TH": "Heretics",
+  "TEAM HERETICS": "Heretics",
+  "KARMINE CORP": "KarmineCorp",
+  "K-CORP": "KarmineCorp",
+  "KC": "KarmineCorp",
   "NAVI": "NAVI",
   "NATUS VINCERE": "NAVI",
   "BBL": "BBL",
   "BBL ESPORTS": "BBL",
   "FUT": "FUT",
   "FUT ESPORTS": "FUT",
-  "GIANTX": "GX",
-  "GX": "GX",
-  "GIANTS": "GX",
+  "GIANTX": "Giantx",
+  "GX": "Giantx",
+  "GIANTS": "Giantx",
   "KOI": "KOI",
   "MOVISTAR KOI": "KOI",
-  "LIQUID": "TL",
-  "TL": "TL",
-  "TEAM LIQUID": "TL",
-  "GENTLE MATES": "M8",
-  "M8": "M8",
-  "GENTLEMATES": "M8",
+  "LIQUID": "TeamLiquid",
+  "TL": "TeamLiquid",
+  "TEAM LIQUID": "TeamLiquid",
+  "GENTLE MATES": "GentleMates",
+  "M8": "GentleMates",
+  "GENTLEMATES": "GentleMates",
+  "PACIFIC": "PCIFIC",
+  "PCIF": "PCIFIC",
+  "ULF": "ULF"
 };
+
+export function getTeamLogo(name: string) {
+    const upper = name.toUpperCase();
+    const logoName = TEAM_ALIASES[upper];
+    if (logoName) return `/equipos/${logoName}.png`;
+    return null; // Don't return a path if we don't have a logo
+}
 
 function cleanText(value: string | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? "";

@@ -27,10 +27,6 @@ const navItems = [
 export default function Navbar() {
     const pathname = usePathname();
 
-    // No mostrar navbar en login o registro
-    const hideNavbar = pathname === "/login" || pathname === "/register" || pathname === "/";
-    if (hideNavbar) return null;
-
     return (
         <nav className="fixed bottom-0 left-0 w-full lg:hidden z-50 border-t border-white/10 bg-v-navy/95 backdrop-blur-xl v-safe-area-pb">
             <div className="flex items-center justify-between px-2 h-16">

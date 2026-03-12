@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PlayerStatsGraph } from "@/components/PlayerStatsGraph";
 import { MatchHistoryList } from "@/components/MatchHistoryList";
 import { StatusBadge } from "@/components/StatusBadge";
+import { getTeamLogo } from "@/lib/vlr";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
@@ -43,7 +44,7 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
         
         <div className="p-5 flex items-start justify-between relative z-10">
           <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 bg-v-navy border-2 flex items-center justify-center overflow-hidden shrink-0 ${
+            <div className={`w-16 h-16 bg-v-navy border-2 flex items-center justify-center overflow-hidden shrink-0 relative ${
                 player.role === 'Duelista' ? 'border-role-duelista' :
                 player.role === 'Iniciador' ? 'border-role-iniciador' :
                 player.role === 'Controlador' ? 'border-role-controlador' :
@@ -69,6 +70,15 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
                   }}
                 />
               )}
+              {/* Team Patch overlay */}
+              {(() => {
+                  const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
+                  return logo ? (
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-v-navy border border-white/20 p-0.5 rounded-sm z-20">
+                          <img src={logo} alt="" className="w-full h-full object-contain" />
+                      </div>
+                  ) : null;
+              })()}
             </div>
             
             <div>
@@ -82,7 +92,7 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
               </div>
               <div className="flex items-center gap-3">
                  <p className="text-xs font-bold text-v-white/60 uppercase tracking-wider flex items-center gap-1">
-                    {player.pro_teams?.tag} 
+                    {player.pro_teams?.tag || "Free Agent"} 
                     <span className="w-1 h-1 bg-v-white/20 rounded-full" />
                     {player.role}
                  </p>

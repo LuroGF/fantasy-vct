@@ -24,8 +24,6 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const hideNav = pathname === "/login" || pathname === "/register" || pathname === "/";
-  if (hideNav) return null;
 
 return (
   <aside className="hidden lg:flex fixed top-0 left-0 h-[100dvh] w-72 z-50

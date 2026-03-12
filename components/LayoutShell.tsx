@@ -19,7 +19,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-background shadow-2xl">
       {/* Sidebar fixed (desktop) */}
-      <Sidebar />
+      {!isAuthPage && <Sidebar />}
 
       {/* MAIN FULL WIDTH */}
       <div 

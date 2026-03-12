@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTeamLogo, getTeamTag } from "@/lib/vlr";
 
 interface PlayerCardProps {
   player: {
@@ -64,30 +65,20 @@ export function PlayerCard({
     <div className={`v-panel relative border-l-4 ${currentRoleColor} group hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all overflow-hidden`}>
       {/* Background Decor */}
       <div className="absolute top-0 right-0 group-hover:opacity-10 transition-opacity" style={{ opacity: 0.015 }}>
-         {player.pro_teams?.tag ? (
-           <img 
-             src={`/equipos/${player.pro_teams.tag === 'FNC' ? 'FNATIC' : 
-                    player.pro_teams.tag === 'TL' ? 'TeamLiquid' :
-                    player.pro_teams.tag === 'GX' ? 'Giantx' :
-                    player.pro_teams.tag === 'TH' ? 'Heretics' :
-                    player.pro_teams.tag === 'KC' ? 'KarmineCorp' :
-                    player.pro_teams.tag === 'M8' ? 'GentleMates' :
-                    player.pro_teams.tag === 'NAVI' ? 'NAVI' :
-                    player.pro_teams.tag === 'FUT' ? 'FUT' :
-                    player.pro_teams.tag === 'BBL' ? 'BBL' :
-                    player.pro_teams.tag === 'VIT' ? 'Vitality' :
-                    player.pro_teams.tag === 'ULF' ? 'ULF' :
-                    player.pro_teams.tag === 'PCIF' ? 'PCIFIC' :
-                    player.pro_teams.tag}.png`}
-             alt=""
-             className="w-48 h-48 object-contain grayscale brightness-200"
-             onError={(e) => { e.currentTarget.style.display = 'none' }}
-           />
-         ) : (
-           <span className="text-6xl font-black italic uppercase leading-none select-none pointer-events-none">
-             {player.pro_teams?.tag || "FA"}
-           </span>
-         )}
+         {(() => {
+           const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
+           return logo ? (
+             <img 
+               src={logo}
+               alt=""
+               className="w-48 h-48 object-contain grayscale brightness-200"
+             />
+           ) : (
+             <span className="text-6xl font-black italic uppercase leading-none select-none pointer-events-none">
+               {player.pro_teams?.tag || "FA"}
+             </span>
+           );
+         })()}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 relative z-10">
@@ -125,27 +116,14 @@ export function PlayerCard({
                       )}
                     </div>
                     {/* Team Patch overlay */}
-                    {player.pro_teams?.tag && (
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-v-navy border border-white/20 p-0.5 rounded-sm">
-                         <img 
-                           src={`/equipos/${player.pro_teams.tag === 'FNC' ? 'FNATIC' : 
-                                  player.pro_teams.tag === 'TL' ? 'TeamLiquid' :
-                                  player.pro_teams.tag === 'GX' ? 'Giantx' :
-                                  player.pro_teams.tag === 'TH' ? 'Heretics' :
-                                  player.pro_teams.tag === 'KC' ? 'KarmineCorp' :
-                                  player.pro_teams.tag === 'M8' ? 'GentleMates' :
-                                  player.pro_teams.tag === 'NAVI' ? 'NAVI' :
-                                  player.pro_teams.tag === 'FUT' ? 'FUT' :
-                                  player.pro_teams.tag === 'BBL' ? 'BBL' :
-                                  player.pro_teams.tag === 'VIT' ? 'Vitality' :
-                                  player.pro_teams.tag === 'ULF' ? 'ULF' :
-                                  player.pro_teams.tag === 'PCIF' ? 'PCIFIC' :
-                                  player.pro_teams.tag}.png`}
-                           alt=""
-                           className="w-full h-full object-contain"
-                         />
-                      </div>
-                    )}
+                    {(() => {
+                        const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
+                        return logo ? (
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-v-navy border border-white/20 p-0.5 rounded-sm">
+                                <img src={logo} alt="" className="w-full h-full object-contain" />
+                            </div>
+                        ) : null;
+                    })()}
                   </div>
                   <h3 className="text-xl sm:text-2xl tracking-wider flex items-center gap-2">
                     <span className="truncate pr-4">{player.nickname}</span>

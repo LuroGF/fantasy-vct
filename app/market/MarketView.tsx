@@ -23,6 +23,7 @@ import {
 import { PlayerCard } from "@/components/PlayerCard";
 import { useState, useMemo, useEffect } from "react";
 import { FeedbackBanner } from "@/components/FeedbackBanner";
+import { getTeamLogo } from "@/lib/vlr";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -496,9 +497,18 @@ export default function MarketView({
                         className="v-panel-red group relative overflow-hidden transition-all hover:translate-y-[-2px] hover:shadow-2xl"
                       >
                         <div className="absolute top-0 right-0 w-48 h-full bg-linear-to-l from-v-red/10 to-transparent pointer-events-none" />
-                        <div className="absolute -right-4 -bottom-6 text-8xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
-                          {auction.pro_players?.nickname?.substring(0, 3)}
-                        </div>
+                        {(() => {
+                          const logo = auction.pro_players?.pro_teams?.tag ? getTeamLogo(auction.pro_players.pro_teams.tag) : null;
+                          return logo ? (
+                            <div className="absolute -right-4 -bottom-6 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                              <img src={logo} alt="" className="w-full h-full object-contain grayscale brightness-200" />
+                            </div>
+                          ) : (
+                            <div className="absolute -right-4 -bottom-6 text-8xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
+                              {auction.pro_players?.nickname?.substring(0, 3)}
+                            </div>
+                          );
+                        })()}
 
                         <div className="relative z-10 flex flex-col gap-4">
                           <div className="flex justify-between items-start">
@@ -659,14 +669,31 @@ export default function MarketView({
                               key={player.id}
                               className="v-panel relative overflow-hidden group hover:border-v-red transition-all flex items-center justify-between p-3 select-none active:scale-[0.99]"
                             >
-                              <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
-                              <div className="absolute -right-2 -bottom-2 text-4xl font-black text-white/3 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
-                                {player.pro_teams?.tag || "FA"}
-                              </div>
+                              {(() => {
+                                const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
+                                return logo ? (
+                                  <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none flex items-center justify-end pr-2 overflow-hidden opacity-5 group-hover:opacity-10 transition-opacity">
+                                    <img src={logo} alt="" className="w-20 h-20 object-contain grayscale brightness-200" />
+                                  </div>
+                                ) : (
+                                  <div className="absolute -right-2 -bottom-2 text-4xl font-black text-white/3 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
+                                    {player.pro_teams?.tag || "FA"}
+                                  </div>
+                                );
+                              })()}
 
                               <div className="flex items-center gap-3 relative z-10">
-                                <div className="w-10 text-[9px] font-black uppercase text-v-red tracking-widest border-r border-white/5">
-                                  {player.pro_teams?.tag || "FA"}
+                                <div className="w-10 shrink-0 flex justify-start border-r border-white/5 pr-2">
+                                  {(() => {
+                                    const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
+                                    return logo ? (
+                                      <img src={logo} alt={player.pro_teams.tag} className="w-6 h-6 object-contain" />
+                                    ) : (
+                                      <span className="text-[9px] font-black uppercase text-v-red tracking-widest">
+                                        {player.pro_teams?.tag || "FA"}
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                                 <div>
                                   <p className="text-sm font-black uppercase italic leading-none group-hover:text-v-red transition-colors pr-2 truncate">

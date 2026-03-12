@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { getLeagueClassification } from "@/lib/actions/leagues";
 
 import { FeedbackBanner } from "@/components/FeedbackBanner";
+import { getTeamLogo } from "@/lib/vlr";
 
 interface RankingViewProps {
     initialStandings: any[];
@@ -188,7 +189,17 @@ export function RankingView({
                                                 {player.nickname}
                                                 {locked && <span className="text-[8px] bg-v-red text-v-white px-1 leading-tight py-0.5 shrink-0">🛡️ BLINDADO</span>}
                                             </span>
-                                            <span className="text-[9px] text-v-white/40 font-bold uppercase tracking-widest leading-none mt-1">{player.role} // {player.pro_teams?.tag || "FA"}</span>
+                                            <div className="flex items-center gap-1.5 mt-1">
+                                              {(() => {
+                                                const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
+                                                return logo ? (
+                                                  <img src={logo} alt={player.pro_teams.tag} className="w-4 h-4 object-contain" />
+                                                ) : null;
+                                              })()}
+                                              <span className="text-[9px] text-v-white/40 font-bold uppercase tracking-widest leading-none">
+                                                {player.role} // {player.pro_teams?.tag || "FA"}
+                                              </span>
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-4 text-right">
                                             <div className="shrink-0">

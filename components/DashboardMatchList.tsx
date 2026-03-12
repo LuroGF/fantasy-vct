@@ -1,4 +1,4 @@
-import { fetchVlrMatches, getTeamTag } from "@/lib/vlr";
+import { fetchVlrMatches, getTeamTag, getTeamLogo } from "@/lib/vlr";
 import Link from "next/link";
 
 export async function DashboardMatchList() {
@@ -56,88 +56,82 @@ export async function DashboardMatchList() {
                                 <div className="flex-1 flex items-center px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0">
                                     <div className="flex items-center gap-3 relative z-10 group-hover:translate-x-1 transition-all duration-300">
                                         <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-white/5 p-1 rounded-sm border border-white/5">
-                                            <img 
-                                                src={`/equipos/${getTeamTag(teamA) === 'FNC' ? 'FNATIC' : 
-                                                       getTeamTag(teamA) === 'TL' ? 'TeamLiquid' :
-                                                       getTeamTag(teamA) === 'GX' ? 'Giantx' :
-                                                       getTeamTag(teamA) === 'TH' ? 'Heretics' :
-                                                       getTeamTag(teamA) === 'KC' ? 'KarmineCorp' :
-                                                       getTeamTag(teamA) === 'M8' ? 'GentleMates' :
-                                                       getTeamTag(teamA) === 'NAVI' ? 'NAVI' :
-                                                       getTeamTag(teamA) === 'FUT' ? 'FUT' :
-                                                       getTeamTag(teamA) === 'BBL' ? 'BBL' :
-                                                       getTeamTag(teamA)}.png`}
-                                                alt=""
-                                                className="w-full h-full object-contain"
-                                                onError={(e) => { e.currentTarget.parentElement!.style.display = 'none' }}
-                                            />
+                                            {(() => {
+                                                const logo = getTeamLogo(teamA);
+                                                return logo ? (
+                                                    <img 
+                                                        src={logo}
+                                                        alt=""
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <span className="text-[10px] font-black opacity-20">{getTeamTag(teamA)}</span>
+                                                );
+                                            })()}
                                         </div>
-                                        <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
-                                            {teamA}
-                                        </span>
-                                    </div>
-                                </div>
+                                         <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
+                                             {teamA}
+                                         </span>
+                                     </div>
+                                 </div>
 
-                                {/* Center Info */}
-                                <div className="w-16 sm:w-28 shrink-0 flex flex-col items-center justify-center bg-v-navy/60 border-x border-white/10 relative z-10">
-                                    <div className="absolute inset-0 bg-v-red/5 animate-pulse-slow" />
-                                    <span className={`text-[9px] sm:text-xs font-black relative z-10 ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
-                                        {isLive ? "LIVE" : (() => {
-                                            if (match.date) {
-                                                try {
-                                                    return new Intl.DateTimeFormat('es-ES', {
-                                                        timeZone: 'Europe/Madrid',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    }).format(new Date(match.date));
-                                                } catch (e) { }
-                                            }
-                                            return match.time;
-                                        })()}
-                                    </span>
-                                    <div className="h-px w-6 sm:w-8 bg-v-white/10 my-1 relative z-10" />
-                                    <span className="text-[6px] sm:text-[8px] font-black uppercase text-v-white/40 relative z-10">
-                                        {(() => {
-                                            if (match.date) {
-                                                try {
-                                                    return new Intl.DateTimeFormat('es-ES', {
-                                                        timeZone: 'Europe/Madrid',
-                                                        month: 'short',
-                                                        day: 'numeric'
-                                                    }).format(new Date(match.date));
-                                                } catch (e) { }
-                                            }
-                                            const d = match.rawDate || "";
-                                            return d.includes(",") ? d.split(",")[1].trim() : d;
-                                        })()}
-                                    </span>
-                                </div>
+                                 {/* Center Info */}
+                                 <div className="w-16 sm:w-28 shrink-0 flex flex-col items-center justify-center bg-v-navy/60 border-x border-white/10 relative z-10">
+                                     <div className="absolute inset-0 bg-v-red/5 animate-pulse-slow" />
+                                     <span className={`text-[9px] sm:text-xs font-black relative z-10 ${isLive ? "text-v-red animate-pulse" : "text-v-white"}`}>
+                                         {isLive ? "LIVE" : (() => {
+                                             if (match.date) {
+                                                 try {
+                                                     return new Intl.DateTimeFormat('es-ES', {
+                                                         timeZone: 'Europe/Madrid',
+                                                         hour: '2-digit',
+                                                         minute: '2-digit'
+                                                     }).format(new Date(match.date));
+                                                 } catch (e) { }
+                                             }
+                                             return match.time;
+                                         })()}
+                                     </span>
+                                     <div className="h-px w-6 sm:w-8 bg-v-white/10 my-1 relative z-10" />
+                                     <span className="text-[6px] sm:text-[8px] font-black uppercase text-v-white/40 relative z-10">
+                                         {(() => {
+                                             if (match.date) {
+                                                 try {
+                                                     return new Intl.DateTimeFormat('es-ES', {
+                                                         timeZone: 'Europe/Madrid',
+                                                         month: 'short',
+                                                         day: 'numeric'
+                                                     }).format(new Date(match.date));
+                                                 } catch (e) { }
+                                             }
+                                             const d = match.rawDate || "";
+                                             return d.includes(",") ? d.split(",")[1].trim() : d;
+                                         })()}
+                                     </span>
+                                 </div>
 
-                                {/* Team B */}
-                                <div className="flex-1 flex items-center justify-end px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0 text-right">
-                                    <div className="flex items-center gap-3 relative z-10 group-hover:-translate-x-1 transition-all duration-300 justify-end">
-                                        <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
-                                            {teamB ?? "TBD"}
-                                        </span>
-                                        <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-white/5 p-1 rounded-sm border border-white/5">
-                                            <img 
-                                                src={`/equipos/${getTeamTag(teamB) === 'FNC' ? 'FNATIC' : 
-                                                       getTeamTag(teamB) === 'TL' ? 'TeamLiquid' :
-                                                       getTeamTag(teamB) === 'GX' ? 'Giantx' :
-                                                       getTeamTag(teamB) === 'TH' ? 'Heretics' :
-                                                       getTeamTag(teamB) === 'KC' ? 'KarmineCorp' :
-                                                       getTeamTag(teamB) === 'M8' ? 'GentleMates' :
-                                                       getTeamTag(teamB) === 'NAVI' ? 'NAVI' :
-                                                       getTeamTag(teamB) === 'FUT' ? 'FUT' :
-                                                       getTeamTag(teamB) === 'BBL' ? 'BBL' :
-                                                       getTeamTag(teamB)}.png`}
-                                                alt=""
-                                                className="w-full h-full object-contain"
-                                                onError={(e) => { e.currentTarget.parentElement!.style.display = 'none' }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                                 {/* Team B */}
+                                 <div className="flex-1 flex items-center justify-end px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0 text-right">
+                                     <div className="flex items-center gap-3 relative z-10 group-hover:-translate-x-1 transition-all duration-300 justify-end">
+                                         <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
+                                             {teamB ?? "TBD"}
+                                         </span>
+                                         <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-white/5 p-1 rounded-sm border border-white/5">
+                                            {(() => {
+                                                const logo = getTeamLogo(teamB);
+                                                return logo ? (
+                                                    <img 
+                                                        src={logo}
+                                                        alt=""
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <span className="text-[10px] font-black opacity-20">{getTeamTag(teamB)}</span>
+                                                );
+                                            })()}
+                                         </div>
+                                     </div>
+                                 </div>
                             </div>
                         </div>
                     );
