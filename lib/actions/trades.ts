@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { validatePlayerActionAvailability } from "./player-action-guards";
+import { getSession } from "./auth";
 
 export async function createTradeOffer(
   leagueId: string, 
@@ -12,6 +13,11 @@ export async function createTradeOffer(
   receiverPlayerId: string | null, 
   cashOffer: number // Positive: Sender pays. Negative: Receiver pays.
 ) {
+  const session = await getSession();
+  if (!session || session.user.id !== senderId) {
+    throw new Error("No autorizado");
+  }
+
   const supabase = await createClient();
   try {
     if (!senderPlayerId && !receiverPlayerId) {
@@ -59,6 +65,10 @@ export async function createTradeOffer(
 }
 
 export async function acceptTradeOffer(offerId: string, userId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== userId) {
+    throw new Error("No autorizado");
+  }
   const { supabaseAdmin } = await import("@/utils/supabase/admin");
   try {
     const { data: offer } = await supabaseAdmin.from('trade_offers').select('league_id, receiver_id, sender_id, receiver_player_id, sender_player_id').eq('id', offerId).single();
@@ -136,6 +146,10 @@ export async function acceptTradeOffer(offerId: string, userId: string) {
 }
 
 export async function rejectTradeOffer(offerId: string, userId: string) {
+    const session = await getSession();
+    if (!session || session.user.id !== userId) {
+        throw new Error("No autorizado");
+    }
     const { supabaseAdmin } = await import("@/utils/supabase/admin");
     try {
         const { error, data } = await supabaseAdmin
@@ -156,6 +170,10 @@ export async function rejectTradeOffer(offerId: string, userId: string) {
 }
 
 export async function cancelTradeOffer(offerId: string, userId: string) {
+    const session = await getSession();
+    if (!session || session.user.id !== userId) {
+        throw new Error("No autorizado");
+    }
     const { supabaseAdmin } = await import("@/utils/supabase/admin");
     try {
         const { error, data } = await supabaseAdmin

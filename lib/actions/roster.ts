@@ -2,8 +2,12 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getSession } from "./auth";
 
 export async function setStarterStatus(leagueId: string, profileId: string, playerId: string, newSlot: 'starter' | 'substitute') {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+
   const supabase = await createClient();
   try {
     // 1. Real-time Lock Check (Match Day protection)

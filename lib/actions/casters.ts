@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getSession } from "./auth";
 
 export async function getCasters() {
   const { supabaseAdmin } = await import("@/utils/supabase/admin");
@@ -36,6 +37,9 @@ export async function getActiveCasters(leagueId: string, profileId: string, game
 
 
 export async function hireCaster(leagueId: string, profileId: string, gameweekId: number, casterId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+
   const supabase = await createClient();
   try {
     if (!gameweekId) {

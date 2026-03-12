@@ -42,7 +42,12 @@ interface ScrapedPlayer {
   market_value: number;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   try {
     // 0. Obtener equipos EMEA registrados para filtrar dinámicamente
     const { data: dbTeams } = await supabaseAdmin

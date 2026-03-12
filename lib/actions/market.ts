@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { validatePlayerActionAvailability, validateRosterRoleLimits } from "./player-action-guards";
+import { getSession } from "./auth";
 
 export interface Team {
   tag: string;
@@ -100,6 +101,9 @@ export async function checkIsFinal(leagueId: string) {
 
 
 export async function buyFromPersonalMarket(leagueId: string, profileId: string, playerId: string, personalMarketId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  
   const supabase = await createClient();
   try {
     const { data: player } = await supabase.from('pro_players').select('role').eq('id', playerId).single();
@@ -189,6 +193,9 @@ export async function revealAuction(leagueId: string, profileId: string, auction
 }
 
 export async function createAuction(leagueId: string, profileId: string, playerId: string, startingPrice: number) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  
   const supabase = await createClient();
   try {
     await validatePlayerActionAvailability({
@@ -222,6 +229,9 @@ export async function createAuction(leagueId: string, profileId: string, playerI
 }
 
 export async function placeBid(auctionId: string, profileId: string, bidAmount: number) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  
   const supabase = await createClient();
   try {
     const { data: auction } = await supabase.from('market_auctions').select('league_id, player_id').eq('id', auctionId).single();
@@ -249,6 +259,9 @@ export async function placeBid(auctionId: string, profileId: string, bidAmount: 
 }
 
 export async function withdrawBid(auctionId: string, profileId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  
   const supabase = await createClient();
   try {
     const { data: result, error: rpcError } = await supabase.rpc('handle_withdraw_bid_atomic', {
@@ -268,6 +281,9 @@ export async function withdrawBid(auctionId: string, profileId: string) {
 
 
 export async function sellPlayer(leagueId: string, profileId: string, playerId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  
   const supabase = await createClient();
   try {
     await validatePlayerActionAvailability({
@@ -315,6 +331,9 @@ export async function sellPlayer(leagueId: string, profileId: string, playerId: 
 }
 
 export async function payClause(leagueId: string, buyerProfileId: string, playerId: string, targetProfileId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== buyerProfileId) throw new Error("Acceso no autorizado");
+  
   const supabase = await createClient();
   try {
     // 1. Fetch player details to check role limits
@@ -349,6 +368,9 @@ export async function payClause(leagueId: string, buyerProfileId: string, player
 }
 
 export async function buyPlayer(leagueId: string, profileId: string, playerId: string, customPrice?: number) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  
   const supabase = await createClient();
   try {
     // 1. Get player name for the success message (optional, but nice)

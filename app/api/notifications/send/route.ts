@@ -4,6 +4,12 @@ import webpush from "web-push";
 
 export async function POST(req: Request) {
   try {
+    // Only allow internal server calls (cron or server actions)
+    const authHeader = req.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
     // Configurar web-push dentro del handler para evitar errores en build time
     if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
       webpush.setVapidDetails(
@@ -13,10 +19,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const { userId, title, body, url, tag } = await req.json();
+    const body = await req.json();
+    const { userId, title, body: msgBody, url, tag } = body;
 
-    if (!userId && !title) {
-      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+    // Basic validation - userId and title are required
+    if (!userId || typeof userId !== 'string' || !title || typeof title !== 'string') {
+      return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -33,7 +41,7 @@ export async function POST(req: Request) {
 
     const payload = JSON.stringify({
       title,
-      body,
+      body: msgBody,
       url: url || '/dashboard',
       tag: tag || 'general'
     });

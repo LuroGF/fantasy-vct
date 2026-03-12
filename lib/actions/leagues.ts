@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getSession } from "./auth";
 
 // Función para generar un código de invitación aleatorio
 function generateInviteCode(length = 6) {
@@ -101,6 +102,9 @@ async function assignInitialRoster(supabase: any, leagueId: string, profileId: s
 
 
 export async function createLeague(name: string, userId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== userId) throw new Error("Acceso no autorizado");
+
   const supabase = await createClient();
   try {
     const inviteCode = generateInviteCode();
@@ -111,7 +115,7 @@ export async function createLeague(name: string, userId: string) {
       .insert({ 
         name, 
         invite_code: inviteCode, 
-        creator_id: userId,
+        creator_id: session.user.id,
         budget_limit: 100000000 // 100M por defecto
       })
       .select()
@@ -123,7 +127,7 @@ export async function createLeague(name: string, userId: string) {
     const { error: joinError } = await supabase
       .from("league_participants")
       .insert({ 
-        profile_id: userId, 
+        profile_id: session.user.id, 
         league_id: league.id,
         current_budget: 100000000 
       });
@@ -131,7 +135,7 @@ export async function createLeague(name: string, userId: string) {
     if (joinError) throw joinError;
 
     // 3. Asignar equipo inicial
-    await assignInitialRoster(supabase, league.id, userId);
+    await assignInitialRoster(supabase, league.id, session.user.id);
 
     revalidatePath("/leagues");
     return { success: true, league };
@@ -142,6 +146,9 @@ export async function createLeague(name: string, userId: string) {
 }
 
 export async function joinLeague(inviteCode: string, userId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== userId) throw new Error("Acceso no autorizado");
+
   const supabase = await createClient();
   try {
     // 1. Buscar la liga por código

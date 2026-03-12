@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getSession } from "./auth";
 
 export async function getPowerUpTypes() {
   const supabase = await createClient();
@@ -62,6 +63,9 @@ export async function getActivePowerUps(leagueId: string, profileId: string) {
 }
 
 export async function buyPowerUp(leagueId: string, profileId: string, powerUpCode: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  
   const supabase = await createClient();
   try {
     // 0. Market Lock Check
@@ -104,6 +108,9 @@ export async function buyPowerUp(leagueId: string, profileId: string, powerUpCod
 }
 
 export async function activatePowerUp(leagueId: string, profileId: string, powerUpTypeId: string, targetPlayerId?: string) {
+    const session = await getSession();
+    if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+    
     const supabase = await createClient();
     try {
         const { data: activeGw } = await supabase.from('gameweeks').select('id, is_locked').eq('is_active', true).maybeSingle();
