@@ -28,9 +28,10 @@ export default function TopBar() {
                 const bonus = await getBonusStatus(session.user.id);
                 setBonusStatus(bonus);
                 
-                const { getUserNotifications, getUnreadCount } = await import("@/lib/actions/notifications");
                 const count = await getUnreadCount(session.user.id);
                 setUnreadCount(count);
+                
+                const { getUserNotifications } = await import("@/lib/actions/notifications");
                 const list = await getUserNotifications(session.user.id);
                 setNotifications(list.slice(0, 5));
             }

@@ -20,14 +20,6 @@ export const metadata: Metadata = {
   title: "Valorant Fantasy VCT",
   description: "Compite con tus amigos en la mejor liga fantasy de Valorant",
   manifest: "/manifest.json",
-  themeColor: "#FF4655",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: "cover",
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -40,6 +32,15 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
+};
+
+export const viewport = {
+  themeColor: "#FF4655",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

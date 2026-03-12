@@ -14,7 +14,7 @@ export default function Home() {
           playsInline
           preload="auto"
         >
-          <source src="../videos/aimers.mp4" type="video/mp4" />
+          <source src="/videos/aimers.mp4" type="video/mp4" />
           {/* opcional fallback */}
         </video>
 
