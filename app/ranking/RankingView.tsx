@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { getLeagueClassification } from "@/lib/actions/leagues";
 
 import { FeedbackBanner } from "@/components/FeedbackBanner";
-import { getTeamLogo } from "@/lib/vlr";
+import { getTeamLogo } from "@/lib/vlr-shared";
 
 interface RankingViewProps {
     initialStandings: any[];

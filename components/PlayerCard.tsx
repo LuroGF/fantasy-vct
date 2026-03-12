@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTeamLogo, getTeamTag } from "@/lib/vlr";
+import { getTeamLogo, getTeamTag } from "@/lib/vlr-shared";
 
 interface PlayerCardProps {
   player: {

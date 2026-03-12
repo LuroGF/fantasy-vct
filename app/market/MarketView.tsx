@@ -23,7 +23,7 @@ import {
 import { PlayerCard } from "@/components/PlayerCard";
 import { useState, useMemo, useEffect } from "react";
 import { FeedbackBanner } from "@/components/FeedbackBanner";
-import { getTeamLogo } from "@/lib/vlr";
+import { getTeamLogo } from "@/lib/vlr-shared";
 
 import { motion, AnimatePresence } from "framer-motion";
 

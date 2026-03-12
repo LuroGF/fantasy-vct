@@ -1,4 +1,5 @@
-import { fetchVlrMatches, getTeamTag, getTeamLogo } from "@/lib/vlr";
+import { fetchVlrMatches } from "@/lib/vlr";
+import { getTeamTag, getTeamLogo } from "@/lib/vlr-shared";
 import Link from "next/link";
 
 export async function DashboardMatchList() {

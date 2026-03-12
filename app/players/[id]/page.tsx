@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { PlayerStatsGraph } from "@/components/PlayerStatsGraph";
 import { MatchHistoryList } from "@/components/MatchHistoryList";
 import { StatusBadge } from "@/components/StatusBadge";
-import { getTeamLogo } from "@/lib/vlr";
+import { getTeamLogo } from "@/lib/vlr-shared";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
