@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { getSession } from "./auth";
 
 export async function getUserNotifications(profileId: string) {
   const supabase = await createClient();
@@ -21,22 +22,29 @@ export async function getUserNotifications(profileId: string) {
 }
 
 export async function markNotificationAsRead(notificationId: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: "No autorizado" };
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("notifications")
     .update({ is_read: true })
-    .eq("id", notificationId);
+    .eq("id", notificationId)
+    .eq("profile_id", session.user.id); // Ensure ownership
 
   if (error) {
     console.error("Error marking notification as read:", error);
     return { success: false, error };
   }
 
-  revalidatePath("/"); // Update UI everywhere
+  revalidatePath("/");
   return { success: true };
 }
 
 export async function markAllAsRead(profileId: string) {
+  const session = await getSession();
+  if (!session || session.user.id !== profileId) return { success: false, error: "No autorizado" };
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("notifications")
