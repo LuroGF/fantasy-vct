@@ -191,9 +191,9 @@ export function RankingView({
                                             </span>
                                             <div className="flex items-center gap-1.5 mt-1">
                                               {(() => {
-                                                const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
+                                                const logo = getTeamLogo(player.pro_teams?.tag);
                                                 return logo ? (
-                                                  <img src={logo} alt={player.pro_teams.tag} className="w-4 h-4 object-contain" />
+                                                  <img src={logo} alt={player.pro_teams?.tag || ""} className="w-4 h-4 object-contain" />
                                                 ) : null;
                                               })()}
                                               <span className="text-[9px] text-v-white/40 font-bold uppercase tracking-widest leading-none">

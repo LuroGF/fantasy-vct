@@ -71,11 +71,12 @@ const TEAM_ALIASES: Record<string, string> = {
   "ULF": "ULF"
 };
 
-export function getTeamLogo(name: string) {
+export function getTeamLogo(name: string | undefined | null) {
+    if (!name) return null;
     const upper = name.toUpperCase();
     const logoName = TEAM_ALIASES[upper];
     if (logoName) return `/equipos/${logoName}.png`;
-    return null; // Don't return a path if we don't have a logo
+    return null; 
 }
 
 function cleanText(value: string | undefined) {
@@ -98,7 +99,8 @@ function normalizeTeamName(name: string) {
   return clean;
 }
 
-export function getTeamTag(name: string) {
+export function getTeamTag(name: string | undefined | null) {
+    if (!name) return "???";
     const upper = name.toUpperCase();
     return TEAM_ALIASES[upper] || name.substring(0, 3).toUpperCase();
 }
@@ -209,7 +211,7 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
           const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
           
           const eventUpper = event.toUpperCase();
-          const isVctEmea = eventUpper.includes("VCT") && 
+          const isVctEmea = (eventUpper.includes("VCT") || eventUpper.includes("MASTERS") || eventUpper.includes("CHAMPIONS")) && 
                            eventUpper.includes("EMEA") && 
                            !eventUpper.includes("GAME CHANGERS") && 
                            !eventUpper.includes("CHALLENGERS") &&
@@ -319,7 +321,7 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
     return dateB - dateA;
   });
 
-  const finalMatches = emeaMatches.length > 0 ? emeaMatches.slice(0, 20) : results.slice(0, 10);
+  const finalMatches = emeaMatches;
 
   // Sync with DB
   syncMatchesToDb(finalMatches).catch(console.error);
