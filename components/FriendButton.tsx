@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { UserPlus, Check, Clock, UserX } from "lucide-react";
 import { sendFriendRequest, acceptFriendRequest } from "@/lib/actions/friends";
-import { toast } from "sonner"; // Assuming toast exists based on common project structures, will fallback if not
+import { toast } from "sonner";
 
 interface FriendButtonProps {
   targetId: string;
@@ -22,8 +22,9 @@ export function FriendButton({ targetId, initialStatus, currentUserId }: FriendB
     const res = await sendFriendRequest(targetId);
     if (res.success) {
       setStatus({ user_id: currentUserId, friend_id: targetId, status: 'pending' });
+      toast.success("Solicitud enviada correctamente");
     } else {
-      // toast.error(res.error);
+      toast.error(res.error || "Error al enviar la solicitud");
     }
     setLoading(false);
   }
@@ -33,6 +34,9 @@ export function FriendButton({ targetId, initialStatus, currentUserId }: FriendB
     const res = await acceptFriendRequest(status.user_id);
     if (res.success) {
       setStatus({ ...status, status: 'accepted' });
+      toast.success("¡Ahora sois amigos!");
+    } else {
+      toast.error(res.error || "Error al aceptar la solicitud");
     }
     setLoading(false);
   }

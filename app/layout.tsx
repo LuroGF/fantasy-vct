@@ -4,6 +4,7 @@ import "./globals.css";
 import LayoutShell from "@/components/LayoutShell";
 import PWAInstaller from "@/components/PWAInstaller";
 import PushManager from "@/components/PushManager";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -57,6 +58,7 @@ export default function RootLayout({
         <LayoutShell>
           {children}
         </LayoutShell>
+        <Toaster richColors closeButton theme="dark" />
       </body>
     </html>
   );
