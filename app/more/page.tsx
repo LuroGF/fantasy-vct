@@ -3,6 +3,7 @@ import { signOut } from "@/lib/actions/auth";
 
 const options = [
   { label: "Perfil", href: "/more/profile" },
+  { label: "Comunidad", href: "/more/community" },
   { label: "Notificaciones", href: "/more/notifications" },
   { label: "Invitar amigos", href: "/more/invite" },
   { label: "Reglas y puntuacion", href: "/more/rules" },
