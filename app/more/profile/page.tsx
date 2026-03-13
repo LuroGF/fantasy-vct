@@ -17,7 +17,7 @@ export default async function ProfilePage() {
   // Fetch profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*, pro_teams(tag, logo_url)")
+    .select("*, pro_teams(name, tag, logo_url)")
     .eq("id", session.user.id)
     .single();
 
@@ -64,14 +64,17 @@ export default async function ProfilePage() {
     <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-4xl px-4 sm:px-6 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 py-6 mb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Link href="/more" className="text-v-white/20 hover:text-v-white transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-          <h1 className="text-4xl leading-none italic uppercase">Perfil</h1>
-        </div>
+          <div className="flex items-center gap-2">
+            <Link href="/more" className="text-v-white/20 hover:text-v-white transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <div>
+              <h1 className="text-4xl leading-none italic uppercase">Perfil</h1>
+              <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Agente del Sistema</p>
+            </div>
+          </div>
         <EditProfileButton profile={profile} teams={teams} />
       </div>
 
@@ -85,29 +88,28 @@ export default async function ProfilePage() {
               style={{ backgroundColor: bannerColor }}
             />
             
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 -mr-24 -mt-24 rotate-45 opacity-5" style={{ backgroundColor: bannerColor }} />
+              
                {/* Favorite Team Badge */}
               {profile?.pro_teams && (
                 <div className="absolute top-8 right-6 flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 bg-v-black/40 backdrop-blur-md p-2 border border-white/5 flex items-center justify-center">
+                  <div className="w-16 h-16 bg-v-black/40 backdrop-blur-md p-3 border border-white/5 flex items-center justify-center">
                     <img src={profile.pro_teams.logo_url} className="w-full h-full object-contain" alt="" />
                   </div>
-                  <span className="text-[8px] font-black uppercase text-v-white/40 tracking-widest">{profile.pro_teams.tag} FAN</span>
+                  <span className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.3em] font-oswald">SOY FAN</span>
                 </div>
               )}
 
-              <div className="flex items-center gap-5">
-                <div className="relative">
-                  <div 
-                    className="w-20 h-20 bg-v-gray border-2 flex items-center justify-center text-3xl font-black italic text-v-white shadow-2xl transition-colors duration-500"
-                    style={{ borderColor: bannerColor, color: bannerColor, backgroundColor: `${bannerColor}10` }}
-                  >
-                    {initials}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-v-black rounded-full" />
+              <div className="flex items-center gap-6 relative z-10">
+                <div 
+                  className="w-24 h-24 bg-v-gray border-2 flex items-center justify-center text-4xl font-black italic shadow-2xl transition-all duration-500"
+                  style={{ borderColor: bannerColor, color: bannerColor, backgroundColor: `${bannerColor}10` }}
+                >
+                  {initials}
                 </div>
                 <div className="flex-1 min-w-0 pr-12 lg:pr-16">
-                  <h2 className="text-2xl font-black uppercase italic tracking-tighter truncate leading-none">
+                  <h2 className="text-3xl font-black uppercase italic tracking-tighter truncate leading-none">
                     {profile?.username || "Agente"}
                   </h2>
                   <div className="flex items-center gap-2 mt-2">
@@ -117,7 +119,7 @@ export default async function ProfilePage() {
                     >
                       {profile?.title || "Manager Novato"}
                     </span>
-                    <span className="text-[9px] font-black uppercase text-v-white/30 tracking-widest">
+                    <span className="px-2 py-0.5 bg-v-white/5 text-v-white/40 text-[8px] font-black uppercase tracking-widest border border-white/5">
                        #{globalRank} GLOBAL
                     </span>
                   </div>
@@ -125,25 +127,35 @@ export default async function ProfilePage() {
               </div>
 
               {profile?.bio && (
-                <div className="bg-v-black/20 p-4 border-l-2 border-white/5">
-                  <p className="text-xs text-v-white/60 italic leading-relaxed">
+                <div className="bg-v-black/20 p-4 border-l-2 relative z-10" style={{ borderColor: `${bannerColor}40` }}>
+                  <p className="text-sm text-v-white/70 italic leading-relaxed">
                     "{profile.bio}"
                   </p>
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-3 border-t border-white/5 pt-5">
-                <div className="flex flex-col items-center p-3 bg-v-white/5 border border-white/5">
-                  <p className="text-2xl font-black italic" style={{ color: bannerColor }}>{totalGlobalPoints.toLocaleString()}</p>
-                  <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mt-1 text-center">Pts Globales</p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
+                <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
+                  <Trophy className="w-4 h-4 mb-2 opacity-50" style={{ color: bannerColor }} />
+                  <p className="text-2xl font-black italic leading-none">{totalGlobalPoints.toLocaleString()}</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Puntos Globales</p>
                 </div>
-                <div className="flex flex-col items-center p-3 bg-v-white/5 border border-white/5">
-                  <p className="text-2xl font-black italic">{totalLeagues}</p>
-                  <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mt-1 text-center">Ligas</p>
+                <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
+                  <Users className="w-4 h-4 text-v-white mb-2 opacity-50" />
+                  <p className="text-2xl font-black italic leading-none">{totalLeagues}</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Ligas</p>
                 </div>
-                <div className="flex flex-col items-center p-3 bg-v-white/5 border border-white/5">
-                  <p className="text-2xl font-black italic text-yellow-400">{wins}</p>
-                  <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mt-1 text-center">Semanas #1</p>
+                <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
+                   <Star className="w-4 h-4 text-yellow-500 mb-2 opacity-50" />
+                  <p className="text-2xl font-black italic leading-none text-yellow-400">{wins}</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Semanas #1</p>
+                </div>
+                <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
+                  <div className="w-4 h-4 flex items-center justify-center mb-2">
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: bannerColor }} />
+                  </div>
+                  <p className="text-2xl font-black italic leading-none text-v-white/80">ESTADO</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">VERIFICADO</p>
                 </div>
               </div>
             </div>
