@@ -51,7 +51,7 @@ export default function RulesPage() {
 
   const roles: Role[] = useMemo(
     () => ["Duelista", "Centinela", "Iniciador", "Controlador"],
-    []
+    [],
   );
 
   const rulesForSelectedRole = roleRules[selectedRole];
@@ -67,27 +67,26 @@ export default function RulesPage() {
         animate-in fade-in slide-in-from-bottom-4 duration-700 py-6
       "
     >
-      <div className="flex items-center gap-2">
-        <Link
-          href="/more"
-          className="text-v-white/20 hover:text-v-white transition-colors"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </Link>
-        <h1 className="text-4xl leading-none italic uppercase">Reglas</h1>
-      </div>
+      <Link href="/more">
+        <div className="flex items-center gap-2">
+          <div className="text-v-white/20 hover:text-v-white transition-colors">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </div>
+          <h1 className="text-4xl leading-none italic uppercase">Reglas</h1>
+        </div>
+      </Link>
 
       <div className="v-panel p-6 space-y-6">
         <div className="space-y-4">

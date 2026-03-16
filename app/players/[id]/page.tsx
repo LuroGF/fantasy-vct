@@ -7,10 +7,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { getTeamLogo } from "@/lib/vlr-shared";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import BackLink from "@/components/BackLink";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlayerPage(props: { params: Promise<{ id: string }> }) {
+export default async function PlayerPage(props: {
+  params: Promise<{ id: string }>;
+}) {
   const params = await props.params;
   const session = await getSession();
   if (!session) return redirect("/login");
@@ -20,8 +23,15 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
   if (!success || !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-        <p className="text-v-white/50 font-black uppercase tracking-widest">Jugador no encontrado</p>
-        <Link href="/market" className="text-v-red hover:underline uppercase text-xs font-bold">Volver al Mercado</Link>
+        <p className="text-v-white/50 font-black uppercase tracking-widest">
+          Jugador no encontrado
+        </p>
+        <Link
+          href="/market"
+          className="text-v-red hover:underline uppercase text-xs font-bold"
+        >
+          Volver al Mercado
+        </Link>
       </div>
     );
   }
@@ -31,40 +41,54 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
   return (
     <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-4xl px-4 sm:px-6 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 py-6">
       {/* Header / Nav */}
-      <div className="flex items-center gap-2 px-1">
-        <Link href="/market" className="text-v-white/40 hover:text-v-white transition-colors">
+      <BackLink>
+        <div className="flex items-center gap-2 px-1">
           <ChevronLeft className="w-5 h-5" />
-        </Link>
-        <h1 className="text-xl font-black italic uppercase text-v-white/40 tracking-wider">Perfil del Jugador</h1>
-      </div>
+          <h1 className="text-xl font-black italic uppercase text-v-white/40 tracking-wider">
+            Perfil del Jugador
+          </h1>
+        </div>
+      </BackLink>
 
       {/* Player Header Card */}
       <div className="v-panel p-0 overflow-hidden relative group">
         <div className="absolute top-0 right-0 w-32 h-32 bg-v-red/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        
+
         <div className="p-5 flex items-start justify-between relative z-10">
           <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 bg-v-navy border-2 flex items-center justify-center overflow-hidden shrink-0 relative ${
-                player.role === 'Duelista' ? 'border-role-duelista' :
-                player.role === 'Iniciador' ? 'border-role-iniciador' :
-                player.role === 'Controlador' ? 'border-role-controlador' :
-                player.role === 'Centinela' ? 'border-role-centinela' :
-                'border-white/20'
-            }`}>
+            <div
+              className={`w-16 h-16 bg-v-navy border-2 flex items-center justify-center overflow-hidden shrink-0 relative ${
+                player.role === "Duelista"
+                  ? "border-role-duelista"
+                  : player.role === "Iniciador"
+                    ? "border-role-iniciador"
+                    : player.role === "Controlador"
+                      ? "border-role-controlador"
+                      : player.role === "Centinela"
+                        ? "border-role-centinela"
+                        : "border-white/20"
+              }`}
+            >
               {player.photo_url ? (
-                <img src={player.photo_url} alt={player.nickname} className="w-full h-full object-cover" />
+                <img
+                  src={player.photo_url}
+                  alt={player.nickname}
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <img 
-                  src={`/players/${player.nickname.toLowerCase()}.png`} 
-                  alt={player.nickname} 
+                <img
+                  src={`/players/${player.nickname.toLowerCase()}.png`}
+                  alt={player.nickname}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.style.display = "none";
                     const parent = e.currentTarget.parentElement;
                     if (parent) {
-                      const span = document.createElement('span');
+                      const span = document.createElement("span");
                       span.className = "text-xl font-black italic opacity-20";
-                      span.innerText = player.nickname.substring(0, 2).toUpperCase();
+                      span.innerText = player.nickname
+                        .substring(0, 2)
+                        .toUpperCase();
                       parent.appendChild(span);
                     }
                   }}
@@ -72,72 +96,98 @@ export default async function PlayerPage(props: { params: Promise<{ id: string }
               )}
               {/* Team Patch overlay */}
               {(() => {
-                  const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
-                  return logo ? (
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-v-navy border border-white/20 p-0.5 rounded-sm z-20">
-                          <img src={logo} alt="" className="w-full h-full object-contain" />
-                      </div>
-                  ) : null;
+                const logo = player.pro_teams?.tag
+                  ? getTeamLogo(player.pro_teams.tag)
+                  : null;
+                return logo ? (
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-v-navy border border-white/20 p-0.5 rounded-sm z-20">
+                    <img
+                      src={logo}
+                      alt=""
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : null;
               })()}
             </div>
-            
+
             <div>
               <div className="flex items-center gap-2 mb-1">
-                 <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none pr-4">{player.nickname}</h2>
-                 {stats.total_mvps > 0 && (
-                   <span className="bg-yellow-500/20 text-yellow-500 text-[8px] font-black px-1.5 py-0.5 border border-yellow-500/50 rounded uppercase">
-                     {stats.total_mvps}x MVP
-                   </span>
-                 )}
+                <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none pr-4">
+                  {player.nickname}
+                </h2>
+                {stats.total_mvps > 0 && (
+                  <span className="bg-yellow-500/20 text-yellow-500 text-[8px] font-black px-1.5 py-0.5 border border-yellow-500/50 rounded uppercase">
+                    {stats.total_mvps}x MVP
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-3">
-                 <p className="text-xs font-bold text-v-white/60 uppercase tracking-wider flex items-center gap-1">
-                    {player.pro_teams?.tag || "Free Agent"} 
-                    <span className="w-1 h-1 bg-v-white/20 rounded-full" />
-                    {player.role}
-                 </p>
+                <p className="text-xs font-bold text-v-white/60 uppercase tracking-wider flex items-center gap-1">
+                  {player.pro_teams?.tag || "Free Agent"}
+                  <span className="w-1 h-1 bg-v-white/20 rounded-full" />
+                  {player.role}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         <div className="bg-v-navy/50 p-3 border-t border-white/5 flex items-center justify-between">
-           <div>
-             <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-0.5">Valor de Mercado</p>
-             <p className="text-xl font-black italic text-v-red">{(player.market_value / 1000000).toFixed(1)}M VP</p>
-           </div>
+          <div>
+            <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-0.5">
+              Valor de Mercado
+            </p>
+            <p className="text-xl font-black italic text-v-red">
+              {(player.market_value / 1000000).toFixed(1)}M VP
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3">
         <div className="v-panel p-3 flex flex-col items-center justify-center gap-1">
-           <p className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.2em]">Media Puntos</p>
-           <p className="text-2xl font-black italic">{stats.avg_points}</p>
+          <p className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.2em]">
+            Media Puntos
+          </p>
+          <p className="text-2xl font-black italic">{stats.avg_points}</p>
         </div>
         <div className="v-panel p-3 flex flex-col items-center justify-center gap-1">
-           <p className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.2em]">K/D Ratio</p>
-           <p className={`text-2xl font-black italic ${stats.avg_kd >= 1 ? 'text-green-400' : 'text-v-red'}`}>
-             {stats.avg_kd}
-           </p>
+          <p className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.2em]">
+            K/D Ratio
+          </p>
+          <p
+            className={`text-2xl font-black italic ${stats.avg_kd >= 1 ? "text-green-400" : "text-v-red"}`}
+          >
+            {stats.avg_kd}
+          </p>
         </div>
         <div className="v-panel p-3 flex flex-col items-center justify-center gap-1 col-span-2">
-           <p className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.2em]">Score de Combate (ACS)</p>
-           <p className="text-3xl font-black italic text-cyan-400">{stats.avg_acs}</p>
+          <p className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.2em]">
+            Score de Combate (ACS)
+          </p>
+          <p className="text-3xl font-black italic text-cyan-400">
+            {stats.avg_acs}
+          </p>
         </div>
       </div>
 
       {/* Graph */}
       <div className="v-panel p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-black uppercase tracking-widest text-v-white/70">Rendimiento (Últ. 5 J)</h3>
+          <h3 className="text-xs font-black uppercase tracking-widest text-v-white/70">
+            Rendimiento (Últ. 5 J)
+          </h3>
         </div>
         <PlayerStatsGraph data={stats.last_5_points} />
       </div>
 
       {/* Match History */}
       <div className="space-y-4">
-        <h3 className="text-xs font-black uppercase tracking-widest text-v-white/50 px-1">Historial de Partidas</h3>
+        <h3 className="text-xs font-black uppercase tracking-widest text-v-white/50 px-1">
+          Historial de Partidas
+        </h3>
         <MatchHistoryList matches={data.performances} />
       </div>
     </div>

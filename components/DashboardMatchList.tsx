@@ -39,7 +39,7 @@ export async function DashboardMatchList() {
                     href="/schedule"
                     className="text-[10px] font-black uppercase text-v-red hover:tracking-widest transition-all mb-1"
                 >
-                    Agenda Completa
+                    Ver Agenda
                 </Link>
             </div>
             <div className="grid gap-4">

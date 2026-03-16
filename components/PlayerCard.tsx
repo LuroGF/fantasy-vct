@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getTeamLogo, getTeamTag } from "@/lib/vlr-shared";
+import { useRouter } from "next/navigation";
 
 interface PlayerCardProps {
   player: {
@@ -50,6 +51,7 @@ export function PlayerCard({
 }: PlayerCardProps) {
 
   const stats = player.stats || { acs: 0, kd: 0, avgPoints: 0 };
+  const router = useRouter();
 
   const roleColors = {
     'Duelista': 'border-role-duelista',
@@ -62,7 +64,7 @@ export function PlayerCard({
   const currentRoleColor = (roleColors as any)[player.role] || 'border-white/20';
 
   return (
-    <div className={`v-panel relative border-l-4 ${currentRoleColor} group hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all overflow-hidden`}>
+    <div onClick={() => router.push(`/players/${player.id}`)} className={`v-panel relative border-l-4 ${currentRoleColor} group hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all overflow-hidden`}>
       {/* Background Decor */}
       <div className="absolute top-0 right-0 group-hover:opacity-10 transition-opacity" style={{ opacity: 0.015 }}>
          {(() => {
@@ -86,10 +88,8 @@ export function PlayerCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="min-w-0 flex-1">
-              <Link 
-                href={`/players/${player.id}`} 
+              <div 
                 className="inline-block hover:text-v-red transition-colors focus:outline-none max-w-full"
-                onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center gap-3">
                   <div className="relative shrink-0">
@@ -135,7 +135,7 @@ export function PlayerCard({
                     </div>
                   </h3>
                 </div>
-              </Link>
+              </div>
               <div className="flex items-center gap-2 mt-0.5 ml-11 lg:ml-14 overflow-hidden">
                 <span className="text-[9px] font-black uppercase tracking-[0.15em] text-v-red truncate">
                   {player.pro_teams?.tag || "Free Agent"}
