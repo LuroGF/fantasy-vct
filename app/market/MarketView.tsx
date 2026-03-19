@@ -7,7 +7,6 @@ import {
   buyFromPersonalMarket,
   payClause,
   placeBid,
-  createAuction,
   getPersonalMarket,
   fetchActiveAuctions,
   revealAuction,
@@ -22,10 +21,9 @@ import {
 } from "@/lib/actions/trades";
 import { PlayerCard } from "@/components/PlayerCard";
 import { useState, useMemo, useEffect } from "react";
-import { FeedbackBanner } from "@/components/FeedbackBanner";
 import { getTeamLogo } from "@/lib/vlr-shared";
-
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { sileo } from "sileo";
 
 interface MarketViewProps {
   personalMarket: any[];
@@ -51,10 +49,6 @@ export default function MarketView({
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [isFinal, setIsFinal] = useState(false);
   const [legends, setLegends] = useState<any[]>([]);
-  const [status, setStatus] = useState<{
-    type: string;
-    message: string;
-  } | null>(null);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [personalMarket, setPersonalMarket] = useState(initialPersonalMarket);
@@ -157,6 +151,10 @@ export default function MarketView({
         if (bidsRes.data) setUserBids(bidsRes.data);
       } catch (err) {
         console.error("Error loading market data:", err);
+        sileo.error({
+          title: "Error al cargar mercado",
+          description: "No se pudieron actualizar los datos",
+        });
       }
       setLoading(false);
     }
@@ -177,52 +175,83 @@ export default function MarketView({
     return () => clearInterval(timer);
   }, [activeLeagueId, profileId, refreshTrigger, activeTab]);
 
-  // Auto-dismiss status banner after 5 seconds
-  useEffect(() => {
-    if (status) {
-      const timer = setTimeout(() => setStatus(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [status]);
-
-  const handleAction = async (actionFn: () => Promise<any>) => {
+  const handleAction = async (
+    actionFn: () => Promise<any>,
+    messages?: {
+      loading?: string;
+      successTitle?: string;
+      successDescription?: string;
+      errorTitle?: string;
+    },
+  ) => {
     haptic.medium();
     setLoading(true);
-    setStatus(null);
+
     try {
-      const res = await actionFn();
-      if (res.success) {
-        haptic.success();
-        setStatus({
-          type: "success",
-          message: res.message || "Operación completada con éxito",
-        });
-        setRefreshTrigger((prev) => prev + 1);
-        router.refresh();
-      } else {
-        haptic.error();
-        setStatus({
-          type: "error",
-          message: res.error || "Error en la operación",
-        });
-      }
-    } catch (e) {
-      haptic.error();
-      setStatus({ type: "error", message: "Error inesperado" });
+      await sileo.promise(actionFn(), {
+        loading: messages?.loading
+          ? {
+              title: messages.loading,
+            }
+          : {
+              title: "Procesando operación...",
+            },
+        success: (res) => {
+          if (!res?.success) {
+            throw new Error(res?.error || "Error en la operación");
+          }
+
+          haptic.success();
+          setRefreshTrigger((prev) => prev + 1);
+          router.refresh();
+
+          return {
+            title: messages?.successTitle || "Operación completada",
+            description:
+              messages?.successDescription ||
+              res.message ||
+              "La acción se realizó correctamente",
+          };
+        },
+        error: (err) => {
+          haptic.error();
+          return {
+            title: messages?.errorTitle || "Error",
+            description:
+              err instanceof Error ? err.message : "Error inesperado",
+          };
+        },
+      });
+    } catch {
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const confirmBid = async () => {
     if (!bidDialog.auction) return;
     const amount = parseInt(bidDialog.amount);
+
     if (isNaN(amount) || amount <= bidDialog.auction.current_bid) {
       haptic.error();
-      setStatus({ type: "error", message: "Puja no válida" });
+      sileo.error({
+        title: "Puja no válida",
+        description: "La oferta debe superar la puja actual",
+      });
       return;
     }
+
     setBidDialog({ show: false, auction: null, amount: "" });
-    handleAction(() => placeBid(bidDialog.auction.id, profileId, amount));
+
+    handleAction(
+      () => placeBid(bidDialog.auction.id, profileId, amount),
+      {
+        loading: "Enviando oferta...",
+        successTitle: "Oferta registrada",
+        successDescription: "Tu puja anónima ha sido enviada",
+        errorTitle: "No se pudo realizar la puja",
+      },
+    );
   };
 
   const submitTrade = async () => {
@@ -235,15 +264,22 @@ export default function MarketView({
 
     setTradeDialog((prev) => ({ ...prev, show: false }));
 
-    handleAction(() =>
-      createTradeOffer(
-        activeLeagueId,
-        profileId,
-        receiverId,
-        myPlayerId || null,
-        targetPlayer.id,
-        finalCash,
-      ),
+    handleAction(
+      () =>
+        createTradeOffer(
+          activeLeagueId,
+          profileId,
+          receiverId,
+          myPlayerId || null,
+          targetPlayer.id,
+          finalCash,
+        ),
+      {
+        loading: "Enviando propuesta...",
+        successTitle: "Trade enviado",
+        successDescription: "La propuesta se ha enviado correctamente",
+        errorTitle: "No se pudo enviar la propuesta",
+      },
     );
   };
 
@@ -291,11 +327,26 @@ export default function MarketView({
     (activeParticipation?.current_budget || 0) - committedFunds;
 
   const handleReveal = async (auctionId: string) => {
-    handleAction(() => revealAuction(activeLeagueId, profileId, auctionId));
+    handleAction(
+      () => revealAuction(activeLeagueId, profileId, auctionId),
+      {
+        loading: "Interceptando oferta...",
+        successTitle: "Oferta revelada",
+        errorTitle: "No se pudo revelar la oferta",
+      },
+    );
   };
 
   const handleWithdraw = async (auctionId: string) => {
-    handleAction(() => withdrawBid(auctionId, profileId));
+    handleAction(
+      () => withdrawBid(auctionId, profileId),
+      {
+        loading: "Retirando oferta...",
+        successTitle: "Oferta retirada",
+        successDescription: "El saldo bloqueado ha sido liberado",
+        errorTitle: "No se pudo retirar la oferta",
+      },
+    );
   };
 
   return (
@@ -418,8 +469,6 @@ export default function MarketView({
         )}
       </div>
 
-      <FeedbackBanner status={status} />
-
       {/* Content Area */}
       <div className="space-y-6">
         {activeTab === "personal" ? (
@@ -446,13 +495,20 @@ export default function MarketView({
                       title: "Confirmar Reclutamiento",
                       message: `¿Deseas reclutar a ${offer.player?.nickname} por ${(offer.offer_price / 1000000).toFixed(1)}M VP?`,
                       onConfirm: () =>
-                        handleAction(() =>
-                          buyFromPersonalMarket(
-                            activeLeagueId,
-                            profileId,
-                            offer.player_id,
-                            offer.id,
-                          ),
+                        handleAction(
+                          () =>
+                            buyFromPersonalMarket(
+                              activeLeagueId,
+                              profileId,
+                              offer.player_id,
+                              offer.id,
+                            ),
+                          {
+                            loading: "Reclutando jugador...",
+                            successTitle: "Jugador reclutado",
+                            successDescription: `${offer.player?.nickname} se ha unido a tu plantilla`,
+                            errorTitle: "No se pudo completar el reclutamiento",
+                          },
                         ),
                     });
                   }}
@@ -669,32 +725,32 @@ export default function MarketView({
                               key={player.id}
                               className="v-panel relative overflow-hidden group hover:border-v-red transition-all flex items-center justify-between p-3 select-none active:scale-[0.99]"
                             >
-                                {(() => {
-                                  const logo = getTeamLogo(player.pro_teams?.tag);
-                                  return logo ? (
-                                    <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none flex items-center justify-end pr-2 overflow-hidden opacity-5 group-hover:opacity-10 transition-opacity">
-                                      <img src={logo} alt="" className="w-20 h-20 object-contain grayscale brightness-200" />
-                                    </div>
-                                  ) : (
-                                    <div className="absolute -right-2 -bottom-2 text-4xl font-black text-white/3 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
-                                      {player.pro_teams?.tag || "FA"}
-                                    </div>
-                                  );
-                                })()}
-
-                                <div className="flex items-center gap-3 relative z-10">
-                                  <div className="w-10 shrink-0 flex justify-start border-r border-white/5 pr-2">
-                                    {(() => {
-                                      const logo = getTeamLogo(player.pro_teams?.tag);
-                                      return logo ? (
-                                        <img src={logo} alt={player.pro_teams?.tag || ""} className="w-6 h-6 object-contain" />
-                                      ) : (
-                                        <span className="text-[9px] font-black uppercase text-v-red tracking-widest">
-                                          {player.pro_teams?.tag || "FA"}
-                                        </span>
-                                      );
-                                    })()}
+                              {(() => {
+                                const logo = getTeamLogo(player.pro_teams?.tag);
+                                return logo ? (
+                                  <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none flex items-center justify-end pr-2 overflow-hidden opacity-5 group-hover:opacity-10 transition-opacity">
+                                    <img src={logo} alt="" className="w-20 h-20 object-contain grayscale brightness-200" />
                                   </div>
+                                ) : (
+                                  <div className="absolute -right-2 -bottom-2 text-4xl font-black text-white/3 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
+                                    {player.pro_teams?.tag || "FA"}
+                                  </div>
+                                );
+                              })()}
+
+                              <div className="flex items-center gap-3 relative z-10">
+                                <div className="w-10 shrink-0 flex justify-start border-r border-white/5 pr-2">
+                                  {(() => {
+                                    const logo = getTeamLogo(player.pro_teams?.tag);
+                                    return logo ? (
+                                      <img src={logo} alt={player.pro_teams?.tag || ""} className="w-6 h-6 object-contain" />
+                                    ) : (
+                                      <span className="text-[9px] font-black uppercase text-v-red tracking-widest">
+                                        {player.pro_teams?.tag || "FA"}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
                                 <div>
                                   <p className="text-sm font-black uppercase italic leading-none group-hover:text-v-red transition-colors pr-2 truncate">
                                     {player.nickname}
@@ -728,13 +784,20 @@ export default function MarketView({
                                         title: "Protocolo de Reasignación",
                                         message: `¿Deseas solicitar la reasignación de ${player.nickname} por ${(player.release_clause / 1000000).toFixed(1)}M VP? Los créditos de operación se transferirán a ${rival.profiles?.username}.`,
                                         onConfirm: () =>
-                                          handleAction(() =>
-                                            payClause(
-                                              activeLeagueId,
-                                              profileId,
-                                              player.id,
-                                              rival.profile_id,
-                                            ),
+                                          handleAction(
+                                            () =>
+                                              payClause(
+                                                activeLeagueId,
+                                                profileId,
+                                                player.id,
+                                                rival.profile_id,
+                                              ),
+                                            {
+                                              loading: "Procesando rescisión...",
+                                              successTitle: "Rescisión completada",
+                                              successDescription: `${player.nickname} cambia de equipo`,
+                                              errorTitle: "No se pudo ejecutar la rescisión",
+                                            },
                                           ),
                                       });
                                     }}
@@ -773,7 +836,6 @@ export default function MarketView({
               </div>
             ) : activeTab === "trades" ? (
               <div className="space-y-8">
-                {/* INCOMING */}
                 <div className="space-y-4">
                   <h2 className="text-xl italic uppercase text-v-white/80 border-b border-v-red/50 w-fit pr-4">
                     Ofertas Recibidas
@@ -807,7 +869,6 @@ export default function MarketView({
                         </div>
 
                         <div className="flex items-center justify-between gap-4">
-                          {/* THEY GIVE */}
                           <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
                             <p className="text-[7px] font-black uppercase text-v-white/30 mb-1">
                               Recibes
@@ -828,7 +889,6 @@ export default function MarketView({
 
                           <div className="text-v-white/20">⇄</div>
 
-                          {/* YOU GIVE */}
                           <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
                             <p className="text-[7px] font-black uppercase text-v-white/30 mb-1">
                               Entregas
@@ -862,8 +922,14 @@ export default function MarketView({
                                   message:
                                     "¿Confirmas el intercambio de activos? Esta acción es irreversible.",
                                   onConfirm: () =>
-                                    handleAction(() =>
-                                      acceptTradeOffer(trade.id, profileId),
+                                    handleAction(
+                                      () =>
+                                        acceptTradeOffer(trade.id, profileId),
+                                      {
+                                        loading: "Aceptando intercambio...",
+                                        successTitle: "Intercambio aceptado",
+                                        errorTitle: "No se pudo aceptar la oferta",
+                                      },
                                     ),
                                 });
                               }}
@@ -873,8 +939,13 @@ export default function MarketView({
                             </button>
                             <button
                               onClick={() =>
-                                handleAction(() =>
-                                  rejectTradeOffer(trade.id, profileId),
+                                handleAction(
+                                  () => rejectTradeOffer(trade.id, profileId),
+                                  {
+                                    loading: "Rechazando oferta...",
+                                    successTitle: "Oferta rechazada",
+                                    errorTitle: "No se pudo rechazar la oferta",
+                                  },
                                 )
                               }
                               className="flex-1 py-2 bg-v-white/5 hover:bg-v-red hover:text-v-white text-v-white/40 text-[9px] font-black uppercase italic transition-colors"
@@ -893,7 +964,6 @@ export default function MarketView({
                   </div>
                 </div>
 
-                {/* OUTGOING */}
                 <div className="space-y-4">
                   <h2 className="text-xl italic uppercase text-v-white/80 border-b border-v-red/50 w-fit pr-4">
                     Ofertas Enviadas
@@ -965,8 +1035,13 @@ export default function MarketView({
                         {trade.status === "pending" && (
                           <button
                             onClick={() =>
-                              handleAction(() =>
-                                cancelTradeOffer(trade.id, profileId),
+                              handleAction(
+                                () => cancelTradeOffer(trade.id, profileId),
+                                {
+                                  loading: "Cancelando propuesta...",
+                                  successTitle: "Propuesta cancelada",
+                                  errorTitle: "No se pudo cancelar la propuesta",
+                                },
                               )
                             }
                             className="w-full mt-3 py-1.5 text-[8px] font-black uppercase text-v-white/30 hover:text-v-red hover:bg-v-red/5 border border-transparent hover:border-v-red/20 transition-all"
@@ -1056,12 +1131,19 @@ export default function MarketView({
                                 title: "Reclutar Leyenda",
                                 message: `¿Deseas añadir a ${player.nickname} a tu equipo por ${(player.market_value / 1000000).toFixed(1)}M VP? Solo disponible para esta final.`,
                                 onConfirm: () =>
-                                  handleAction(() =>
-                                    buyPlayer(
-                                      activeLeagueId,
-                                      profileId,
-                                      player.id,
-                                    ),
+                                  handleAction(
+                                    () =>
+                                      buyPlayer(
+                                        activeLeagueId,
+                                        profileId,
+                                        player.id,
+                                      ),
+                                    {
+                                      loading: "Reclutando leyenda...",
+                                      successTitle: "Leyenda reclutada",
+                                      successDescription: `${player.nickname} se ha unido a tu equipo`,
+                                      errorTitle: "No se pudo reclutar la leyenda",
+                                    },
                                   ),
                               });
                             }}
@@ -1081,7 +1163,6 @@ export default function MarketView({
         )}
       </div>
 
-      {/* League & Budget Info */}
       {activeParticipation && (
         <div className="v-panel p-3 mt-4 flex justify-between items-center border-t-2 border-v-red">
           <div>
@@ -1103,7 +1184,6 @@ export default function MarketView({
         </div>
       )}
 
-      {/* Trade Dialog */}
       {tradeDialog.show && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-v-navy/90 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="v-panel w-full max-w-sm p-0 overflow-hidden border-t-4 border-v-white animate-in zoom-in-95 duration-200">
@@ -1117,7 +1197,6 @@ export default function MarketView({
             </div>
 
             <div className="p-6 space-y-6">
-              {/* TARGET */}
               <div className="bg-black/20 p-3 rounded border border-white/5">
                 <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-1">
                   Objetivo (Recibes)
@@ -1135,7 +1214,6 @@ export default function MarketView({
                 ⇄
               </div>
 
-              {/* OFFER */}
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-[9px] font-black uppercase text-v-white/60">
@@ -1217,7 +1295,6 @@ export default function MarketView({
         </div>
       )}
 
-      {/* Bid Dialog */}
       {bidDialog.show && bidDialog.auction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-v-navy/90 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="v-panel w-full max-w-sm p-6 space-y-6 border-t-4 border-v-red animate-in zoom-in-95 duration-200">
@@ -1251,7 +1328,6 @@ export default function MarketView({
                   className="w-full bg-v-navy/50 border border-white/10 px-4 py-3 text-lg font-black italic focus:border-v-red outline-none transition-colors"
                 />
 
-                {/* Quick Add Buttons */}
                 <div className="flex gap-2 pt-1 overflow-x-auto pb-2 scrollbar-hide">
                   {[500000, 1000000, 2000000, 5000000].map((add) => (
                     <button
@@ -1297,7 +1373,6 @@ export default function MarketView({
         </div>
       )}
 
-      {/* Generic Confirmation Dialog */}
       {confirmDialog.show && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-v-navy/95 backdrop-blur-md animate-in fade-in duration-200">
           <div className="v-panel w-full max-w-xs p-6 space-y-6 border-t-4 border-v-white animate-in zoom-in-95 duration-200">

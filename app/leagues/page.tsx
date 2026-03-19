@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import { FeedbackBanner } from "@/components/FeedbackBanner";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   createLeague,
@@ -13,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/utils/haptics";
 import LeagueDetails from "@/components/LeagueDetails";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+import { sileo } from "sileo";
 
 export default function LeaguesPage() {
   const [leagues, setLeagues] = useState<any[]>([]);
@@ -23,17 +23,7 @@ export default function LeaguesPage() {
   const [newLeagueName, setNewLeagueName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
-  const [status, setStatus] = useState<{ type: string; message: string } | null>(null);
   const router = useRouter();
-
-
-  // Auto-dismiss status banner after 5 seconds
-  useEffect(() => {
-    if (status?.message) {
-      const timer = setTimeout(() => setStatus(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [status]);
 
   useEffect(() => {
     async function init() {
@@ -63,17 +53,25 @@ export default function LeaguesPage() {
     if (!confirm(`¿Confirmar creación de liga: ${newLeagueName}?`)) return;
 
     haptic.medium();
+
     const res = await createLeague(newLeagueName, userId);
+
     if (res.success) {
       haptic.success();
-      setStatus({ type: "success", message: "¡Liga creada con éxito!" });
+      sileo.success({
+        title: "Liga creada",
+        description: "¡La liga se ha creado con éxito!",
+      });
       setNewLeagueName("");
       setShowCreate(false);
       loadLeagues();
       document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       haptic.error();
-      setStatus({ type: "error", message: "Error al crear la liga" });
+      sileo.error({
+        title: "Error al crear la liga",
+        description: typeof res.error === "string" ? res.error : "No se pudo crear la liga",
+      });
     }
   }
 
@@ -82,19 +80,24 @@ export default function LeaguesPage() {
     if (!confirm(`¿Unirse a liga con código: ${inviteCode}?`)) return;
 
     haptic.medium();
+
     const res = await joinLeague(inviteCode, userId);
+
     if (res.success) {
       haptic.success();
-      setStatus({ type: "success", message: "¡Te has unido a la liga!" });
+      sileo.success({
+        title: "Te has unido a la liga",
+        description: "Acceso concedido correctamente",
+      });
       setInviteCode("");
       setShowJoin(false);
       loadLeagues();
       document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       haptic.error();
-      setStatus({
-        type: "error",
-        message: typeof res.error === "string" ? res.error : "Error al unirse",
+      sileo.error({
+        title: "Error al unirse",
+        description: typeof res.error === "string" ? res.error : "No se pudo unir a la liga",
       });
     }
   }
@@ -221,8 +224,6 @@ export default function LeaguesPage() {
               )}
             </AnimatePresence>
 
-            <FeedbackBanner status={status} />
-
             <div className="space-y-4">
               <h2 className="text-2xl italic tracking-tighter px-1">
                 Tus ligas activas
@@ -242,17 +243,16 @@ export default function LeaguesPage() {
                       onClick={() => setSelectedLeagueId(ul.leagues.id)}
                       className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98] select-none flex flex-col gap-4"
                     >
-                      {/* Background accent */}
                       <div className="absolute top-0 right-0 w-48 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
                       <div className="absolute -right-2 -bottom-4 text-7xl font-black text-white/5 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
-                         {ul.leagues.name.substring(0, 3)}
+                        {ul.leagues.name.substring(0, 3)}
                       </div>
 
                       <div className="flex justify-between items-start relative z-10">
                         <div className="flex-1 min-w-0 pr-4">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-[7px] font-black uppercase text-v-red tracking-[0.2em]">
-                               DIV: {ul.leagues.invite_code}
+                              DIV: {ul.leagues.invite_code}
                             </span>
                             <div className="h-px bg-v-red/20 flex-1" />
                           </div>
@@ -262,7 +262,9 @@ export default function LeaguesPage() {
                         </div>
                         <div className="shrink-0 flex flex-col items-end">
                           <div className="bg-v-red/10 border border-v-red/20 px-2 py-0.5">
-                            <span className="text-[7px] font-black text-v-red uppercase tracking-widest italic">Rank #--</span>
+                            <span className="text-[7px] font-black text-v-red uppercase tracking-widest italic">
+                              Rank #--
+                            </span>
                           </div>
                         </div>
                       </div>
