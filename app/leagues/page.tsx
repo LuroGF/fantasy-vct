@@ -25,6 +25,18 @@ export default function LeaguesPage() {
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
   const router = useRouter();
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: (() => void) | null;
+  }>({
+    show: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
+
   useEffect(() => {
     async function init() {
       const session = await getSession();
@@ -50,56 +62,93 @@ export default function LeaguesPage() {
 
   async function handleCreate() {
     if (!newLeagueName || !userId) return;
-    if (!confirm(`¿Confirmar creación de liga: ${newLeagueName}?`)) return;
 
-    haptic.medium();
+    setConfirmDialog({
+      show: true,
+      title: "Crear liga",
+      message: `¿Confirmar creación de liga: ${newLeagueName}?`,
+      onConfirm: async () => {
+        setLoading(true);
+        haptic.medium();
 
-    const res = await createLeague(newLeagueName, userId);
+        const res = await createLeague(newLeagueName, userId);
 
-    if (res.success) {
-      haptic.success();
-      sileo.success({
-        title: "Liga creada",
-        description: "¡La liga se ha creado con éxito!",
-      });
-      setNewLeagueName("");
-      setShowCreate(false);
-      loadLeagues();
-      document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      haptic.error();
-      sileo.error({
-        title: "Error al crear la liga",
-        description: typeof res.error === "string" ? res.error : "No se pudo crear la liga",
-      });
-    }
+        if (res.success) {
+          haptic.success();
+          sileo.success({
+            title: "Liga creada",
+            description: "¡La liga se ha creado con éxito!",
+          });
+          setNewLeagueName("");
+          setShowCreate(false);
+          await loadLeagues();
+          document
+            .querySelector("main")
+            ?.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          haptic.error();
+          sileo.error({
+            title: "Error al crear la liga",
+            description:
+              typeof res.error === "string"
+                ? res.error
+                : "No se pudo crear la liga",
+          });
+        }
+
+        setLoading(false);
+      },
+    });
   }
 
   async function handleJoin() {
     if (!inviteCode || !userId) return;
-    if (!confirm(`¿Unirse a liga con código: ${inviteCode}?`)) return;
 
-    haptic.medium();
+    setConfirmDialog({
+      show: true,
+      title: "Unirse a la liga",
+      message: `¿Unirse a la liga con código: ${inviteCode}?`,
+      onConfirm: async () => {
+        setLoading(true);
+        haptic.medium();
 
-    const res = await joinLeague(inviteCode, userId);
+        const res = await joinLeague(inviteCode, userId);
 
-    if (res.success) {
-      haptic.success();
-      sileo.success({
-        title: "Te has unido a la liga",
-        description: "Acceso concedido correctamente",
-      });
-      setInviteCode("");
-      setShowJoin(false);
-      loadLeagues();
-      document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      haptic.error();
-      sileo.error({
-        title: "Error al unirse",
-        description: typeof res.error === "string" ? res.error : "No se pudo unir a la liga",
-      });
-    }
+        if (res.success) {
+          haptic.success();
+          sileo.success({
+            title: "Te has unido a la liga",
+            description: "Acceso concedido correctamente",
+          });
+          setInviteCode("");
+          setShowJoin(false);
+          await loadLeagues();
+          document
+            .querySelector("main")
+            ?.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          haptic.error();
+          sileo.error({
+            title: "Error al unirse",
+            description:
+              typeof res.error === "string"
+                ? res.error
+                : "No se pudo unir a la liga",
+          });
+        }
+
+        setLoading(false);
+      },
+    });
+  }
+
+  function closeConfirmDialog() {
+    setConfirmDialog({
+      show: false,
+      title: "",
+      message: "",
+      onConfirm: null,
+    });
   }
 
   return (
@@ -127,6 +176,14 @@ export default function LeaguesPage() {
         {selectedLeagueId ? (
           <LeagueDetails
             leagueId={selectedLeagueId}
+            inviteCode={
+              leagues.find((l) => l.leagues.id === selectedLeagueId)?.leagues
+                .invite_code || ""
+            }
+            leagueName={
+              leagues.find((l) => l.leagues.id === selectedLeagueId)?.leagues
+                .name || ""
+            }
             onBack={() => setSelectedLeagueId(null)}
           />
         ) : (
@@ -137,7 +194,7 @@ export default function LeaguesPage() {
                   setShowCreate(true);
                   setShowJoin(false);
                 }}
-                className="v-btn-primary py-4 text-[10px] shadow-lg shadow-v-red/10 active:scale-95 transition-all"
+                className="v-btn-primary py-4 text-[10px] cursor-pointer shadow-lg shadow-v-red/10 active:scale-95 transition-all"
               >
                 Crear Liga
               </button>
@@ -146,7 +203,7 @@ export default function LeaguesPage() {
                   setShowJoin(true);
                   setShowCreate(false);
                 }}
-                className="v-btn-secondary py-4 text-[10px] active:scale-95 transition-all"
+                className="v-btn-secondary py-4 text-[10px] cursor-pointer active:scale-95 transition-all"
               >
                 Unirse con Código
               </button>
@@ -172,13 +229,15 @@ export default function LeaguesPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={handleCreate}
-                        className="v-btn-primary flex-1 py-2 text-[10px]"
+                        disabled={loading}
+                        className="v-btn-primary cursor-pointer flex-1 py-2 text-[10px] disabled:opacity-50"
                       >
                         Crear liga
                       </button>
                       <button
                         onClick={() => setShowCreate(false)}
-                        className="v-btn-secondary px-4 text-[10px]"
+                        disabled={loading}
+                        className="v-btn-secondary px-4 text-[10px] disabled:opacity-50"
                       >
                         X
                       </button>
@@ -208,13 +267,15 @@ export default function LeaguesPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={handleJoin}
-                        className="v-btn-primary flex-1 py-2 text-[10px]"
+                        disabled={loading}
+                        className="v-btn-primary cursor-pointer flex-1 py-2 text-[10px] disabled:opacity-50"
                       >
                         Unirse a liga
                       </button>
                       <button
                         onClick={() => setShowJoin(false)}
-                        className="v-btn-secondary px-4 text-[10px]"
+                        disabled={loading}
+                        className="v-btn-secondary cursor-pointer px-4 text-[10px] disabled:opacity-50"
                       >
                         X
                       </button>
@@ -252,7 +313,7 @@ export default function LeaguesPage() {
                         <div className="flex-1 min-w-0 pr-4">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-[7px] font-black uppercase text-v-red tracking-[0.2em]">
-                              DIV: {ul.leagues.invite_code}
+                              Código de liga: {ul.leagues.invite_code}
                             </span>
                             <div className="h-px bg-v-red/20 flex-1" />
                           </div>
@@ -297,7 +358,8 @@ export default function LeaguesPage() {
                       No perteneces a ninguna liga todavía.
                       <br />
                       <span className="text-[8px] uppercase font-black not-italic mt-2 block">
-                        Debes crear o unirte a una liga para ver tus ligas activas
+                        Debes crear o unirte a una liga para ver tus ligas
+                        activas
                       </span>
                     </div>
                   )}
@@ -307,6 +369,47 @@ export default function LeaguesPage() {
           </div>
         )}
       </div>
+
+      {confirmDialog.show && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-v-navy/95 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="v-panel w-full max-w-xs p-6 space-y-6 border-t-4 border-v-white animate-in zoom-in-95 duration-200">
+            <div className="space-y-2 text-center">
+              <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">
+                Confirmación
+              </p>
+              <h3 className="text-xl font-black italic uppercase leading-tight tracking-wider">
+                {confirmDialog.title}
+              </h3>
+              <p className="text-xs text-v-white/60 leading-relaxed">
+                {confirmDialog.message}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={async () => {
+                  if (confirmDialog.onConfirm) {
+                    await confirmDialog.onConfirm();
+                  }
+                  closeConfirmDialog();
+                }}
+                disabled={loading}
+                className="w-full py-4 cursor-pointer bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10 disabled:opacity-50"
+              >
+                {loading ? "Procesando..." : "Realizar acción"}
+              </button>
+
+              <button
+                onClick={closeConfirmDialog}
+                disabled={loading}
+                className="w-full py-2 cursor-pointer text-[8px] font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ClientRefreshWrapper>
   );
 }

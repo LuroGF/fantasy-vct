@@ -136,7 +136,7 @@ export function PlayerCard({
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-0.5 ml-11 lg:ml-14 overflow-hidden">
+              <div className="flex items-center gap-2 mt-0.5 ml-16 lg:ml-16 overflow-hidden">
                 <span className="text-[9px] font-black uppercase tracking-[0.15em] text-v-red truncate">
                   {player.pro_teams?.tag || "Free Agent"}
                 </span>
@@ -151,7 +151,7 @@ export function PlayerCard({
               <p className="text-[7px] font-black uppercase text-white/30 tracking-widest mb-0.5">Asignación</p>
               <p className="text-lg font-black italic leading-none whitespace-nowrap">{(player.market_value / 1000000).toFixed(1)}M <span className="text-[9px]">VP</span></p>
               {player.releaseClause && (
-                 <p className="text-[8px] font-bold italic text-v-red mt-1 whitespace-nowrap">Reasig: {(player.releaseClause / 1000000).toFixed(1)}M</p>
+                 <p className="text-[10px] font-bold italic text-v-red mt-1 whitespace-nowrap">Reasig: {(player.releaseClause / 1000000).toFixed(1)}M</p>
               )}
             </div>
           </div>
