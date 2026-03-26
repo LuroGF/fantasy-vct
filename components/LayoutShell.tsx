@@ -14,7 +14,7 @@ function cn(...inputs: ClassValue[]) {
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuthPage = pathname === "/login" || pathname === "/register" || pathname === "/";
+  const isAuthPage = pathname === "/login" || pathname === "/register" || pathname === "/aviso-legal" || pathname === "/";
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-background shadow-2xl">

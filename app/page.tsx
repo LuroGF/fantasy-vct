@@ -33,7 +33,8 @@ export default function Home() {
 
         <div className="space-y-2 pt">
           <h1 className="text-6xl sm:text-7xl pb-8 font-black italic tracking-tighter leading-none text-v-white underline-offset-8 decoration-v-red decoration-4">
-            VCF<span className="text-v-red">.</span>
+            DRAFTANT
+            {/* <span className="text-v-red">.</span> */}
           </h1>
           <p className="text-[10px] font-black uppercase tracking-[0.5em] text-v-white/50">
             Crea tu equipo de ensueño

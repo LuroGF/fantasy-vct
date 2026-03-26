@@ -15,11 +15,19 @@ export default function RegisterPage() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+
+    if (!formData.get("legalAccepted")) {
+      setError("Debes aceptar las condiciones de uso y el aviso legal");
+      setLoading(false);
+      return;
+    }
+
     const result = await signUp(formData);
 
     if (result?.error) {
       setError(result.error);
       setLoading(false);
+      return;
     }
   }
 
@@ -53,6 +61,7 @@ export default function RegisterPage() {
               className="w-full h-14 bg-v-navy/50 border border-white/40 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
           </div>
+
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
               Correo
@@ -65,6 +74,7 @@ export default function RegisterPage() {
               className="w-full h-14 bg-v-navy/50 border border-white/40 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
             />
           </div>
+
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
               Contraseña
@@ -78,6 +88,27 @@ export default function RegisterPage() {
             />
           </div>
 
+          <label className="flex items-start gap-3 text-xs text-v-white/70 leading-relaxed cursor-pointer">
+            <input
+              name="legalAccepted"
+              type="checkbox"
+              value="true"
+              required
+              className="mt-0.5 h-4 w-4 shrink-0 accent-red-600 cursor-pointer"
+            />
+            <span>
+              Acepto las condiciones de uso y el{" "}
+              <Link
+                href="/aviso-legal"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-v-red font-black hover:underline"
+              >
+                Aviso Legal
+              </Link>
+            </span>
+          </label>
+
           {error && (
             <div className="text-[10px] font-black uppercase text-v-red animate-pulse">
               {">>>"} ERROR: {error}
@@ -87,7 +118,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="v-btn-primary w-full py-4 text-sm mt-4 shadow-xl shadow-v-red/20 group disabled:opacity-50"
+            className="v-btn-primary cursor-pointer w-full py-4 text-sm mt-4 shadow-xl shadow-v-red/20 group disabled:opacity-50"
           >
             <span className="flex items-center justify-center gap-2">
               {loading ? "PROCESANDO..." : "Crear cuenta"}
@@ -122,7 +153,10 @@ export default function RegisterPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-red-600">
+          <button
+            type="button"
+            className="v-btn-secondary cursor-pointer py-3 text-[10px] font-black tracking-widest bg-red-600"
+          >
             <Image
               src="/logos/RiotLogo.png"
               alt="Logo Riot"
@@ -131,13 +165,16 @@ export default function RegisterPage() {
             />
             <span className="pl-4 black text-white">Registrarse con Riot</span>
           </button>
-          <button className="v-btn-secondary py-3 text-[10px] font-black tracking-widest bg-white">
+          <button
+            type="button"
+            className="v-btn-secondary cursor-pointer py-3 text-[10px] font-black tracking-widest bg-white"
+          >
             <Image
               src="/logos/GoogleLogo.png"
               alt="Logo Google"
               width={20}
               height={20}
-            />{" "}
+            />
             <span className="pl-4 black text-black">
               Registrarse con Google
             </span>
@@ -150,17 +187,17 @@ export default function RegisterPage() {
         ¿Ya tienes autorización de acceso?{" "}
         <Link
           href="/login"
-          className="text-v-red font-black uppercase hover:underline ml-1"
+          className="text-v-red font-black cursor-pointer uppercase hover:underline ml-1"
         >
           Inicia sesión
         </Link>
       </p>
 
       {/* Decorative HUD detail */}
-      <div className="flex justify-center opacity-10">
+      {/* <div className="flex justify-center opacity-10">
         <div className="w-4 h-2 bg-v-red/50 skew-x-[-20deg]" />
         <div className="w-20 h-2 bg-v-red/50 skew-x-[-20deg] ml-2" />
-      </div>
+      </div> */}
     </div>
   );
 }
