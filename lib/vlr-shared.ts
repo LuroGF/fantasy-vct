@@ -29,7 +29,9 @@ export const TEAM_ALIASES: Record<string, string> = {
   "GENTLEMATES": "GentleMates",
   "PACIFIC": "PCIFIC",
   "PCIF": "PCIFIC",
-  "ULF": "ULF"
+  "PCI": "PCIFIC",
+  "ETE": "EternalFire",
+  "ETERNAL FIRE": "EternalFire"
 };
 
 export function getTeamLogo(name: string | undefined | null) {

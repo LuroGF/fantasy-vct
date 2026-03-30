@@ -1400,7 +1400,7 @@ export default function MarketView({
                   });
                 }}
                 disabled={loading}
-                className="w-full py-4 bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10"
+                className="w-full cursor-pointer py-4 bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10"
               >
                 Realizar acción
               </button>
@@ -1413,7 +1413,7 @@ export default function MarketView({
                     onConfirm: null,
                   })
                 }
-                className="w-full py-2 text-[8px] font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest"
+                className="w-full py-2 cursor-pointer text-[8px] font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest"
               >
                 Cancelar
               </button>
