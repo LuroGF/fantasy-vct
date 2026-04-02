@@ -291,18 +291,21 @@ export function calculateFantasyPoints(stats: {
 }, role?: 'Duelista' | 'Iniciador' | 'Controlador' | 'Centinela'): number {
   let points = 0;
 
-  if (!role) {
+  // Base Clutch points for everyone (4 per clutch)
+  points += (stats.clutches || 0) * 4;
+
+  if (!role || (role as string) === 'Flex') {
     points += stats.kills * 2;
     points += stats.assists * 1;
     points += stats.fb * 3;
-    points += stats.clutches * 4;
     if (stats.kills < stats.deaths) points -= 1;
+    if (stats.mvp) points += 6; // Series MVP from scoring list
     return Math.round(points);
   }
 
   switch (role) {
     case 'Duelista':
-      points += stats.kills * 1;
+      points += stats.kills * 1.5; // Buffed from 1 to 1.5 to be more in line with +2
       points += stats.assists * 0.5;
       points += stats.fb * 5;
       points += stats.fd * -3;
@@ -374,10 +377,10 @@ const AGENT_ROLES: Record<string, string> = {
 };
 
 export async function scrapeMatchDetails(matchId: string): Promise<{ stats: PlayerStats[], status: string } | null> {
-    const url = `https://www.vlr.gg/${matchId}`;
+    const baseUrl = `https://www.vlr.gg/${matchId}`;
     
     try {
-      const response = await fetch(url, {
+      const response = await fetch(baseUrl, {
         headers: { 
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           "Accept": "text/html",
@@ -400,6 +403,36 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: Play
           status = 'live';
       }
 
+      // --- IDENTIFY MAPS AND GAME IDS FOR CLUTCHES ---
+      const mapIdMap: Record<string, string> = {}; 
+      $(".vm-stats-gamesnav-item.js-map-switch").each((_, el) => {
+        const gameId = $(el).attr("data-game-id");
+        const name = $(el).text().replace(/\s+/g, " ").trim();
+        // The text is usually like "1 Lotus", we match "Lotus"
+        const cleanName = name.match(/\d+\s+(.*)/)?.[1] || name;
+        if (gameId && gameId !== "all") {
+          mapIdMap[cleanName.toLowerCase()] = gameId;
+        }
+      });
+
+      const clutchData: Record<string, Record<string, number>> = {}; // mapName -> nickname -> clutchCount
+
+      // If we have maps, fetch performance tab for each to get clutches
+      for (const [mapName, gameId] of Object.entries(mapIdMap)) {
+          try {
+            const perfUrl = `${baseUrl}/?game=${gameId}&tab=performance`;
+            const perfRes = await fetch(perfUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+            if (perfRes.ok) {
+              const perfHtml = await perfRes.text();
+              const p$ = cheerio.load(perfHtml);
+              const players = processClutchesFromPerformance(p$);
+              clutchData[mapName] = players;
+            }
+          } catch (e) {
+            console.error(`Error fetching clutches for map ${mapName}:`, e);
+          }
+      }
+
       const allStats: any[] = [];
       const mapContainers = $(".vm-stats-container .vm-stats-game"); 
 
@@ -411,12 +444,22 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: Play
           }
       } else {
         mapContainers.each((i, container) => {
-            const mapName = $(container).find(".map-name").text().trim() || `Map ${i + 1}`;
+            let mapName = $(container).find(".map-name").text().trim() || `Map ${i + 1}`;
             if (mapName.toLowerCase().includes("all maps")) return;
 
             const table = $(container).find("table.wf-table-inset.mod-overview");
             if (table.length) {
                 const stats = processVlrTable($, table, mapName);
+                
+                // --- INJECT CLUTCHES ---
+                const mapClutches = clutchData[mapName.toLowerCase()];
+                if (mapClutches) {
+                  stats.forEach(s => {
+                    const count = mapClutches[s.nickname.toLowerCase()];
+                    if (count) s.clutches = count;
+                  });
+                }
+
                 allStats.push(...stats);
             }
         });
@@ -427,6 +470,48 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: Play
       console.error(`Exception scraping match ${matchId}:`, error);
       return null;
     }
+}
+
+function processClutchesFromPerformance($: any): Record<string, number> {
+  const result: Record<string, number> = {};
+  const table = $("table.wf-table-inset.mod-adv-stats").first();
+  if (!table.length) return result;
+
+  const rows = table.find("tr").slice(1);
+  const headers = table.find("th").map((_: any, th: any) => $(th).text().trim().toLowerCase()).get();
+  
+  const c1v1 = headers.indexOf("1v1");
+  const c1v2 = headers.indexOf("1v2");
+  const c1v3 = headers.indexOf("1v3");
+  const c1v4 = headers.indexOf("1v4");
+  const c1v5 = headers.indexOf("1v5");
+
+  rows.each((_: any, row: any) => {
+    const cols = $(row).find("td");
+    const playerCell = $(cols[0]);
+    
+    // In Performance tab, name is usually in a div inside team/player etc.
+    // Based on subagent inspection, it's inside .team > div (no link)
+    let nickname = playerCell.find(".team div").first().contents().filter((__: any, el: { type: string; }) => el.type === 'text').text().trim();
+    if (!nickname) {
+       nickname = playerCell.text().replace(/\s+/g, " ").split(" ")[0].trim();
+    }
+    nickname = nickname.replace(/^\[.*?\]\s*/, "").replace(/\s+\[.*?\]$/, "").trim();
+
+    if (!nickname) return;
+
+    const getVal = (idx: number) => {
+       if (idx === -1) return 0;
+       return parseInt($(cols[idx]).text().trim()) || 0;
+    };
+
+    const totalClutches = getVal(c1v1) + getVal(c1v2) + getVal(c1v3) + getVal(c1v4) + getVal(c1v5);
+    if (totalClutches > 0) {
+      result[nickname.toLowerCase()] = totalClutches;
+    }
+  });
+
+  return result;
 }
 
 function processVlrTable($: any, table: any, mapName: string): PlayerStats[] {

@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     console.log(`Cron: Sync Start. Madrid Time: ${madridTime.toISOString()} (${madridHour}h)`);
 
     // 0. SCRAPE & SYNC MATCHES (Ensure DB is up to date)
-    const { fetchVlrMatches, scrapeMatchDetails } = await import("@/lib/vlr");
+    const { fetchVlrMatches, scrapeMatchDetails, calculateFantasyPoints } = await import("@/lib/vlr");
     const { getMarketLockStatus, autoCreateMissingGameweeks } = await import("@/lib/gameweek-logic");
 
     try {
@@ -111,7 +111,7 @@ export async function GET(request: Request) {
         id, vlr_id, status, match_date, 
         team_a_data:pro_teams!team_a(id, name, tag),
         team_b_data:pro_teams!team_b(id, name, tag),
-        player_performances(match_id)
+        player_performances(match_id, fantasy_points)
       `)
       .eq('gameweek_id', currentGw.id) as any);
 
@@ -128,8 +128,8 @@ export async function GET(request: Request) {
         // If upcoming and close (< 30m), sync (maybe lineups?)
         if (m.status === 'upcoming' && now.getTime() > mTime - 1800000 && now.getTime() < mTime + 7200000) return true;
 
-        // If finished but no stats, sync
-        if (m.status === 'finished' && (!m.player_performances || m.player_performances.length === 0)) return true;
+        // If finished but no stats (or missing fantasy points), sync
+        if (m.status === 'finished' && (!m.player_performances || m.player_performances.length === 0 || m.player_performances.every((p: any) => !p.fantasy_points))) return true;
         
         return false;
     }) || [];
@@ -193,12 +193,23 @@ export async function GET(request: Request) {
             }
 
             if (dbPlayerId) {
+                const points = calculateFantasyPoints({
+                    kills: d.kills,
+                    deaths: d.deaths,
+                    assists: d.assists,
+                    fb: d.fb,
+                    fd: d.fd || 0,
+                    clutches: d.clutches,
+                    mvp: d.mvp || false
+                }, d.agent_role as any);
+
                 performaceUpserts.push({
                     match_id: match.id,
                     player_id: dbPlayerId,
                     map_name: d.map_name,
                     kills: d.kills, deaths: d.deaths, assists: d.assists,
                     fb: d.fb, fd: d.fd || 0, acs: d.acs || 0, clutches: d.clutches,
+                    fantasy_points: points,
                     agent_name: d.agent_name,
                     agent_role: d.agent_role,
                     mvp: d.mvp || false
@@ -213,7 +224,23 @@ export async function GET(request: Request) {
             
             if (!hasScrapedMvp) {
                 const maxAcs = Math.max(...performaceUpserts.map(p => p.acs));
-                finalData = performaceUpserts.map(p => ({ ...p, mvp: (p.acs === maxAcs && p.acs > 0) }));
+                finalData = performaceUpserts.map(p => {
+                    const isNewMvp = (p.acs === maxAcs && p.acs > 0);
+                    if (isNewMvp && !p.mvp) {
+                         // Recalculate points with MVP bonus
+                         const newPoints = calculateFantasyPoints({
+                            kills: p.kills,
+                            deaths: p.deaths,
+                            assists: p.assists,
+                            fb: p.fb,
+                            fd: p.fd || 0,
+                            clutches: p.clutches,
+                            mvp: true
+                        }, p.agent_role as any);
+                        return { ...p, mvp: true, fantasy_points: newPoints };
+                    }
+                    return p;
+                });
             }
             
             await supabaseAdmin.from('player_performances').upsert(finalData as any, { onConflict: 'match_id,player_id,map_name' });
