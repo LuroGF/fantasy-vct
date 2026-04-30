@@ -19,13 +19,13 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
-  title: "Valorant Fantasy VCT",
+  title: "Draftant",
   description: "Compite con tus amigos en la mejor liga fantasy de Valorant",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "VCT Fantasy",
+    title: "Draftant",
   },
   icons: {
     icon: [

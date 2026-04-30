@@ -36,7 +36,7 @@ export default function OfflinePage() {
       
       <div className="mt-12">
         <p className="text-[8px] font-black uppercase tracking-[0.3em] text-v-white/20">
-          VCT Fantasy Protocol // Offline Mode
+          Draftant Protocol // Offline Mode
         </p>
       </div>
     </div>

@@ -96,7 +96,7 @@ export default function PWAInstaller() {
                 <Download className="text-v-white w-6 h-6" />
               </div>
               <div>
-                <h4 className="text-xs font-black uppercase italic text-v-white">Instalar VCT Fantasy</h4>
+                <h4 className="text-xs font-black uppercase italic text-v-white">Instalar Draftant</h4>
                 <p className="text-[10px] text-v-white/60 uppercase tracking-tighter">Acceso rápido y mejor experiencia</p>
               </div>
             </div>

@@ -1,6 +1,6 @@
 {
-  "name": "Valorant Fantasy VCT",
-  "short_name": "VCT Fantasy",
+  "name": "Draftant",
+  "short_name": "Draftant",
   "description": "Compite con tus amigos en la mejor liga fantasy de Valorant",
   "start_url": "/dashboard",
   "display": "standalone",

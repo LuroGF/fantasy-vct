@@ -62,7 +62,7 @@ export default function MorePage() {
       </div>
 
       <div className="text-center space-y-2 py-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-white/20">{"Valorant Fantasy VCT // 2026"}</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-white/20">{"Draftant // 2026"}</p>
         <div className="flex justify-center gap-4">
           <div className="w-1 h-1 bg-v-red/20" />
           <div className="w-1 h-1 bg-v-red/50" />
