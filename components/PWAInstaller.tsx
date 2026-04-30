@@ -110,6 +110,7 @@ export default function PWAInstaller() {
               </button>
               <button 
                 onClick={handleDismiss}
+                aria-label="Cerrar"
                 className="p-2 text-v-white/40 hover:text-v-white active:scale-90 transition-all"
               >
                 <X className="w-4 h-4" />

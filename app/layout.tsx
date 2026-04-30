@@ -4,8 +4,7 @@ import "./globals.css";
 import LayoutShell from "@/components/LayoutShell";
 import PWAInstaller from "@/components/PWAInstaller";
 import PushManager from "@/components/PushManager";
-// import { Toaster } from "sonner";
-import { Toaster } from "sileo";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -62,14 +61,15 @@ export default function RootLayout({
           position="bottom-center"
           theme="dark"
           offset={16}
-          options={{
-            roundness: 16,
-            fill: "#111111",
-            styles: {
-              title: "text-white!",
-              description: "text-white/70!",
+          toastOptions={{
+            style: {
+              background: "#111111",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "#FFFFFF",
+              borderRadius: "16px",
             },
           }}
+          richColors
         />
       </body>
     </html>
