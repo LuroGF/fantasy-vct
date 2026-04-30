@@ -77,7 +77,9 @@ export default async function SchedulePage() {
       match_date,
       status,
       team_a:pro_teams!matches_team_a_fkey (name, tag),
-      team_b:pro_teams!matches_team_b_fkey (name, tag)
+      team_b:pro_teams!matches_team_b_fkey (name, tag),
+      team_a_score,
+      team_b_score
     `,
     )
     .eq("gameweek_id", activeGw.id)
@@ -115,8 +117,13 @@ export default async function SchedulePage() {
               key={match.id}
               className="v-panel p-4 flex items-center justify-between group hover:border-v-red transition-all"
             >
-              <div className="flex-1 text-sm font-black uppercase italic tracking-tighter">
-                {match.team_a?.tag || match.team_a?.name}
+              <div className="flex-1 text-sm font-black uppercase italic tracking-tighter flex items-center gap-3">
+                <span className="flex-1">{match.team_a?.tag || match.team_a?.name}</span>
+                {(isLive || isFinished) && (
+                  <span className={`text-xl ${isLive ? 'text-v-red' : 'text-white'}`}>
+                    {match.team_a_score}
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-col items-center px-6 border-x border-white/5 min-w-[120px]">
@@ -145,8 +152,13 @@ export default async function SchedulePage() {
                 </span>
               </div>
 
-              <div className="flex-1 text-sm font-black uppercase italic tracking-tighter text-right">
-                {match.team_b?.tag || match.team_b?.name}
+              <div className="flex-1 text-sm font-black uppercase italic tracking-tighter text-right flex items-center justify-end gap-3">
+                {(isLive || isFinished) && (
+                  <span className={`text-xl ${isLive ? 'text-v-red' : 'text-white'}`}>
+                    {match.team_b_score}
+                  </span>
+                )}
+                <span className="flex-1">{match.team_b?.tag || match.team_b?.name}</span>
               </div>
             </div>
           );

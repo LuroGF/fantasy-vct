@@ -13,6 +13,8 @@ export type VlrMatch = {
   rawDate?: string;
   isVctEmea?: boolean;
   eta?: string;
+  teamAScore?: number;
+  teamBScore?: number;
 };
 
 export interface PlayerStats {
@@ -30,6 +32,7 @@ export interface PlayerStats {
   acs: number;
   clutches: number;
   mvp?: boolean;
+  won?: boolean;
 }
 
 export type VlrPayload = {
@@ -149,12 +152,26 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
           }).get().filter(Boolean);
           const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
           
+          const scores = card.find(".match-item-vs-team-score").map((__, s) => {
+            const val = cleanText($(s).text());
+            return parseInt(val) || 0;
+          }).get();
+          const teamAScore = scores[0] || 0;
+          const teamBScore = scores[1] || 0;
+
           const eventUpper = event.toUpperCase();
-          const isVctEmea = (eventUpper.includes("VCT") || eventUpper.includes("MASTERS") || eventUpper.includes("CHAMPIONS")) && 
-                           eventUpper.includes("EMEA") && 
+          const isVctEmea = (
+                           (eventUpper.includes("VCT") || eventUpper.includes("CHAMPIONS TOUR")) &&
+                           (eventUpper.includes("EMEA") || eventUpper.includes("EUROPE")) &&
                            !eventUpper.includes("GAME CHANGERS") && 
                            !eventUpper.includes("CHALLENGERS") &&
-                           !eventUpper.includes("ASCENSION");
+                           !eventUpper.includes("ASCENSION")
+                         ) || (
+                           // Masters/Champions son globales (sin EMEA) pero incluyen jugadores EMEA
+                           (eventUpper.includes("MASTERS") || eventUpper.includes("CHAMPIONS")) &&
+                           eventUpper.includes("VCT") &&
+                           !eventUpper.includes("GAME CHANGERS")
+                         );
 
           if (teamsLabel && event) {
             const parsed = parseVlrDate(rawDate, time); // Unadjusted
@@ -167,7 +184,9 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
               date: parsed ? parsed.date.toISOString() : undefined, 
               rawDate: rawDate,
               isVctEmea,
-              eta 
+              eta,
+              teamAScore,
+              teamBScore
             });
           }
         };
@@ -194,9 +213,9 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
   let offsetMs = 0;
   
   // Find a reference match: upcoming, with ETA in hours (e.g. "2h" or "2h 30m"), not days
-  // ETA format examples: "2h 30m", "43m", "2d"
+  // VLR ahora suele omitir "from now", así que buscamos simplemente 'h' o 'm'
   const referenceMatch = upcomingResults.find(m => 
-    m.eta && m.eta.includes('h') && !m.eta.includes('d') && !m.eta.includes('w') && m.date
+    m.eta && (m.eta.includes('h') || m.eta.includes('m')) && !m.eta.includes('d') && !m.eta.includes('w') && m.date
   );
 
   if (referenceMatch && referenceMatch.date) {
@@ -263,7 +282,7 @@ export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayloa
   const finalMatches = emeaMatches;
 
   // Sync with DB
-  syncMatchesToDb(finalMatches).catch(console.error);
+  await syncMatchesToDb(finalMatches);
 
   return {
     stats: [],
@@ -288,11 +307,15 @@ export function calculateFantasyPoints(stats: {
   fd: number; 
   clutches: number;
   mvp?: boolean;
+  won?: boolean;
 }, role?: 'Duelista' | 'Iniciador' | 'Controlador' | 'Centinela'): number {
   let points = 0;
 
   // Base Clutch points for everyone (4 per clutch)
   points += (stats.clutches || 0) * 4;
+
+  // Win Bonus
+  if (stats.won) points += 5;
 
   if (!role || (role as string) === 'Flex') {
     points += stats.kills * 2;
@@ -392,7 +415,7 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: Play
       const html = await response.text();
       const $ = cheerio.load(html);
       
-      // Determine Status
+      // Determine Status & Date
       let status = 'upcoming';
       const headerStatus = $(".match-header-vs-score").text().trim().toLowerCase();
       if (headerStatus.includes("final") || /\d+/.test(headerStatus)) {
@@ -403,15 +426,33 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: Play
           status = 'live';
       }
 
+      // Determine Winner
+      let winningTeamName = "";
+      const scoreA = parseInt($(".match-header-vs-score .js-spoiler span").first().text().trim());
+      const scoreB = parseInt($(".match-header-vs-score .js-spoiler span").last().text().trim());
+      
+      if (status === 'finished') {
+          if (scoreA > scoreB) {
+              winningTeamName = $(".match-header-vs-team-name").first().text().trim();
+          } else if (scoreB > scoreA) {
+              winningTeamName = $(".match-header-vs-team-name").last().text().trim();
+          }
+      }
+
+      // Extract UTC date if available
+      const utcTs = $(".moment-tz-convert[data-utc-ts]").first().attr("data-utc-ts");
+      // Note: We don't return the date here yet, but we could if needed for syncing back.
+      // For now, let's just make sure we identify the status correctly.
+
       // --- IDENTIFY MAPS AND GAME IDS FOR CLUTCHES ---
       const mapIdMap: Record<string, string> = {}; 
       $(".vm-stats-gamesnav-item.js-map-switch").each((_, el) => {
         const gameId = $(el).attr("data-game-id");
         const name = $(el).text().replace(/\s+/g, " ").trim();
         // The text is usually like "1 Lotus", we match "Lotus"
-        const cleanName = name.match(/\d+\s+(.*)/)?.[1] || name;
+        const cleanName = (name.match(/\d+\s+(.*)/)?.[1] || name).trim();
         if (gameId && gameId !== "all") {
-          mapIdMap[cleanName.toLowerCase()] = gameId;
+          mapIdMap[cleanName.toLowerCase().trim()] = gameId;
         }
       });
 
@@ -452,10 +493,11 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: Play
                 const stats = processVlrTable($, table, mapName);
                 
                 // --- INJECT CLUTCHES ---
-                const mapClutches = clutchData[mapName.toLowerCase()];
+                const mapKey = mapName.toLowerCase().trim();
+                const mapClutches = clutchData[mapKey];
                 if (mapClutches) {
                   stats.forEach(s => {
-                    const count = mapClutches[s.nickname.toLowerCase()];
+                    const count = mapClutches[s.nickname.toLowerCase().trim()];
                     if (count) s.clutches = count;
                   });
                 }
@@ -480,29 +522,61 @@ function processClutchesFromPerformance($: any): Record<string, number> {
   const rows = table.find("tr").slice(1);
   const headers = table.find("th").map((_: any, th: any) => $(th).text().trim().toLowerCase()).get();
   
-  const c1v1 = headers.indexOf("1v1");
-  const c1v2 = headers.indexOf("1v2");
-  const c1v3 = headers.indexOf("1v3");
-  const c1v4 = headers.indexOf("1v4");
-  const c1v5 = headers.indexOf("1v5");
+  // VLR puede usar '1v1' o 'v1', buscar por substring
+  const findClutchIdx = (n: number) => {
+    const exact = headers.indexOf(`1v${n}`);
+    if (exact !== -1) return exact;
+    return headers.findIndex((h: string) => h.includes(`v${n}`));
+  };
+
+  const c1v1 = findClutchIdx(1);
+  const c1v2 = findClutchIdx(2);
+  const c1v3 = findClutchIdx(3);
+  const c1v4 = findClutchIdx(4);
+  const c1v5 = findClutchIdx(5);
+
+  if (c1v1 === -1 && c1v2 === -1) {
+    // Fallback: buscar columna 'cl' o 'clutch' directamente
+    const clIdx = headers.findIndex((h: string) => h.includes('cl') || h.includes('clutch'));
+    if (clIdx !== -1) {
+      rows.each((_: any, row: any) => {
+        const cols = $(row).find("td");
+        const playerCell = $(cols[0]);
+        let nickname = playerCell.find(".text-of").text().trim()
+          || playerCell.find("a").text().trim()
+          || playerCell.contents().filter((__: any, el: any) => el.type === 'text').first().text().trim()
+          || playerCell.text().replace(/\s+/g, " ").split(" ")[0].trim();
+        nickname = nickname.replace(/^\[.*?\]\s*/, "").replace(/\s+\[.*?\]$/, "").trim();
+        if (!nickname) return;
+        const val = parseInt($(cols[clIdx]).text().trim()) || 0;
+        if (val > 0) result[nickname.toLowerCase()] = val;
+      });
+      return result;
+    }
+  }
 
   rows.each((_: any, row: any) => {
     const cols = $(row).find("td");
     const playerCell = $(cols[0]);
     
-    // In Performance tab, name is usually in a div inside team/player etc.
-    // Based on subagent inspection, it's inside .team > div (no link)
-    let nickname = playerCell.find(".team div").first().contents().filter((__: any, el: { type: string; }) => el.type === 'text').text().trim();
-    if (!nickname) {
-       nickname = playerCell.text().replace(/\s+/g, " ").split(" ")[0].trim();
-    }
+    // Intentar múltiples selectores para el nombre del jugador
+    let nickname = playerCell.find(".text-of").text().trim()
+      || playerCell.find(".team div").first().contents().filter((__: any, el: { type: string; }) => el.type === 'text').text().trim()
+      || playerCell.find("a").text().trim()
+      || playerCell.contents().filter((__: any, el: any) => el.type === 'text').first().text().trim()
+      || playerCell.text().replace(/\s+/g, " ").split(" ")[0].trim();
     nickname = nickname.replace(/^\[.*?\]\s*/, "").replace(/\s+\[.*?\]$/, "").trim();
 
     if (!nickname) return;
 
     const getVal = (idx: number) => {
        if (idx === -1) return 0;
-       return parseInt($(cols[idx]).text().trim()) || 0;
+       const col = $(cols[idx]);
+       // Usar el primer nodo de texto para evitar contenido de tooltips/popables
+       const val = col.contents().filter((_: any, el: any) => el.type === 'text').first().text().trim() 
+                || col.find(".stats-sq").contents().filter((_: any, el: any) => el.type === 'text').first().text().trim()
+                || col.text().trim().split(/\s+/)[0];
+       return parseInt(val) || 0;
     };
 
     const totalClutches = getVal(c1v1) + getVal(c1v2) + getVal(c1v3) + getVal(c1v4) + getVal(c1v5);
@@ -531,10 +605,10 @@ function processVlrTable($: any, table: any, mapName: string): PlayerStats[] {
       k: findIdx(["K", "KILL", "KILLS"]),
       d: findIdx(["D", "DEATH", "DEATHS"]),
       a: findIdx(["A", "ASSIST", "ASSISTS"]),
-      fk: findIdx(["FK", "FIRST KILLS"]),
-      fd: findIdx(["FD", "FIRST DEATHS"]),
-      acs: findIdx(["ACS", "AVERAGE COMBAT SCORE"]),
-      cl: findIdx(["CL", "CLUTCHES"]),
+      fk: findIdx(["FK", "FIRST KILLS", "FB", "FIRST BLOODS", "FIRST BLOOD"]),
+      fd: findIdx(["FD", "FIRST DEATHS", "FIRST DEATH"]),
+      acs: findIdx(["ACS", "AVERAGE COMBAT SCORE", "COMBAT SCORE"]),
+      cl: findIdx(["CL", "CLUTCHES", "CLUTCH"]),
     };
 
     dataRows.each((__: any, row: any) => {
@@ -579,9 +653,19 @@ function processVlrTable($: any, table: any, mapName: string): PlayerStats[] {
         const getStat = (colIdx: number) => {
             if (colIdx === -1 || colIdx >= cols.length) return 0;
             const col = $(cols[colIdx]);
-            const val = col.find(".mod-both").first().text().trim() || col.text().trim();
-            // Limpiar texto para obtener solo números (ej: "20 / 10" -> 20)
-            const cleanVal = val.split('/')[0].trim().replace(/[^\d]/g, "");
+            // Priorizar .mod-both (total)
+            let val = col.find(".mod-both").first().text().trim();
+            
+            if (!val) {
+                // Si no hay .mod-both, usar el primer nodo de texto para evitar popables
+                val = col.contents().filter((_: any, el: any) => el.type === 'text').first().text().trim()
+                   || col.find(".stats-sq").contents().filter((_: any, el: any) => el.type === 'text').first().text().trim()
+                   || col.text().trim();
+            }
+            
+            // Limpiar texto para obtener solo números (ej: "20 10 10" -> 20, "20 / 10" -> 20)
+            const firstPart = val.split('/')[0].split(/\s+/)[0].trim();
+            const cleanVal = firstPart.replace(/[^\d]/g, "");
             return parseInt(cleanVal) || 0;
         };
         
@@ -599,7 +683,8 @@ function processVlrTable($: any, table: any, mapName: string): PlayerStats[] {
             fd: getStat(idx.fd),
             acs: getStat(idx.acs),
             clutches: getStat(idx.cl),
-            mvp: isMvp
+            mvp: isMvp,
+            won: winningTeamName !== "" && normalizeTeamName(teamTag) === normalizeTeamName(winningTeamName)
         });
     });
     return results;
@@ -714,6 +799,8 @@ export async function syncMatchesToDb(matches: VlrMatch[]) {
           match_date: matchDate,
           status: status,
           gameweek_id: gwId,
+          team_a_score: m.teamAScore || 0,
+          team_b_score: m.teamBScore || 0,
         });
     }
 
