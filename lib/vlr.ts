@@ -50,9 +50,9 @@ function cleanText(value: string | undefined) {
 function parseVlrDate(vlrDate: string, vlrTime: string): { date: Date, raw: boolean } | null {
   try {
     const months: Record<string, number> = {
-      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Jun': 5,
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
       'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11,
-      'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5,
+      'January': 0, 'February': 1, 'March': 2, 'April': 3, 'June': 5,
       'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
     };
     
@@ -480,7 +480,7 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: Play
       if (!mapContainers.length) {
           const table = $("table.wf-table-inset.mod-overview");
           if (table.length) {
-              const stats = processVlrTable($, table.first(), "Map 1");
+              const stats = processVlrTable($, table.first(), "Map 1", winningTeamName);
               allStats.push(...stats);
           }
       } else {
@@ -490,7 +490,7 @@ export async function scrapeMatchDetails(matchId: string): Promise<{ stats: Play
 
             const table = $(container).find("table.wf-table-inset.mod-overview");
             if (table.length) {
-                const stats = processVlrTable($, table, mapName);
+                const stats = processVlrTable($, table, mapName, winningTeamName);
                 
                 // --- INJECT CLUTCHES ---
                 const mapKey = mapName.toLowerCase().trim();
@@ -588,7 +588,7 @@ function processClutchesFromPerformance($: any): Record<string, number> {
   return result;
 }
 
-function processVlrTable($: any, table: any, mapName: string): PlayerStats[] {
+function processVlrTable($: any, table: any, mapName: string, winningTeamName: string = ""): PlayerStats[] {
     const results: PlayerStats[] = [];
     const rows = $(table).find("tr");
     const headerRow = rows.first();
