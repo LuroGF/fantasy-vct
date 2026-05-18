@@ -134,10 +134,15 @@ export async function GET(request: Request) {
         return false;
     }) || [];
 
-    // Player Map Cache
-    const { data: playersData } = await supabaseAdmin.from('pro_players').select('id, nickname').returns<{ id: string; nickname: string }[]>();
-    const playerMap = new Map();
-    playersData?.forEach((p) => playerMap.set(p.nickname.toLowerCase(), p.id));
+    // Player Map Cache (priorizar vlr_id, fallback nickname)
+    const { data: playersData } = await supabaseAdmin.from('pro_players').select('id, nickname, vlr_id').returns<{ id: string; nickname: string; vlr_id: string | null }[]>();
+    const playerMapByVlrId = new Map();
+    const playerMapByName = new Map();
+    
+    playersData?.forEach((p) => {
+        if (p.vlr_id) playerMapByVlrId.set(p.vlr_id, p.id);
+        playerMapByName.set(p.nickname.toLowerCase(), p.id);
+    });
 
 
     for (const match of matchToSync) {
@@ -161,7 +166,7 @@ export async function GET(request: Request) {
         const performaceUpserts = [];
         
         for (const d of details) {
-            let dbPlayerId = playerMap.get(d.nickname.toLowerCase());
+            let dbPlayerId = playerMapByVlrId.get(d.vlr_id) || playerMapByName.get(d.nickname.toLowerCase());
             // ... (rest of player creation logic)
             if (!dbPlayerId) {
                  let teamId = null;
@@ -180,16 +185,21 @@ export async function GET(request: Request) {
                  if (matchTeam(teamA, tag)) teamId = teamA.id;
                  else if (matchTeam(teamB, tag)) teamId = teamB.id;
                  
-                 if (teamId) {
+                  if (teamId) {
                      const { data: newP } = await supabaseAdmin.from('pro_players').insert({
-                         nickname: d.nickname, team_id: teamId, role: 'Flex', market_value: 5000000 
+                         nickname: d.nickname, 
+                         vlr_id: d.vlr_id,
+                         team_id: teamId, 
+                         role: 'Flex', 
+                         market_value: 5000000 
                      } as any).select().single();
 
                      if (newP) {
                          dbPlayerId = (newP as any).id;
-                         playerMap.set(d.nickname.toLowerCase(), dbPlayerId);
+                         playerMapByVlrId.set(d.vlr_id, dbPlayerId);
+                         playerMapByName.set(d.nickname.toLowerCase(), dbPlayerId);
                      }
-                 }
+                  }
             }
 
             if (dbPlayerId) {

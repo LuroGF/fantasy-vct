@@ -7,6 +7,7 @@ import {
   markNotificationAsRead,
 } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
+import { AutoMarkRead } from "@/components/AutoMarkRead";
 
 export default async function NotificationsPage() {
   const session = await getSession();
@@ -131,6 +132,8 @@ export default async function NotificationsPage() {
           <p className="text-sm">No tienes comunicaciones pendientes.</p>
         </div>
       )}
+
+      <AutoMarkRead profileId={session.user.id} />
     </div>
   );
 }

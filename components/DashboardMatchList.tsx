@@ -74,6 +74,11 @@ export async function DashboardMatchList() {
                                              {teamA}
                                          </span>
                                      </div>
+                                     {isLive && (
+                                         <span className="ml-auto text-xl font-black italic text-v-red mr-2">
+                                             {match.teamAScore}
+                                         </span>
+                                     )}
                                  </div>
 
                                  {/* Center Info */}
@@ -113,6 +118,11 @@ export async function DashboardMatchList() {
 
                                  {/* Team B */}
                                  <div className="flex-1 flex items-center justify-end px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0 text-right">
+                                    {isLive && (
+                                         <span className="mr-auto text-xl font-black italic text-v-red ml-2">
+                                             {match.teamBScore}
+                                         </span>
+                                     )}
                                      <div className="flex items-center gap-3 relative z-10 group-hover:-translate-x-1 transition-all duration-300 justify-end">
                                          <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
                                              {teamB ?? "TBD"}
