@@ -38,6 +38,10 @@ export default async function PlayerPage(props: {
 
   const { player, stats } = data;
 
+  const teamLogo =
+    player.pro_teams?.logo_url ||
+    (player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null);
+
   return (
     <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-4xl px-4 sm:px-6 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 py-6">
       {/* Header / Nav */}
@@ -95,20 +99,15 @@ export default async function PlayerPage(props: {
                 />
               )}
               {/* Team Patch overlay */}
-              {(() => {
-                const logo = player.pro_teams?.tag
-                  ? getTeamLogo(player.pro_teams.tag)
-                  : null;
-                return logo ? (
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-v-navy border border-white/20 p-0.5 rounded-sm z-20">
-                    <img
-                      src={logo}
-                      alt=""
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                ) : null;
-              })()}
+              {teamLogo ? (
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-v-navy border border-white/20 p-0.5 rounded-sm z-20">
+                  <img
+                    src={teamLogo}
+                    alt={player.pro_teams?.name || ""}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div>
@@ -122,7 +121,16 @@ export default async function PlayerPage(props: {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {teamLogo ? (
+                  <div className="w-5 h-5 bg-v-navy/70 border border-white/10 p-0.5">
+                    <img
+                      src={teamLogo}
+                      alt={player.pro_teams?.name || ""}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : null}
                 <p className="text-xs font-bold text-v-white/60 uppercase tracking-wider flex items-center gap-1">
                   {player.pro_teams?.tag || "Free Agent"}
                   <span className="w-1 h-1 bg-v-white/20 rounded-full" />

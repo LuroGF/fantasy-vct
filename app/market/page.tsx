@@ -1,35 +1,23 @@
-import { createClient } from "@/utils/supabase/server";
-import MarketView from "./MarketView";
-import { getUserLeagues } from "@/lib/actions/leagues";
-import { getSession } from "@/lib/actions/auth";
 import { redirect } from "next/navigation";
-import { getPersonalMarket, fetchActiveAuctions } from "@/lib/actions/market";
-
-interface Player {
-  id: string;
-  nickname: string;
-  role: string;
-  market_value: number;
-  pro_teams: {
-    tag: string;
-    name: string;
-  } | null;
-}
-
+import MarketView from "./MarketView";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+import { getSession } from "@/lib/actions/auth";
+import { getUserLeagues } from "@/lib/actions/leagues";
+import { getMarketDashboard } from "@/lib/actions/market";
 
-export default async function MarketPage() {
+type SearchParams = Promise<{ league?: string }>;
+
+export default async function MarketPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const session = await getSession();
   if (!session) return redirect("/login");
 
-  const supabase = await createClient();
-  const leaguesRes = await getUserLeagues(session.user.id);
-  const leagues = leaguesRes as any[];
-  const activeLeagueItem = leagues[0];
-  const activeLeagueId =
-    activeLeagueItem?.league_id || activeLeagueItem?.leagues?.id;
+  const leagues = (await getUserLeagues(session.user.id)) as any[];
 
-  if (!activeLeagueId) {
+  if (!leagues.length) {
     return (
       <div className="flex flex-col items-center justify-center py-20 opacity-50 italic">
         <p>Debes unirte a una liga para acceder al mercado.</p>
@@ -37,47 +25,36 @@ export default async function MarketPage() {
     );
   }
 
-  const [personalMarket, auctions, leagueRosters, activePowerUps] = await Promise.all([
-    getPersonalMarket(activeLeagueId, session.user.id),
-    fetchActiveAuctions(activeLeagueId),
-    supabase
-      .from("user_rosters")
-      .select("*, profiles(username), pro_players(*, pro_teams(tag))")
-      .eq("league_id", activeLeagueId),
-    supabase
-      .from("active_powerups")
-      .select("*, powerup_types(code)")
-      .eq("league_id", activeLeagueId)
-  ]);
+  const params = await searchParams;
+  const requestedLeagueId = params?.league;
+
+  const leagueExists = leagues.some(
+    (l) => (l.league_id || l.leagues?.id) === requestedLeagueId,
+  );
+
+  const activeLeagueId = leagueExists
+    ? requestedLeagueId!
+    : leagues[0]?.league_id || leagues[0]?.leagues?.id;
+
+  const marketData = await getMarketDashboard(activeLeagueId, session.user.id);
 
   return (
     <ClientRefreshWrapper>
-      <div
-        className="
-  mx-auto
-  w-full
-  max-w-md sm:max-w-xl lg:max-w-4xl
-  px-4 sm:px-6
-  flex flex-col gap-8
-  animate-in fade-in slide-in-from-bottom-4 duration-700 py-6
-"
-      >
-        <div className="flex items-end justify-between">
+      <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-5xl px-4 sm:px-6 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 py-6">
+        <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="text-4xl leading-none italic uppercase">Mercado</h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">
-              Operaciones VCT EMEA
+              Fantasy VCT 2027
             </p>
           </div>
         </div>
 
         <MarketView
-          personalMarket={personalMarket}
-          auctions={auctions}
-          initialLeagues={leagues as any[]}
+          initialLeagues={leagues}
+          initialLeagueId={activeLeagueId}
           profileId={session.user.id}
-          initialLeagueRosters={leagueRosters.data || []}
-          activePowerUps={activePowerUps.data || []}
+          initialData={marketData}
         />
       </div>
     </ClientRefreshWrapper>

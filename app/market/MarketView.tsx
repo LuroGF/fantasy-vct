@@ -1,86 +1,122 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { sileo } from "sileo";
 import { haptic } from "@/lib/utils/haptics";
 import {
-  buyPlayer,
-  buyFromPersonalMarket,
-  payClause,
+  acceptLeagueOffer,
+  acceptManagerOffer,
+  getMarketDashboard,
+  makeManagerOffer,
+  payReleaseClause,
   placeBid,
-  getPersonalMarket,
-  fetchActiveAuctions,
-  revealAuction,
+  rejectLeagueOffer,
+  rejectManagerOffer,
   withdrawBid,
+  withdrawPlayerListing,
+  updatePlayerListingPrice,
+  updateManagerOffer,
 } from "@/lib/actions/market";
-import {
-  createTradeOffer,
-  getTrades,
-  acceptTradeOffer,
-  rejectTradeOffer,
-  cancelTradeOffer,
-} from "@/lib/actions/trades";
-import { PlayerCard } from "@/components/PlayerCard";
-import { useState, useMemo, useEffect } from "react";
-import { getTeamLogo } from "@/lib/vlr-shared";
-import { motion } from "framer-motion";
-import { sileo } from "sileo";
 
-interface MarketViewProps {
-  personalMarket: any[];
-  auctions: any[];
+type Tab = "market" | "rivals" | "sales" | "offers";
+
+type Props = {
   initialLeagues: any[];
+  initialLeagueId: string;
   profileId: string;
-  initialLeagueRosters: any[];
-  activePowerUps: any[];
+  initialData: any;
+};
+
+const money = (value: number | string | null | undefined) =>
+  `${(Number(value || 0) / 1_000_000).toFixed(1)}M €`;
+
+const notifySuccess = (title: string, description?: string) =>
+  sileo.success({
+    title,
+    description,
+    duration: 7000,
+  } as any);
+
+const notifyError = (title: string, description?: string) =>
+  sileo.error({
+    title,
+    description,
+    duration: 9000,
+  } as any);
+
+function PlayerImage({ player }: { player: any }) {
+  return (
+    <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-white/5">
+      {player?.photo_url ? (
+        <img
+          src={player.photo_url}
+          alt={player.nickname || "Jugador"}
+          className="h-full w-full object-cover object-top"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xl font-black italic text-white/15">
+          {(player?.nickname || "?").slice(0, 2).toUpperCase()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Countdown({ endsAt }: { endsAt: string }) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const diff = Math.max(0, new Date(endsAt).getTime() - now);
+  const hours = Math.floor(diff / 3_600_000);
+  const mins = Math.floor((diff % 3_600_000) / 60_000);
+
+  return <>{diff <= 0 ? "Cerrando…" : `${hours}h ${mins}m`}</>;
+}
+
+function ListingCountdown({ expiresAt }: { expiresAt: string }) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const diff = Math.max(0, new Date(expiresAt).getTime() - now);
+
+  if (diff <= 0) return <>Caducando…</>;
+
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  const mins = Math.floor((diff % 3_600_000) / 60_000);
+
+  return <>{days > 0 ? `${days}d ${hours}h` : `${hours}h ${mins}m`}</>;
 }
 
 export default function MarketView({
-  personalMarket: initialPersonalMarket,
-  auctions: initialAuctions,
   initialLeagues,
+  initialLeagueId,
   profileId,
-  initialLeagueRosters,
-  activePowerUps: initialActivePowerUps,
-}: MarketViewProps) {
-  const [activeTab, setActiveTab] = useState<
-    "personal" | "general" | "rivals" | "legends" | "trades"
-  >("personal");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [isFinal, setIsFinal] = useState(false);
-  const [legends, setLegends] = useState<any[]>([]);
+  initialData,
+}: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [activeLeagueId, setActiveLeagueId] = useState(initialLeagueId);
+  const [leagueMenuOpen, setLeagueMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("market");
+  const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
-  const [personalMarket, setPersonalMarket] = useState(initialPersonalMarket);
-  const [auctions, setAuctions] = useState(initialAuctions);
-  const [activePowerUps, setActivePowerUps] = useState(initialActivePowerUps);
-  const [bidDialog, setBidDialog] = useState<{
-    show: boolean;
-    auction: any | null;
-    amount: string;
-  }>({
-    show: false,
-    auction: null,
-    amount: "",
-  });
-  const [confirmDialog, setConfirmDialog] = useState<{
-    show: boolean;
-    title: string;
-    message: string;
-    onConfirm: (() => void) | null;
-  }>({
-    show: false,
-    title: "",
-    message: "",
-    onConfirm: null,
-  });
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [bidDialog, setBidDialog] = useState<any>(null);
+  const [offerDialog, setOfferDialog] = useState<any>(null);
+  const [editPriceDialog, setEditPriceDialog] = useState<any>(null);
 
-  const [activeLeagueId, setActiveLeagueId] = useState(
-    initialLeagues[0]?.league_id || initialLeagues[0]?.leagues?.id,
-  );
-
-  const activeParticipation = useMemo(
+  const activeLeague = useMemo(
     () =>
       initialLeagues.find(
         (l) => (l.league_id || l.leagues?.id) === activeLeagueId,
@@ -88,1334 +124,886 @@ export default function MarketView({
     [activeLeagueId, initialLeagues],
   );
 
-  const [userBids, setUserBids] = useState<any[]>([]);
-  const [rivals, setRivals] = useState<any[]>([]);
-  const [trades, setTrades] = useState<any[]>([]);
-  const [tradeDialog, setTradeDialog] = useState<{
-    show: boolean;
-    targetPlayer: any | null;
-    receiverId: string;
-    myPlayerId: string;
-    cashAmount: string;
-    direction: "pay" | "receive";
-  }>({
-    show: false,
-    targetPlayer: null,
-    receiverId: "",
-    myPlayerId: "",
-    cashAmount: "",
-    direction: "pay",
-  });
-
-  useEffect(() => {
-    async function loadInitialData() {
-      if (!activeLeagueId) return;
-      setLoading(true);
-      try {
-        const { createClient } = await import("@/utils/supabase/client");
-        const supabase = createClient();
-
-        const { getLeagueClassification } =
-          await import("@/lib/actions/leagues");
-        const { getLegendaryPlayers, checkIsFinal } =
-          await import("@/lib/actions/market");
-
-        const [
-          market,
-          aucts,
-          bidsRes,
-          classification,
-          legendsData,
-          finalStatus,
-        ] = await Promise.all([
-          getPersonalMarket(activeLeagueId, profileId),
-          fetchActiveAuctions(activeLeagueId, profileId),
-          supabase
-            .from("user_bids")
-            .select("auction_id, bid_amount")
-            .eq("profile_id", profileId),
-          getLeagueClassification(activeLeagueId),
-          getLegendaryPlayers(),
-          checkIsFinal(activeLeagueId),
-        ]);
-
-        setPersonalMarket(market);
-        setAuctions(aucts);
-        setRivals(
-          classification.standings.filter(
-            (p: any) => p.profile_id !== profileId,
-          ),
-        );
-        setLegends(legendsData);
-        setIsFinal(finalStatus);
-        if (bidsRes.data) setUserBids(bidsRes.data);
-      } catch (err) {
-        console.error("Error loading market data:", err);
-        sileo.error({
-          title: "Error al cargar mercado",
-          description: "No se pudieron actualizar los datos",
-        });
-      }
+  async function reload(leagueId = activeLeagueId) {
+    setLoading(true);
+    try {
+      const next = await getMarketDashboard(leagueId, profileId);
+      setData(next);
+    } catch (error: any) {
+      notifyError(
+        "Error al cargar el mercado",
+        error?.message || "No se pudieron actualizar los datos",
+      );
+    } finally {
       setLoading(false);
     }
-    loadInitialData();
+  }
 
-    const timer = setInterval(async () => {
-      if (!activeLeagueId) return;
-      try {
-        const aucts = await fetchActiveAuctions(activeLeagueId);
-        setAuctions(aucts);
-      } catch (e) {}
-    }, 30000);
+  function changeLeague(leagueId: string) {
+    haptic.light();
+    setActiveLeagueId(leagueId);
+    setLeagueMenuOpen(false);
 
-    if (activeTab === "trades" && activeLeagueId) {
-      getTrades(activeLeagueId, profileId).then(setTrades);
-    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("league", leagueId);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    void reload(leagueId);
+  }
 
-    return () => clearInterval(timer);
-  }, [activeLeagueId, profileId, refreshTrigger, activeTab]);
-
-  const handleAction = async (
-    actionFn: () => Promise<any>,
-    messages?: {
-      loading?: string;
-      successTitle?: string;
-      successDescription?: string;
-      errorTitle?: string;
-    },
-  ) => {
+  async function runAction(
+    fn: () => Promise<any>,
+    successTitle: string,
+    successDescription?: string,
+  ) {
     haptic.medium();
     setLoading(true);
 
     try {
-      await sileo.promise(actionFn(), {
-        loading: messages?.loading
-          ? {
-              title: messages.loading,
-            }
-          : {
-              title: "Procesando operación...",
-            },
-        success: (res) => {
-          if (!res?.success) {
-            throw new Error(res?.error || "Error en la operación");
-          }
+      const result = await fn();
 
-          haptic.success();
-          setRefreshTrigger((prev) => prev + 1);
-          router.refresh();
+      if (!result?.success) {
+        throw new Error(result?.error || "No se pudo completar la operación.");
+      }
 
-          return {
-            title: messages?.successTitle || "Operación completada",
-            description:
-              messages?.successDescription ||
-              res.message ||
-              "La acción se realizó correctamente",
-          };
-        },
-        error: (err) => {
-          haptic.error();
-          return {
-            title: messages?.errorTitle || "Error",
-            description:
-              err instanceof Error ? err.message : "Error inesperado",
-          };
-        },
-      });
-    } catch {
+      // Primero actualizamos la información.
+      await reload();
+
+      haptic.success();
+
+      sileo.success({
+        title: successTitle,
+        description: successDescription,
+        duration: 7000,
+      } as any);
+    } catch (error: any) {
+      haptic.error();
+
+      sileo.error({
+        title: "Error",
+        description: error?.message || "No se pudo completar la operación.",
+        duration: 9000,
+      } as any);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const confirmBid = async () => {
-    if (!bidDialog.auction) return;
-    const amount = parseInt(bidDialog.amount);
-
-    if (isNaN(amount) || amount <= bidDialog.auction.current_bid) {
-      haptic.error();
-      sileo.error({
-        title: "Puja no válida",
-        description: "La oferta debe superar la puja actual",
-      });
+  async function submitBid() {
+    if (!bidDialog) return;
+    const amount = Number(bidDialog.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      notifyError("Puja no válida", "Introduce un importe válido.");
       return;
     }
 
-    setBidDialog({ show: false, auction: null, amount: "" });
+    const auctionId = bidDialog.auction.id;
+    const editingBid = Boolean(bidDialog.auction.my_bid);
+    const playerName = bidDialog.auction.player?.nickname || "el jugador";
 
-    handleAction(
-      () => placeBid(bidDialog.auction.id, profileId, amount),
-      {
-        loading: "Enviando oferta...",
-        successTitle: "Oferta registrada",
-        successDescription: "Tu puja anónima ha sido enviada",
-        errorTitle: "No se pudo realizar la puja",
-      },
+    setBidDialog(null);
+    await runAction(
+      () => placeBid(auctionId, profileId, Math.round(amount)),
+      editingBid ? "Puja modificada" : "Puja realizada",
+      editingBid
+        ? `Tu nueva puja por ${playerName} es de ${money(amount)}.`
+        : `Has pujado ${money(amount)} por ${playerName}.`,
     );
-  };
+  }
 
-  const submitTrade = async () => {
-    const { targetPlayer, receiverId, myPlayerId, cashAmount, direction } =
-      tradeDialog;
-    if (!targetPlayer || !receiverId) return;
+  async function submitManagerOffer() {
+    if (!offerDialog) return;
 
-    const cash = parseInt(cashAmount) || 0;
-    const finalCash = direction === "pay" ? cash : -cash;
+    const amount = Number(offerDialog.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      notifyError("Oferta no válida", "Introduce un importe válido.");
+      return;
+    }
 
-    setTradeDialog((prev) => ({ ...prev, show: false }));
+    const listingId = offerDialog.listing.id;
+    const existingOffer = offerDialog.offer || null;
+    const playerName = offerDialog.player?.nickname || "el jugador";
 
-    handleAction(
-      () =>
-        createTradeOffer(
-          activeLeagueId,
-          profileId,
-          receiverId,
-          myPlayerId || null,
-          targetPlayer.id,
-          finalCash,
-        ),
-      {
-        loading: "Enviando propuesta...",
-        successTitle: "Trade enviado",
-        successDescription: "La propuesta se ha enviado correctamente",
-        errorTitle: "No se pudo enviar la propuesta",
-      },
+    setOfferDialog(null);
+
+    if (existingOffer) {
+      await runAction(
+        () =>
+          updateManagerOffer(existingOffer.id, Math.round(amount), profileId),
+        "Oferta modificada",
+        `Tu nueva oferta por ${offerDialog.player?.nickname} es de ${money(amount)}.`,
+      );
+      return;
+    }
+
+    await runAction(
+      () => makeManagerOffer(listingId, Math.round(amount), profileId),
+      "Oferta enviada",
+      `Has ofrecido ${money(amount)} por ${offerDialog.player?.nickname}.`,
     );
-  };
+  }
 
-  const roles = ["Duelista", "Iniciador", "Controlador", "Centinela"];
+  async function submitEditListingPrice() {
+    if (!editPriceDialog) return;
 
-  const filteredPersonalMarket = useMemo(
-    () => personalMarket,
-    [personalMarket],
-  );
+    const listing = editPriceDialog.listing;
+    const amount = Number(editPriceDialog.amount);
+    const minPrice = Number(listing.market_value_snapshot || 0);
+    const maxPrice = Math.floor(minPrice * 1.15);
 
-  const filteredAuctions = useMemo(
-    () =>
-      auctions.filter(
-        (item) => !activeFilter || item.pro_players?.role === activeFilter,
-      ),
-    [auctions, activeFilter],
-  );
+    if (!Number.isFinite(amount) || amount <= 0) {
+      notifyError("Precio no válido", "Introduce un importe válido.");
+      return;
+    }
 
-  const filteredRivals = useMemo(() => rivals, [rivals]);
+    if (amount < minPrice || amount > maxPrice) {
+      notifyError(
+        "Precio fuera de rango",
+        `Debe estar entre ${money(minPrice)} y ${money(maxPrice)}.`,
+      );
+      return;
+    }
 
-  const myRoster = useMemo(() => {
-    return initialLeagueRosters
-      .filter((r) => r.profile_id === profileId && r.pro_players)
-      .map((r) => r.pro_players);
-  }, [initialLeagueRosters, profileId]);
+    setEditPriceDialog(null);
 
-  const incomingTrades = useMemo(
-    () =>
-      trades.filter(
-        (t) => t.receiver_id === profileId && t.status === "pending",
-      ),
-    [trades, profileId],
-  );
-  const outgoingTrades = useMemo(
-    () =>
-      trades.filter((t) => t.sender_id === profileId && t.status === "pending"),
-    [trades, profileId],
-  );
-
-  const committedFunds = useMemo(() => {
-    return userBids.reduce((sum, b) => sum + Number(b.bid_amount), 0);
-  }, [userBids]);
-
-  const availableBudget =
-    (activeParticipation?.current_budget || 0) - committedFunds;
-
-  const handleReveal = async (auctionId: string) => {
-    handleAction(
-      () => revealAuction(activeLeagueId, profileId, auctionId),
-      {
-        loading: "Interceptando oferta...",
-        successTitle: "Oferta revelada",
-        errorTitle: "No se pudo revelar la oferta",
-      },
+    await runAction(
+      () => updatePlayerListingPrice(listing.id, Math.round(amount), profileId),
+      "Precio actualizado",
+      `${listing.player?.nickname} ahora está listado por ${money(amount)}.`,
     );
-  };
+  }
 
-  const handleWithdraw = async (auctionId: string) => {
-    handleAction(
-      () => withdrawBid(auctionId, profileId),
-      {
-        loading: "Retirando oferta...",
-        successTitle: "Oferta retirada",
-        successDescription: "El saldo bloqueado ha sido liberado",
-        errorTitle: "No se pudo retirar la oferta",
-      },
-    );
-  };
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "market", label: "Mercado" },
+    { id: "rivals", label: "Rivales" },
+    { id: "sales", label: "Mis ventas" },
+    { id: "offers", label: "Ofertas" },
+  ];
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* League Selector */}
-      <div className="v-panel p-4 space-y-2">
-        <label className="text-[8px] font-black uppercase text-v-white/40 ml-1 tracking-[0.2em]">
-          Operando en Liga:
-        </label>
-        <select
-          value={activeLeagueId}
-          onChange={(e) => setActiveLeagueId(e.target.value)}
-          className="w-full bg-v-navy/50 border border-white/10 px-4 py-2 text-xs font-black italic focus:border-v-red outline-none transition-colors"
-        >
-          {initialLeagues.map((l) => (
-            <option
-              key={l.league_id || l.leagues?.id}
-              value={l.league_id || l.leagues?.id}
+    <div className="flex flex-col gap-5">
+      <section className="v-panel relative overflow-visible p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="mb-1 text-[8px] font-black uppercase tracking-[0.22em] text-white/35">
+              Liga activa
+            </p>
+            <button
+              type="button"
+              onClick={() => setLeagueMenuOpen((v) => !v)}
+              className="flex max-w-full items-center gap-2 text-left text-lg font-black italic uppercase text-white transition hover:text-v-red"
             >
-              {l.leagues?.name || l.name}
-            </option>
-          ))}
-        </select>
-        {activeParticipation && (
-          <div className="flex justify-between items-center pt-2 mt-2 border-t border-white/5">
-            <div>
-              <p className="text-[7px] font-black uppercase text-v-white/40 mb-0.5">
-                Créditos Disponibles
-              </p>
-              <p className="text-sm font-black italic text-v-white">
-                {(availableBudget / 1000000).toFixed(1)}M VP
-              </p>
-            </div>
-            {committedFunds > 0 && (
-              <div className="flex-1 px-4 border-l border-white/5 mx-4">
-                <p className="text-[7px] font-black uppercase text-v-red/60 mb-0.5">
-                  Comprometido en Draft
-                </p>
-                <p className="text-sm font-black italic text-v-red/80">
-                  {(committedFunds / 1000000).toFixed(1)}M VP
-                </p>
+              <span className="truncate">
+                {activeLeague?.leagues?.name || activeLeague?.name || "Liga"}
+              </span>
+              <span className="text-xs text-v-red">⌄</span>
+            </button>
+
+            {leagueMenuOpen && (
+              <div className="absolute left-4 top-[62px] z-40 w-[min(320px,calc(100%-2rem))] overflow-hidden border border-white/10 bg-v-navy shadow-2xl">
+                {initialLeagues.map((league) => {
+                  const id = league.league_id || league.leagues?.id;
+                  const name = league.leagues?.name || league.name;
+                  const active = id === activeLeagueId;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => changeLeague(id)}
+                      className={`flex w-full items-center justify-between px-4 py-3 text-left text-xs font-black uppercase transition ${
+                        active
+                          ? "bg-v-red text-white"
+                          : "text-white/60 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <span>{name}</span>
+                      {active && <span>✓</span>}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* Search & Tabs */}
-      <div className="v-panel p-4 space-y-4">
-        <div className="flex bg-v-navy/80 p-1 border border-white/10 rounded-sm overflow-x-auto scrollbar-hide relative">
-          {[
-            { id: "personal", label: "Diario" },
-            { id: "general", label: "Draft" },
-            { id: "rivals", label: "Rivales" },
-            { id: "trades", label: "Trades" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                haptic.light();
-                setActiveTab(tab.id as any);
-              }}
-              className={`relative flex-1 min-w-[70px] py-2.5 text-[8.5px] font-black uppercase italic tracking-[0.05em] transition-colors z-10 ${activeTab === tab.id ? "text-v-white" : "text-v-white/40 hover:text-v-white/70"}`}
-            >
-              {activeTab === tab.id && (
-                <motion.div
-                  layoutId="market-tab-active"
-                  className="absolute inset-0 bg-v-red shadow-[0_0_15px_rgba(255,70,85,0.3)]"
-                  transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
-                />
-              )}
-              <span className="relative z-20">{tab.label}</span>
-            </button>
-          ))}
-
-          {isFinal && (
-            <button
-              onClick={() => {
-                haptic.light();
-                setActiveTab("legends");
-              }}
-              className={`relative flex-1 min-w-[100px] py-2.5 text-[9px] font-black uppercase italic tracking-widest transition-all overflow-hidden group z-10 ${activeTab === "legends" ? "text-v-navy" : "text-amber-500"}`}
-            >
-              {activeTab === "legends" ? (
-                <motion.div
-                  layoutId="market-tab-active"
-                  className="absolute inset-0 bg-amber-500"
-                  transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
-                />
-              ) : (
-                <div className="absolute inset-0 bg-amber-500/5 group-hover:bg-amber-500/10 transition-colors" />
-              )}
-              <span className="relative z-20 whitespace-nowrap">
-                ⭐ Leyendas
-              </span>
-            </button>
-          )}
-        </div>
-
-        {activeTab === "general" && (
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            <button
-              onClick={() => setActiveFilter(null)}
-              className={`shrink-0 px-3 py-1 text-[8px] font-black uppercase border transition-all ${!activeFilter ? "border-v-red bg-v-red/10 text-v-red" : "border-white/10 text-v-white/40"}`}
-            >
-              TODOS LOS ROLES
-            </button>
-            {roles.map((role) => (
-              <button
-                key={role}
-                onClick={() =>
-                  setActiveFilter(role === activeFilter ? null : role)
-                }
-                className={`shrink-0 px-3 py-1 text-[8px] font-black uppercase border transition-all ${role === activeFilter ? "border-v-red bg-v-red/10 text-v-red" : "border-white/10 text-v-white/40"}`}
-              >
-                {role}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Content Area */}
-      <div className="space-y-6">
-        {activeTab === "personal" ? (
-          <div className="space-y-4">
-            <div className="px-1">
-              <h2 className="text-xl italic uppercase text-v-white/80">
-                Ofertas del Día
-              </h2>
-              <p className="text-[8px] uppercase tracking-widest text-v-red font-black">
-                5 Agentes disponibles solo hoy
+          <div className="grid shrink-0 grid-cols-3 gap-2 text-right">
+            <div>
+              <p className="text-[7px] font-black uppercase text-white/30">
+                Saldo
+              </p>
+              <p className="text-sm font-black italic text-white">
+                {money(data?.participant?.current_budget)}
               </p>
             </div>
-            <div className="grid gap-3">
-              {filteredPersonalMarket.map((offer) => (
-                <PlayerCard
-                  key={offer.id}
-                  player={offer.player}
-                  inAuction={auctions.some(
-                    (a) => a.player_id === offer.player_id,
-                  )}
-                  onAction={() => {
-                    setConfirmDialog({
-                      show: true,
-                      title: "Confirmar Reclutamiento",
-                      message: `¿Deseas reclutar a ${offer.player?.nickname} por ${(offer.offer_price / 1000000).toFixed(1)}M VP?`,
-                      onConfirm: () =>
-                        handleAction(
-                          () =>
-                            buyFromPersonalMarket(
-                              activeLeagueId,
-                              profileId,
-                              offer.player_id,
-                              offer.id,
-                            ),
-                          {
-                            loading: "Reclutando jugador...",
-                            successTitle: "Jugador reclutado",
-                            successDescription: `${offer.player?.nickname} se ha unido a tu plantilla`,
-                            errorTitle: "No se pudo completar el reclutamiento",
-                          },
-                        ),
-                    });
-                  }}
-                  actionLabel={offer.is_purchased ? "Adquirido" : "Reclutar"}
-                  actionSubLabel={
-                    offer.is_purchased
-                      ? ""
-                      : `${(offer.offer_price / 1000000).toFixed(1)}M VP`
-                  }
-                  actionDisabled={offer.is_purchased}
-                />
-              ))}
-              {filteredPersonalMarket.length === 0 && (
-                <div className="py-20 text-center opacity-30 italic text-xs uppercase font-black">
-                  No se encontraron agentes
-                </div>
-              )}
+            <div>
+              <p className="text-[7px] font-black uppercase text-white/30">
+                Pujas
+              </p>
+              <p className="text-sm font-black italic text-white">
+                {data?.stats?.activeBids || 0}
+              </p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black uppercase text-white/30">
+                Exposición
+              </p>
+              <p className="text-sm font-black italic text-v-red">
+                {money(data?.stats?.bidExposure)}
+              </p>
             </div>
           </div>
-        ) : (
-          <div className="space-y-8 text-v-white">
-            {activeTab === "general" ? (
-              <div className="space-y-4">
-                <div className="px-1">
-                  <h2 className="text-xl italic uppercase text-v-white/80">
-                    Draft Activo
-                  </h2>
-                  <p className="text-[8px] uppercase tracking-widest text-v-red font-black">
-                    Asignación por mérito táctico
-                  </p>
-                </div>
-                <div className="grid gap-3">
-                  {filteredAuctions.map((auction) => {
-                    const myBid = userBids.find(
-                      (b) => b.auction_id === auction.id,
-                    );
-                    const isRevealed = auction.is_revealed;
+        </div>
+      </section>
 
-                    return (
-                      <div
-                        key={auction.id}
-                        className="v-panel-red group relative overflow-hidden transition-all hover:translate-y-[-2px] hover:shadow-2xl"
-                      >
-                        <div className="absolute top-0 right-0 w-48 h-full bg-linear-to-l from-v-red/10 to-transparent pointer-events-none" />
-                        {(() => {
-                          const logo = getTeamLogo(auction.pro_players?.pro_teams?.tag);
-                          return logo ? (
-                            <div className="absolute -right-4 -bottom-6 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                              <img src={logo} alt="" className="w-full h-full object-contain grayscale brightness-200" />
-                            </div>
-                          ) : (
-                            <div className="absolute -right-4 -bottom-6 text-8xl font-black text-white/5 italic select-none group-hover:text-v-red/10 transition-colors uppercase leading-none pointer-events-none">
-                              {auction.pro_players?.nickname?.substring(0, 3)}
-                            </div>
-                          );
-                        })()}
+      <div className="v-panel p-1">
+        <div className="grid grid-cols-4 gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-2 py-3 text-[8px] font-black uppercase italic tracking-wide transition sm:text-[9px] ${
+                activeTab === tab.id
+                  ? "bg-v-red text-white shadow-[0_0_18px_rgba(255,70,85,.22)]"
+                  : "text-white/35 hover:bg-white/5 hover:text-white/70"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-                        <div className="relative z-10 flex flex-col gap-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="w-1.5 h-1.5 bg-v-red rounded-full shadow-[0_0_5px_rgba(255,70,85,1)] animate-pulse" />
-                                <p className="text-[8px] font-black uppercase text-white/40 tracking-[0.2em]">
-                                  Vendedor:{" "}
-                                  <span className="text-white/80">
-                                    {auction.profiles?.username || "SISTEMA"}
-                                  </span>
-                                </p>
-                              </div>
-                              <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-wider leading-none pr-2 truncate">
-                                {auction.pro_players?.nickname}
-                              </h3>
-                              {myBid && (
-                                <div className="inline-flex items-center gap-2 mt-2 bg-v-red px-2 py-0.5 rounded-sm">
-                                  <span className="text-[7px] font-black uppercase text-white tracking-widest whitespace-nowrap">
-                                    TU OFERTA:{" "}
-                                    {(myBid.bid_amount / 1000000).toFixed(1)}M
-                                    VP
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-right bg-black/40 backdrop-blur-md p-3 rounded-sm border border-white/5 min-w-[100px]">
-                              <p className="text-[7px] font-black uppercase text-white/30 tracking-widest mb-1">
-                                OFERTA LÍDER
-                              </p>
-                              {isRevealed ? (
-                                <p className="text-2xl font-black italic text-green-500 leading-none">
-                                  {(auction.current_bid / 1000000).toFixed(1)}M{" "}
-                                  <span className="text-[10px]">VP</span>
-                                </p>
-                              ) : (
-                                <div className="flex flex-col items-end gap-1.5">
-                                  <p className="text-xl font-black italic text-white/10 leading-none select-none">
-                                    ???.?M VP
-                                  </p>
-                                  <button
-                                    onClick={() => {
-                                      setConfirmDialog({
-                                        show: true,
-                                        title: "Protocolo de Espionaje",
-                                        message:
-                                          "¿Confirmas el uso de 1 'Ojo del Espía' para interceptar la oferta más alta?",
-                                        onConfirm: () =>
-                                          handleReveal(auction.id),
-                                      });
-                                    }}
-                                    title="Revelar Oferta"
-                                    className="group flex items-center gap-1.5 text-[8px] font-black uppercase text-v-red hover:text-white bg-v-red/10 hover:bg-v-red px-2 py-1 border border-v-red/20 transition-all rounded-sm"
-                                  >
-                                    <span className="text-xs">👁️</span> REVELAR
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+      {loading && (
+        <div className="text-center text-[8px] font-black uppercase tracking-[0.2em] text-white/30">
+          Actualizando…
+        </div>
+      )}
 
-                          <div className="flex gap-2 relative z-10">
-                            <button
-                              onClick={() => {
-                                setBidDialog({
-                                  show: true,
-                                  auction: auction,
-                                  amount: (
-                                    Math.max(
-                                      auction.current_bid,
-                                      myBid?.bid_amount || 0,
-                                    ) + 500000
-                                  ).toString(),
-                                });
-                              }}
-                              className="v-btn-primary flex-1 py-3! text-[10px]! italic shadow-xl"
-                            >
-                              {myBid
-                                ? "MODIFICAR OFERTA"
-                                : "ENVIAR OFERTA ANÓNIMA"}
-                            </button>
+      {activeTab === "market" && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xl font-black italic uppercase">
+              Mercado de hoy
+            </h2>
+            <p className="text-[9px] font-black uppercase tracking-widest text-v-red">
+              10 jugadores · pujas ocultas · cierre automático
+            </p>
+          </div>
 
-                            {myBid && (
-                              <button
-                                onClick={() => {
-                                  setConfirmDialog({
-                                    show: true,
-                                    title: "Retirar Oferta",
-                                    message:
-                                      "¿Deseas anular tu oferta y recuperar el saldo bloqueado?",
-                                    onConfirm: () => handleWithdraw(auction.id),
-                                  });
-                                }}
-                                title="Retirar Oferta"
-                                className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 text-white/30 hover:border-v-red hover:text-v-red hover:bg-v-red/5 transition-all rounded-sm group/close"
-                              >
-                                <svg
-                                  className="w-5 h-5 group-hover/close:scale-110 transition-transform"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2.5"
-                                    d="M6 18L18 6M6 6l12 12"
-                                  ></path>
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {auctions.length === 0 && (
-                    <div className="py-10 text-center opacity-30 italic text-[10px] uppercase font-black">
-                      No hay subastas activas
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : activeTab === "rivals" ? (
-              <div className="space-y-4">
-                <div className="px-1">
-                  <h2 className="text-xl italic uppercase text-v-white/80">
-                    Equipos Rivales
-                  </h2>
-                  <p className="text-[8px] uppercase tracking-widest text-v-red font-black">
-                    Paga cláusulas para robar agentes
-                  </p>
-                </div>
-
-                <div className="space-y-6">
-                  {filteredRivals.map((rival) => (
-                    <div key={rival.profile_id} className="space-y-3">
-                      <div className="flex items-center gap-3 bg-v-white/5 p-2 border-l-2 border-v-red">
-                        <div className="w-8 h-8 bg-v-red/20 rounded-full flex items-center justify-center text-[10px] font-black italic">
-                          {rival.profiles?.username
-                            ?.substring(0, 2)
-                            .toUpperCase()}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-sm font-black italic uppercase tracking-wider">
-                            {rival.profiles?.username}
+          <div className="grid gap-3 md:grid-cols-2">
+            {(data?.auctions || []).map((auction: any) => {
+              const player = auction.player;
+              const myBid = auction.my_bid;
+              return (
+                <article
+                  key={auction.id}
+                  className="v-panel-red relative overflow-hidden p-4"
+                >
+                  <div className="flex gap-4">
+                    <PlayerImage player={player} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-2xl font-black italic uppercase leading-none">
+                            {player?.nickname}
                           </h3>
-                          <p className="text-[7px] font-black uppercase text-v-white/40">
-                            {rival.total_points || 0} PUNTOS
+                          <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-white/35">
+                            {player?.pro_teams?.tag || "FA"} · {player?.role}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[7px] font-black uppercase text-white/30">
+                            Valor
+                          </p>
+                          <p className="text-sm font-black italic text-white">
+                            {money(
+                              auction.market_value_snapshot ||
+                                player?.market_value,
+                            )}
                           </p>
                         </div>
                       </div>
 
-                      <div className="grid gap-2">
-                        {rival.roster.length > 0 ? (
-                          rival.roster.map((player: any) => (
-                            <div
-                              key={player.id}
-                              className="v-panel relative overflow-hidden group hover:border-v-red transition-all flex items-center justify-between p-3 select-none active:scale-[0.99]"
-                            >
-                              {(() => {
-                                const logo = getTeamLogo(player.pro_teams?.tag);
-                                return logo ? (
-                                  <div className="absolute top-0 right-0 w-24 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none flex items-center justify-end pr-2 overflow-hidden opacity-5 group-hover:opacity-10 transition-opacity">
-                                    <img src={logo} alt="" className="w-20 h-20 object-contain grayscale brightness-200" />
-                                  </div>
-                                ) : (
-                                  <div className="absolute -right-2 -bottom-2 text-4xl font-black text-white/3 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
-                                    {player.pro_teams?.tag || "FA"}
-                                  </div>
-                                );
-                              })()}
-
-                              <div className="flex items-center gap-3 relative z-10">
-                                <div className="w-10 shrink-0 flex justify-start border-r border-white/5 pr-2">
-                                  {(() => {
-                                    const logo = getTeamLogo(player.pro_teams?.tag);
-                                    return logo ? (
-                                      <img src={logo} alt={player.pro_teams?.tag || ""} className="w-6 h-6 object-contain" />
-                                    ) : (
-                                      <span className="text-[9px] font-black uppercase text-v-red tracking-widest">
-                                        {player.pro_teams?.tag || "FA"}
-                                      </span>
-                                    );
-                                  })()}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-black uppercase italic leading-none group-hover:text-v-red transition-colors pr-2 truncate">
-                                    {player.nickname}
-                                  </p>
-                                  <p className="text-[7px] font-black uppercase text-v-white/30 mt-1">
-                                    {player.role}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4 relative z-10">
-                                <div className="text-right border-r border-white/5 pr-4">
-                                  <p className="text-[7px] font-black uppercase text-v-white/30 mb-0.5">
-                                    Reasignación
-                                  </p>
-                                  <p className="text-sm font-black italic text-v-red">
-                                    {(
-                                      Number(
-                                        player.release_clause ||
-                                          player.market_value ||
-                                          0,
-                                      ) / 1000000
-                                    ).toFixed(1)}
-                                    M VP
-                                  </p>
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  <button
-                                    onClick={() => {
-                                      setConfirmDialog({
-                                        show: true,
-                                        title: "Protocolo de Reasignación",
-                                        message: `¿Deseas solicitar la reasignación de ${player.nickname} por ${(player.release_clause / 1000000).toFixed(1)}M VP? Los créditos de operación se transferirán a ${rival.profiles?.username}.`,
-                                        onConfirm: () =>
-                                          handleAction(
-                                            () =>
-                                              payClause(
-                                                activeLeagueId,
-                                                profileId,
-                                                player.id,
-                                                rival.profile_id,
-                                              ),
-                                            {
-                                              loading: "Procesando rescisión...",
-                                              successTitle: "Rescisión completada",
-                                              successDescription: `${player.nickname} cambia de equipo`,
-                                              errorTitle: "No se pudo ejecutar la rescisión",
-                                            },
-                                          ),
-                                      });
-                                    }}
-                                    className="bg-v-white text-v-navy text-[8px] font-black px-4 py-2.5 uppercase italic hover:bg-v-red hover:text-v-white transition-all shadow-lg active:scale-95 w-full"
-                                  >
-                                    Pagar Rescisión
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setTradeDialog({
-                                        show: true,
-                                        targetPlayer: player,
-                                        receiverId: rival.profile_id,
-                                        myPlayerId: "",
-                                        cashAmount: "",
-                                        direction: "pay",
-                                      });
-                                    }}
-                                    className="border border-white/10 text-v-white/50 hover:text-v-white hover:border-v-white text-[7px] font-black px-4 py-1.5 uppercase italic transition-all active:scale-95 w-full"
-                                  >
-                                    Prop. Intercambio
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-[8px] uppercase italic text-v-white/20 text-center py-2">
-                            Sin agentes que coincidan
+                      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/5 pt-3">
+                        <div>
+                          <p className="text-[7px] font-black uppercase text-white/30">
+                            Tu puja
                           </p>
+                          <p
+                            className={`text-sm font-black italic ${myBid ? "text-v-red" : "text-white/25"}`}
+                          >
+                            {myBid ? money(myBid.amount) : "Sin puja"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[7px] font-black uppercase text-white/30">
+                            Cierra en
+                          </p>
+                          <p className="text-sm font-black italic text-white">
+                            <Countdown endsAt={auction.ends_at} />
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setBidDialog({
+                              auction,
+                              amount: String(
+                                myBid?.amount ||
+                                  auction.market_value_snapshot ||
+                                  player?.market_value ||
+                                  10_000_000,
+                              ),
+                            })
+                          }
+                          className="v-btn-primary flex-1 py-3! text-[9px]!"
+                        >
+                          {myBid ? "Modificar puja" : "Pujar"}
+                        </button>
+                        {myBid && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              runAction(
+                                () => withdrawBid(auction.id, profileId),
+                                "Puja retirada",
+                                `Has retirado tu puja por ${player?.nickname}.`,
+                              )
+                            }
+                            className="border border-white/10 px-3 text-[8px] font-black uppercase text-white/40 transition hover:border-v-red hover:text-v-red"
+                          >
+                            Cancelar
+                          </button>
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {(data?.auctions || []).length === 0 && (
+            <div className="v-panel py-14 text-center text-xs font-black uppercase italic text-white/25">
+              No hay mercado activo en esta liga.
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === "rivals" && (
+        <section className="space-y-5">
+          <div>
+            <h2 className="text-xl font-black italic uppercase">Rivales</h2>
+            <p className="text-[9px] font-black uppercase tracking-widest text-v-red">
+              Cláusulas y ofertas por jugadores en venta
+            </p>
+          </div>
+
+          {(data?.rivals || []).map((rival: any) => (
+            <div key={rival.profile_id} className="space-y-2">
+              <div className="flex items-center justify-between border-l-2 border-v-red bg-white/5 px-3 py-2">
+                <p className="text-sm font-black italic uppercase">
+                  {rival.username}
+                </p>
+                <span className="text-[8px] font-black uppercase text-white/30">
+                  {rival.roster.length} jugadores
+                </span>
               </div>
-            ) : activeTab === "trades" ? (
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <h2 className="text-xl italic uppercase text-v-white/80 border-b border-v-red/50 w-fit pr-4">
-                    Ofertas Recibidas
-                  </h2>
-                  <div className="grid gap-3">
-                    {incomingTrades.map((trade) => (
-                      <div
-                        key={trade.id}
-                        className="v-panel p-4 border-l-4 border-green-500 bg-v-navy/40 relative"
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <p className="text-[9px] font-black uppercase text-v-white/40 tracking-widest">
-                              De: {trade.sender?.username || "Desconocido"}
-                            </p>
-                            <p className="text-[9px] font-black uppercase text-v-white/20 tracking-widest italic">
-                              {new Date(trade.created_at).toLocaleDateString()}
+
+              <div className="grid gap-2 md:grid-cols-2">
+                {rival.roster.map((row: any) => {
+                  const p = row.player;
+                  const protectedClause =
+                    row.clause_protected_until &&
+                    new Date(row.clause_protected_until) > new Date();
+
+                  const myPendingOffer = row.listing
+                    ? (data?.managerOffers || []).find(
+                        (offer: any) =>
+                          offer.listing_id === row.listing.id &&
+                          offer.from_profile_id === profileId &&
+                          offer.status === "pending",
+                      )
+                    : null;
+
+                  return (
+                    <article key={row.id} className="v-panel flex gap-3 p-3">
+                      <PlayerImage player={p} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-lg font-black italic uppercase">
+                              {p?.nickname}
+                            </h3>
+                            <p className="text-[8px] font-black uppercase text-white/35">
+                              {p?.pro_teams?.tag || "FA"} · {p?.role}
                             </p>
                           </div>
-                          <span
-                            className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                              trade.status === "pending"
-                                ? "bg-yellow-500/20 text-yellow-500"
-                                : trade.status === "accepted"
-                                  ? "bg-green-500/20 text-green-500"
-                                  : "bg-red-500/20 text-red-500"
-                            }`}
+                          <div className="text-right">
+                            <p className="text-[7px] uppercase text-white/30">
+                              Cláusula
+                            </p>
+                            <p className="text-sm font-black italic text-v-red">
+                              {money(row.release_clause)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            disabled={protectedClause || loading}
+                            onClick={() =>
+                              runAction(
+                                () => payReleaseClause(row.id, profileId),
+                                "Cláusula ejecutada",
+                                `${p?.nickname} se ha incorporado a tu plantilla.`,
+                              )
+                            }
+                            className="flex-1 bg-white px-3 py-2 text-[8px] font-black uppercase text-v-navy transition hover:bg-v-red hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
                           >
-                            {trade.status}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
-                            <p className="text-[7px] font-black uppercase text-v-white/30 mb-1">
-                              Recibes
-                            </p>
-                            {trade.sender_player ? (
-                              <p className="text-sm font-black italic text-v-white">
-                                {trade.sender_player.nickname}
-                              </p>
-                            ) : (
-                              <span className="text-xs opacity-20">-</span>
-                            )}
-                            {trade.cash_offer > 0 && (
-                              <p className="text-xs font-black text-green-400 mt-1">
-                                +{(trade.cash_offer / 1000000).toFixed(1)}M VP
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="text-v-white/20">⇄</div>
-
-                          <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
-                            <p className="text-[7px] font-black uppercase text-v-white/30 mb-1">
-                              Entregas
-                            </p>
-                            {trade.receiver_player ? (
-                              <p className="text-sm font-black italic text-v-red">
-                                {trade.receiver_player.nickname}
-                              </p>
-                            ) : (
-                              <span className="text-xs opacity-20">-</span>
-                            )}
-                            {trade.cash_offer < 0 && (
-                              <p className="text-xs font-black text-v-red mt-1">
-                                +
-                                {(Math.abs(trade.cash_offer) / 1000000).toFixed(
-                                  1,
-                                )}
-                                M VP
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {trade.status === "pending" && (
-                          <div className="flex gap-2 mt-4 pt-4 border-t border-white/5">
+                            {protectedClause
+                              ? "Protegido 48h"
+                              : "Pagar cláusula"}
+                          </button>
+                          {row.listing && (
                             <button
-                              onClick={() => {
-                                setConfirmDialog({
-                                  show: true,
-                                  title: "Aceptar Intercambio",
-                                  message:
-                                    "¿Confirmas el intercambio de activos? Esta acción es irreversible.",
-                                  onConfirm: () =>
-                                    handleAction(
-                                      () =>
-                                        acceptTradeOffer(trade.id, profileId),
-                                      {
-                                        loading: "Aceptando intercambio...",
-                                        successTitle: "Intercambio aceptado",
-                                        errorTitle: "No se pudo aceptar la oferta",
-                                      },
-                                    ),
-                                });
-                              }}
-                              className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-v-navy text-[9px] font-black uppercase italic transition-colors"
+                              type="button"
+                              disabled={loading}
+                              onClick={() =>
+                                setOfferDialog({
+                                  listing: row.listing,
+                                  player: p,
+                                  offer: myPendingOffer,
+                                  amount: String(
+                                    myPendingOffer?.amount ??
+                                      row.listing.asking_price ??
+                                      p?.market_value ??
+                                      10_000_000,
+                                  ),
+                                })
+                              }
+                              className="flex-1 border border-white/10 px-3 py-2 text-[8px] font-black uppercase text-white/60 transition hover:border-v-red hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                            >
+                              {myPendingOffer
+                                ? "Editar oferta"
+                                : "Hacer oferta"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {(data?.rivals || []).length === 0 && (
+            <div className="v-panel py-14 text-center text-xs font-black uppercase italic text-white/25">
+              Aún no hay rivales en esta liga.
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === "sales" && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xl font-black italic uppercase">Mis ventas</h2>
+            <p className="text-[9px] font-black uppercase tracking-widest text-v-red">
+              Jugadores listados y ofertas recibidas
+            </p>
+          </div>
+
+          {(data?.myListings || []).map((listing: any) => (
+            <article key={listing.id} className="v-panel p-4">
+              <div className="flex gap-4">
+                <PlayerImage player={listing.player} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-xl font-black italic uppercase">
+                        {listing.player?.nickname}
+                      </h3>
+
+                      <div className="mt-2 grid grid-cols-2 gap-x-5 gap-y-1 sm:grid-cols-3">
+                        <div>
+                          <p className="text-[7px] font-black uppercase text-white/25">
+                            Precio
+                          </p>
+                          <p className="text-sm font-black italic text-v-red">
+                            {money(listing.asking_price)}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[7px] font-black uppercase text-white/25">
+                            Valor mercado
+                          </p>
+                          <p className="text-sm font-black italic text-white/70">
+                            {money(listing.market_value_snapshot)}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[7px] font-black uppercase text-white/25">
+                            Tiempo restante
+                          </p>
+                          <p className="text-sm font-black italic text-white">
+                            {listing.expires_at ? (
+                              <ListingCountdown
+                                expiresAt={listing.expires_at}
+                              />
+                            ) : (
+                              "7 días"
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() =>
+                          setEditPriceDialog({
+                            listing,
+                            amount: String(listing.asking_price),
+                          })
+                        }
+                        className="border border-white/10 px-3 py-2 text-[8px] font-black uppercase text-white/55 transition hover:border-white/25 hover:text-white disabled:opacity-30"
+                      >
+                        Editar precio
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() =>
+                          runAction(
+                            () => withdrawPlayerListing(listing.id, profileId),
+                            "Jugador retirado de la venta",
+                            `${listing.player?.nickname} ya no está en venta.`,
+                          )
+                        }
+                        className="border border-v-red/30 px-3 py-2 text-[8px] font-black uppercase text-v-red transition hover:bg-v-red hover:text-white disabled:opacity-30"
+                      >
+                        Retirar
+                      </button>
+                    </div>
+                  </div>
+
+                  {listing.league_offer && (
+                    <div className="mt-4 border border-v-red/20 bg-v-red/5 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[8px] font-black uppercase text-v-red">
+                            Oferta de la liga
+                          </p>
+                          <p className="text-lg font-black italic">
+                            {money(listing.league_offer.amount)}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              runAction(
+                                () =>
+                                  acceptLeagueOffer(
+                                    listing.league_offer.id,
+                                    profileId,
+                                  ),
+                                "Jugador vendido",
+                                `${listing.player?.nickname || "El jugador"} ha sido vendido a la liga por ${money(listing.league_offer.amount)}.`,
+                              )
+                            }
+                            className="bg-white px-3 py-2 text-[8px] font-black uppercase text-v-navy"
+                          >
+                            Aceptar
+                          </button>
+                          <button
+                            onClick={() =>
+                              runAction(
+                                () =>
+                                  rejectLeagueOffer(
+                                    listing.league_offer.id,
+                                    profileId,
+                                  ),
+                                "Oferta rechazada",
+                                `Has rechazado la oferta de la liga por ${listing.player?.nickname || "el jugador"}.`,
+                              )
+                            }
+                            className="border border-white/10 px-3 py-2 text-[8px] font-black uppercase text-white/50"
+                          >
+                            Rechazar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4 space-y-2">
+                    {(listing.manager_offers || [])
+                      .filter((o: any) => o.status === "pending")
+                      .map((offer: any) => (
+                        <div
+                          key={offer.id}
+                          className="flex items-center justify-between gap-3 border-t border-white/5 pt-2"
+                        >
+                          <div>
+                            <p className="text-[8px] font-black uppercase text-white/35">
+                              {offer.from_username}
+                            </p>
+                            <p className="text-sm font-black italic">
+                              {money(offer.amount)}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() =>
+                                runAction(
+                                  () => acceptManagerOffer(offer.id, profileId),
+                                  "Jugador vendido",
+                                  `${listing.player?.nickname} ha sido vendido a ${offer.from_username} por ${money(offer.amount)}.`,
+                                )
+                              }
+                              className="bg-white px-3 py-2 text-[8px] font-black uppercase text-v-navy"
                             >
                               Aceptar
                             </button>
                             <button
                               onClick={() =>
-                                handleAction(
-                                  () => rejectTradeOffer(trade.id, profileId),
-                                  {
-                                    loading: "Rechazando oferta...",
-                                    successTitle: "Oferta rechazada",
-                                    errorTitle: "No se pudo rechazar la oferta",
-                                  },
+                                runAction(
+                                  () => rejectManagerOffer(offer.id, profileId),
+                                  "Oferta rechazada",
+                                  `Has rechazado la oferta de ${offer.from_username}.`,
                                 )
                               }
-                              className="flex-1 py-2 bg-v-white/5 hover:bg-v-red hover:text-v-white text-v-white/40 text-[9px] font-black uppercase italic transition-colors"
+                              className="border border-white/10 px-3 py-2 text-[8px] font-black uppercase text-white/50"
                             >
                               Rechazar
                             </button>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                    {incomingTrades.length === 0 && (
-                      <p className="text-[10px] uppercase italic opacity-30">
-                        No tienes ofertas pendientes.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h2 className="text-xl italic uppercase text-v-white/80 border-b border-v-red/50 w-fit pr-4">
-                    Ofertas Enviadas
-                  </h2>
-                  <div className="grid gap-3">
-                    {outgoingTrades.map((trade) => (
-                      <div
-                        key={trade.id}
-                        className="v-panel p-4 border-l-4 border-v-white/20 bg-v-navy/40 opacity-80 hover:opacity-100 transition-opacity"
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <p className="text-[9px] font-black uppercase text-v-white/40 tracking-widest">
-                              Para: {trade.receiver?.username || "Desconocido"}
-                            </p>
-                            <p className="text-[9px] font-black uppercase text-v-white/20 tracking-widest italic">
-                              {new Date(trade.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <span
-                            className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                              trade.status === "pending"
-                                ? "bg-yellow-500/20 text-yellow-500"
-                                : trade.status === "accepted"
-                                  ? "bg-green-500/20 text-green-500"
-                                  : "bg-red-500/20 text-red-500"
-                            }`}
-                          >
-                            {trade.status}
-                          </span>
                         </div>
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
-                            <span className="block text-[7px] text-v-white/30 uppercase">
-                              Ofreces
-                            </span>
-                            <span className="text-xs font-black italic">
-                              {trade.sender_player
-                                ? trade.sender_player.nickname
-                                : "-"}
-                            </span>
-                            {trade.cash_offer > 0 && (
-                              <span className="block text-[9px] text-v-red/80 font-bold">
-                                {(trade.cash_offer / 1000000).toFixed(1)}M VP
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-v-white/20">→</div>
-                          <div className="flex-1 text-center bg-black/20 p-2 rounded border border-white/5">
-                            <span className="block text-[7px] text-v-white/30 uppercase">
-                              Pides
-                            </span>
-                            <span className="text-xs font-black italic">
-                              {trade.receiver_player
-                                ? trade.receiver_player.nickname
-                                : "-"}
-                            </span>
-                            {trade.cash_offer < 0 && (
-                              <span className="block text-[9px] text-green-500/80 font-bold">
-                                +
-                                {(Math.abs(trade.cash_offer) / 1000000).toFixed(
-                                  1,
-                                )}
-                                M VP
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {trade.status === "pending" && (
-                          <button
-                            onClick={() =>
-                              handleAction(
-                                () => cancelTradeOffer(trade.id, profileId),
-                                {
-                                  loading: "Cancelando propuesta...",
-                                  successTitle: "Propuesta cancelada",
-                                  errorTitle: "No se pudo cancelar la propuesta",
-                                },
-                              )
-                            }
-                            className="w-full mt-3 py-1.5 text-[8px] font-black uppercase text-v-white/30 hover:text-v-red hover:bg-v-red/5 border border-transparent hover:border-v-red/20 transition-all"
-                          >
-                            Cancelar Propuesta
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {outgoingTrades.length === 0 && (
-                      <p className="text-[10px] uppercase italic opacity-30">
-                        No has enviado ofertas.
-                      </p>
-                    )}
+                      ))}
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="v-panel p-6 border-amber-500/30 bg-amber-500/5 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-64 h-full bg-linear-to-l from-amber-500/10 to-transparent" />
-                  <h2 className="text-3xl font-black italic uppercase text-amber-500 leading-none mb-1">
-                    Sala de Leyendas
-                  </h2>
-                  <p className="text-[10px] font-black uppercase text-amber-500/60 tracking-[0.3em]">
-                    Protocolo Final de Reclutamiento
-                  </p>
-                  <p className="text-xs text-v-white/60 mt-4 leading-relaxed max-w-sm">
-                    Solo disponible durante la{" "}
-                    <span className="text-amber-500 font-bold">Gran Final</span>
-                    . Recluta figuras históricas que puntuarán en base a hitos
-                    globales del partido.
-                  </p>
-                </div>
+            </article>
+          ))}
 
-                <div className="grid gap-4">
-                  {legends.map((player) => (
-                    <div
-                      key={player.id}
-                      className="v-panel border-amber-500/20 bg-linear-to-br from-amber-500/10 to-v-navy p-4 relative overflow-hidden group hover:border-amber-500 transition-all"
-                    >
-                      <div className="absolute -right-4 -bottom-6 text-8xl font-black text-amber-500/5 italic select-none uppercase pointer-events-none group-hover:text-amber-500/10 transition-colors">
-                        {player.nickname?.substring(0, 3)}
-                      </div>
+          {(data?.myListings || []).length === 0 && (
+            <div className="v-panel py-14 text-center text-xs font-black uppercase italic text-white/25">
+              No tienes jugadores puestos en venta.
+            </div>
+          )}
+        </section>
+      )}
 
-                      <div className="flex gap-4 relative z-10">
-                        <div className="w-20 h-28 bg-v-navy/80 border border-amber-500/30 overflow-hidden relative group-hover:border-amber-500 transition-colors">
-                          {player.photo_url ? (
-                            <img
-                              src={player.photo_url}
-                              alt={player.nickname}
-                              className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-transform duration-500"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl">
-                              ⭐
-                            </div>
-                          )}
-                          <div className="absolute bottom-0 left-0 w-full bg-amber-500 text-v-navy text-[7px] font-black uppercase text-center py-0.5 italic">
-                            LEYENDA
-                          </div>
-                        </div>
-
-                        <div className="flex-1 flex flex-col justify-between py-1">
-                          <div>
-                            <h3 className="text-2xl font-black italic uppercase text-amber-500 leading-none">
-                              {player.nickname}
-                            </h3>
-                            <p className="text-[7px] font-black uppercase text-v-white/40 mt-1">
-                              Hito Especial:
-                            </p>
-                            <p className="text-[9px] font-black uppercase text-amber-500/80 italic mt-0.5">
-                              {player.nickname === "Mixwell"
-                                ? "🎯 +4 pts por cada First Blood en el mapa"
-                                : player.nickname === "Hiko"
-                                  ? "👑 +12 pts por cada Clutch del partido"
-                                  : player.nickname === "ScreaM"
-                                    ? "💀 +1 pt por cada 10 ACS del MVP"
-                                    : "🌟 +15 pts fijos por presencia legendaria"}
-                            </p>
-                          </div>
-
-                          <button
-                            onClick={() => {
-                              setConfirmDialog({
-                                show: true,
-                                title: "Reclutar Leyenda",
-                                message: `¿Deseas añadir a ${player.nickname} a tu equipo por ${(player.market_value / 1000000).toFixed(1)}M VP? Solo disponible para esta final.`,
-                                onConfirm: () =>
-                                  handleAction(
-                                    () =>
-                                      buyPlayer(
-                                        activeLeagueId,
-                                        profileId,
-                                        player.id,
-                                      ),
-                                    {
-                                      loading: "Reclutando leyenda...",
-                                      successTitle: "Leyenda reclutada",
-                                      successDescription: `${player.nickname} se ha unido a tu equipo`,
-                                      errorTitle: "No se pudo reclutar la leyenda",
-                                    },
-                                  ),
-                              });
-                            }}
-                            className="w-full bg-amber-500 text-v-navy text-[10px] font-black uppercase py-2.5 hover:bg-v-white transition-all italic shadow-lg shadow-amber-500/20"
-                          >
-                            Reclutar Icono:{" "}
-                            {(player.market_value / 1000000).toFixed(1)}M VP
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {activeParticipation && (
-        <div className="v-panel p-3 mt-4 flex justify-between items-center border-t-2 border-v-red">
+      {activeTab === "offers" && (
+        <section className="space-y-4">
           <div>
-            <p className="text-[8px] font-black uppercase text-v-white/40">
-              Créditos de Operación
-            </p>
-            <p className="text-xl font-black italic text-v-white">
-              {(activeParticipation.current_budget / 1000000).toFixed(1)}M VP
+            <h2 className="text-xl font-black italic uppercase">Ofertas</h2>
+            <p className="text-[9px] font-black uppercase tracking-widest text-v-red">
+              Historial de ofertas entre managers
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-[8px] font-black uppercase text-v-white/40">
-              Liga Operativa
-            </p>
-            <p className="text-xs font-black italic text-v-red uppercase">
-              {activeParticipation.leagues?.name || activeParticipation.name}
-            </p>
-          </div>
-        </div>
-      )}
 
-      {tradeDialog.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-v-navy/90 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="v-panel w-full max-w-sm p-0 overflow-hidden border-t-4 border-v-white animate-in zoom-in-95 duration-200">
-            <div className="bg-v-white/5 p-4 border-b border-white/5">
-              <h3 className="text-xl font-black italic uppercase leading-none">
-                Propuesta de Intercambio
-              </h3>
-              <p className="text-[9px] uppercase tracking-widest text-v-white/40 mt-1">
-                Negociación Directa
-              </p>
-            </div>
-
-            <div className="p-6 space-y-6">
-              <div className="bg-black/20 p-3 rounded border border-white/5">
-                <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-1">
-                  Objetivo (Recibes)
-                </p>
-                <p className="text-xl font-black italic text-v-red uppercase">
-                  {tradeDialog.targetPlayer?.nickname}
-                </p>
-                <p className="text-[10px] text-v-white/50">
-                  {tradeDialog.targetPlayer?.pro_teams?.tag} //{" "}
-                  {tradeDialog.targetPlayer?.role}
-                </p>
-              </div>
-
-              <div className="flex justify-center text-v-white/20 text-xl font-black rotate-90 sm:rotate-0">
-                ⇄
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-v-white/60">
-                    Tu Agente (Opcional)
-                  </label>
-                  <select
-                    value={tradeDialog.myPlayerId}
-                    onChange={(e) =>
-                      setTradeDialog({
-                        ...tradeDialog,
-                        myPlayerId: e.target.value,
-                      })
-                    }
-                    className="w-full bg-v-navy border border-white/10 px-3 py-2 text-xs font-black uppercase italic focus:border-v-red outline-none"
-                  >
-                    <option value="">-- Ninguno --</option>
-                    {myRoster.map((p: any) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nickname} ({p.role}) -{" "}
-                        {(p.market_value / 1000000).toFixed(1)}M
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-v-white/60">
-                    Compensación Económica
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={tradeDialog.cashAmount}
-                      onChange={(e) =>
-                        setTradeDialog({
-                          ...tradeDialog,
-                          cashAmount: e.target.value,
-                        })
-                      }
-                      placeholder="CANTIDAD..."
-                      className="flex-1 bg-v-navy border border-white/10 px-3 py-2 text-xs font-black italic focus:border-v-red outline-none"
-                    />
-                    <select
-                      value={tradeDialog.direction}
-                      onChange={(e) =>
-                        setTradeDialog({
-                          ...tradeDialog,
-                          direction: e.target.value as any,
-                        })
-                      }
-                      className="w-24 bg-v-navy border border-white/10 px-2 py-2 text-[10px] font-black uppercase italic focus:border-v-red outline-none"
-                    >
-                      <option value="pay">PAGAS</option>
-                      <option value="receive">RECIBES</option>
-                    </select>
+          <div className="space-y-2">
+            {(data?.managerOffers || []).map((offer: any) => {
+              const sent = offer.from_profile_id === profileId;
+              return (
+                <article
+                  key={offer.id}
+                  className="v-panel flex items-center justify-between gap-4 p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[8px] font-black uppercase text-white/35">
+                      {sent
+                        ? `Enviada a ${offer.to_username}`
+                        : `Recibida de ${offer.from_username}`}
+                    </p>
+                    <h3 className="truncate text-lg font-black italic uppercase">
+                      {offer.player?.nickname || "Jugador"}
+                    </h3>
+                    <p className="text-sm font-black italic text-v-red">
+                      {money(offer.amount)}
+                    </p>
                   </div>
-                </div>
-              </div>
-
-              <div className="pt-4 flex gap-3">
-                <button
-                  onClick={() =>
-                    setTradeDialog((prev) => ({ ...prev, show: false }))
-                  }
-                  className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-v-white/5 transition-colors border border-white/10"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={submitTrade}
-                  disabled={loading}
-                  className="flex-1 py-3 bg-v-white text-v-navy hover:bg-v-red hover:text-v-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
-                >
-                  Enviar Propuesta
-                </button>
-              </div>
-            </div>
+                  <span className="shrink-0 border border-white/10 px-2 py-1 text-[8px] font-black uppercase text-white/45">
+                    {offer.status}
+                  </span>
+                </article>
+              );
+            })}
           </div>
-        </div>
+
+          {(data?.managerOffers || []).length === 0 && (
+            <div className="v-panel py-14 text-center text-xs font-black uppercase italic text-white/25">
+              Todavía no hay ofertas entre managers.
+            </div>
+          )}
+        </section>
       )}
 
-      {bidDialog.show && bidDialog.auction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-v-navy/90 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="v-panel w-full max-w-sm p-6 space-y-6 border-t-4 border-v-red animate-in zoom-in-95 duration-200">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">
-                Nueva Oferta Anónima
-              </p>
-              <h3 className="text-2xl font-black italic uppercase leading-none">
-                {bidDialog.auction.pro_players?.nickname}
-              </h3>
-              <p className="text-[10px] font-black uppercase text-v-red tracking-widest">
-                Oferta mínima requerida:{" "}
-                {((bidDialog.auction.current_bid + 1) / 1000000).toFixed(2)}M VP
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-v-white/60">
-                  Importe de la Oferta
-                </label>
-                <input
-                  type="number"
-                  value={bidDialog.amount}
-                  onChange={(e) =>
-                    setBidDialog((prev) => ({
-                      ...prev,
-                      amount: e.target.value,
-                    }))
-                  }
-                  className="w-full bg-v-navy/50 border border-white/10 px-4 py-3 text-lg font-black italic focus:border-v-red outline-none transition-colors"
-                />
-
-                <div className="flex gap-2 pt-1 overflow-x-auto pb-2 scrollbar-hide">
-                  {[500000, 1000000, 2000000, 5000000].map((add) => (
-                    <button
-                      key={add}
-                      onClick={() =>
-                        setBidDialog((prev) => ({
-                          ...prev,
-                          amount: (
-                            parseInt(prev.amount || "0") + add
-                          ).toString(),
-                        }))
-                      }
-                      className="shrink-0 px-2 py-1 bg-v-white/5 border border-white/10 text-[8px] font-black hover:bg-v-white/10"
-                    >
-                      +{add / 1000000}M VP
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[7px] text-v-white/30 uppercase italic">
-                  El presupuesto se bloqueará hasta que finalice la subasta.
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() =>
-                    setBidDialog({ show: false, auction: null, amount: "" })
-                  }
-                  className="flex-1 py-3 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-v-white/5 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmBid}
-                  disabled={loading}
-                  className="flex-1 py-3 bg-v-red text-v-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                >
-                  Confirmar Oferta
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmDialog.show && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-v-navy/95 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="v-panel w-full max-w-xs p-6 space-y-6 border-t-4 border-v-white animate-in zoom-in-95 duration-200">
-            <div className="space-y-2 text-center">
-              <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">
-                Confirmación
-              </p>
-              <h3 className="text-xl font-black italic uppercase leading-tight">
-                {confirmDialog.title}
-              </h3>
-              <p className="text-xs text-v-white/60 leading-relaxed">
-                {confirmDialog.message}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2">
+      {bidDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-v-navy/90 p-4 backdrop-blur-sm">
+          <div className="v-panel w-full max-w-sm border-t-4 border-v-red p-6">
+            <p className="text-[8px] font-black uppercase tracking-widest text-v-red">
+              Puja oculta
+            </p>
+            <h3 className="mt-1 text-2xl font-black italic uppercase">
+              {bidDialog.auction.player?.nickname}
+            </h3>
+            <p className="mt-2 text-xs text-white/45">
+              Nadie podrá ver tu importe. Si modificas la puja, se actualizará
+              su momento de envío.
+            </p>
+            <input
+              type="number"
+              value={bidDialog.amount}
+              onChange={(e) =>
+                setBidDialog({ ...bidDialog, amount: e.target.value })
+              }
+              className="mt-5 w-full border border-white/10 bg-v-navy/60 px-4 py-3 text-lg font-black italic outline-none focus:border-v-red"
+            />
+            <div className="mt-4 flex gap-2">
               <button
-                onClick={() => {
-                  if (confirmDialog.onConfirm) confirmDialog.onConfirm();
-                  setConfirmDialog({
-                    show: false,
-                    title: "",
-                    message: "",
-                    onConfirm: null,
-                  });
-                }}
-                disabled={loading}
-                className="w-full cursor-pointer py-4 bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10"
-              >
-                Realizar acción
-              </button>
-              <button
-                onClick={() =>
-                  setConfirmDialog({
-                    show: false,
-                    title: "",
-                    message: "",
-                    onConfirm: null,
-                  })
-                }
-                className="w-full py-2 cursor-pointer text-[8px] font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest"
+                onClick={() => setBidDialog(null)}
+                className="flex-1 border border-white/10 py-3 text-[9px] font-black uppercase text-white/50"
               >
                 Cancelar
+              </button>
+              <button
+                onClick={submitBid}
+                className="flex-1 bg-v-red py-3 text-[9px] font-black uppercase text-white"
+              >
+                Guardar puja
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editPriceDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-v-navy/90 p-4 backdrop-blur-sm">
+          <div className="v-panel w-full max-w-sm border-t-4 border-v-red p-6">
+            <p className="text-[8px] font-black uppercase tracking-widest text-v-red">
+              Editar precio de venta
+            </p>
+
+            <h3 className="mt-1 text-2xl font-black italic uppercase">
+              {editPriceDialog.listing.player?.nickname}
+            </h3>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 border-y border-white/5 py-3">
+              <div>
+                <p className="text-[7px] font-black uppercase text-white/25">
+                  Mínimo
+                </p>
+                <p className="text-sm font-black italic text-white">
+                  {money(editPriceDialog.listing.market_value_snapshot)}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-[7px] font-black uppercase text-white/25">
+                  Máximo
+                </p>
+                <p className="text-sm font-black italic text-white">
+                  {money(
+                    Math.floor(
+                      Number(
+                        editPriceDialog.listing.market_value_snapshot || 0,
+                      ) * 1.15,
+                    ),
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-3 text-xs text-white/45">
+              Cambiar el precio no reinicia los 7 días de publicación.
+            </p>
+
+            <input
+              type="number"
+              min={editPriceDialog.listing.market_value_snapshot}
+              max={Math.floor(
+                Number(editPriceDialog.listing.market_value_snapshot || 0) *
+                  1.15,
+              )}
+              step={100000}
+              value={editPriceDialog.amount}
+              onChange={(e) =>
+                setEditPriceDialog({
+                  ...editPriceDialog,
+                  amount: e.target.value,
+                })
+              }
+              className="mt-5 w-full border border-white/10 bg-v-navy/60 px-4 py-3 text-lg font-black italic outline-none focus:border-v-red"
+            />
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditPriceDialog(null)}
+                className="flex-1 border border-white/10 py-3 text-[9px] font-black uppercase text-white/50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={submitEditListingPrice}
+                className="flex-1 bg-v-red py-3 text-[9px] font-black uppercase text-white"
+              >
+                Guardar precio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {offerDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-v-navy/90 p-4 backdrop-blur-sm">
+          <div className="v-panel w-full max-w-sm border-t-4 border-white p-6">
+            <p className="text-[8px] font-black uppercase tracking-widest text-v-red">
+              {offerDialog.offer ? "Editar oferta" : "Oferta al manager"}
+            </p>
+            <h3 className="mt-1 text-2xl font-black italic uppercase">
+              {offerDialog.player?.nickname}
+            </h3>
+            <p className="mt-2 text-xs text-white/45">
+              {offerDialog.offer
+                ? "Ya tienes una oferta pendiente por este jugador. Al guardar, se modificará esa misma oferta."
+                : "La oferta es solo económica. El propietario podrá aceptarla o rechazarla."}
+            </p>
+            <input
+              type="number"
+              value={offerDialog.amount}
+              onChange={(e) =>
+                setOfferDialog({ ...offerDialog, amount: e.target.value })
+              }
+              className="mt-5 w-full border border-white/10 bg-v-navy/60 px-4 py-3 text-lg font-black italic outline-none focus:border-v-red"
+            />
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setOfferDialog(null)}
+                className="flex-1 border border-white/10 py-3 text-[9px] font-black uppercase text-white/50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={submitManagerOffer}
+                className="flex-1 bg-white py-3 text-[9px] font-black uppercase text-v-navy"
+              >
+                {offerDialog.offer ? "Guardar cambios" : "Enviar oferta"}
               </button>
             </div>
           </div>

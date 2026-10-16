@@ -1,812 +1,561 @@
-import * as cheerio from "cheerio";
-import { supabaseAdmin } from "@/utils/supabase/admin";
-import { TEAM_ALIASES, getTeamLogo, getTeamTag, normalizeTeamName } from "./vlr-shared";
+export type VlrMatchStatus = "upcoming" | "live" | "finished" | "completed";
 
-const VLR_MATCHES_URL = "https://www.vlr.gg/matches";
+export interface VlrMatch {
+  vlrId: string;
 
-export type VlrMatch = { 
-  time: string; 
-  teams: string; 
-  event: string; 
-  id: string; 
-  date?: string; 
-  rawDate?: string;
-  isVctEmea?: boolean;
-  eta?: string;
-  teamAScore?: number;
-  teamBScore?: number;
-};
+  teamA: {
+    vlrId: string | null;
+    name: string;
+  };
 
-export interface PlayerStats {
-  vlr_id: string;
-  nickname: string;
-  teamTag: string;
-  map_name: string;
-  agent_name: string;
-  agent_role: string;
-  kills: number;
-  deaths: number;
-  assists: number;
-  fb: number;
-  fd: number;
-  acs: number;
-  clutches: number;
-  mvp?: boolean;
-  won?: boolean;
+  teamB: {
+    vlrId: string | null;
+    name: string;
+  };
+
+  matchDate: string;
+
+  status: VlrMatchStatus;
+
+  teamAScore: number | null;
+  teamBScore: number | null;
 }
 
-export type VlrPayload = {
-  stats: { label: string; value: string }[];
-  upcomingMatches: VlrMatch[];
-  scoring: { label: string; value: string }[];
+type V2MatchSegment = {
+  team1?: string;
+  team2?: string;
+
+  score1?: string | number;
+  score2?: string | number;
+
+  unix_timestamp?: string;
+
+  match_page?: string;
+
+  time_until_match?: string;
+  time_completed?: string;
+
+  match_series?: string;
+  match_event?: string;
+
+  round_info?: string;
+  tournament_name?: string;
 };
 
-// Shared logic moved to vlr-shared.ts
+type V2MatchResponse = {
+  status?: string;
+  data?: {
+    status?: number;
+    segments?: V2MatchSegment[];
+  };
+};
 
-function cleanText(value: string | undefined) {
-  return value?.replace(/\s+/g, " ").trim() ?? "";
-}
-
-function parseVlrDate(vlrDate: string, vlrTime: string): { date: Date, raw: boolean } | null {
-  try {
-    const months: Record<string, number> = {
-      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11,
-      'January': 0, 'February': 1, 'March': 2, 'April': 3, 'June': 5,
-      'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
-    };
-    
-    const parts = vlrDate.split(',').map(p => p.trim());
-    if (parts.length < 2) return null;
-
-    const monthDayPart = parts[1].trim().split(/\s+/);
-    const monthName = monthDayPart[0];
-    const day = parseInt(monthDayPart[1]);
-    const month = months[monthName];
-
-    if (month === undefined || isNaN(day)) return null;
-
-    const now = new Date();
-    let year = now.getFullYear();
-
-    if (parts.length >= 3 && /^\d{4}$/.test(parts[2])) {
-        year = parseInt(parts[2]);
-    } else if (now.getMonth() === 11 && month === 0) {
-        year++; 
-    } else if (now.getMonth() === 0 && month === 11) {
-        year--; 
-    }
-
-    // Fecha base UTC sin hora
-    const date = new Date(Date.UTC(year, month, day));
-    
-    // Parsear hora (texto "10:00 AM" etc)
-    if (vlrTime && vlrTime.toLowerCase() !== 'live' && !vlrTime.includes('h')) {
-        const timeMatch = vlrTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (timeMatch) {
-            let hours = parseInt(timeMatch[1]);
-            const minutes = parseInt(timeMatch[2]);
-            const ampm = timeMatch[3].toUpperCase();
-            if (ampm === 'PM' && hours < 12) hours += 12;
-            if (ampm === 'AM' && hours === 12) hours = 0;
-            
-            date.setUTCHours(hours, minutes, 0, 0);
-        }
-    }
-    return { date, raw: true };
-  } catch (e) {
+function getMatchIdFromPage(matchPage?: string): string | null {
+  if (!matchPage) {
     return null;
   }
+
+  /*
+   * Puede venir como:
+   * https://www.vlr.gg/595657/...
+   * /595657/...
+   */
+
+  const match =
+    matchPage.match(/vlr\.gg\/(\d+)/) ?? matchPage.match(/^\/?(\d+)/);
+
+  return match?.[1] ?? null;
 }
 
-export async function fetchVlrMatches(limitPages: number = 3): Promise<VlrPayload> {
-  const upcomingPageCount = Math.min(Math.max(limitPages, 1), 3);
+function parseScore(value?: string | number): number | null {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
 
-  const fetchPage = async (url: string) => {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "text/html",
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeMatchDate(raw?: string): string | null {
+  if (!raw) {
+    return null;
+  }
+
+  /*
+   * Esta API puede devolver una fecha tipo:
+   * 2026-08-28 14:00:00
+   *
+   * La interpretamos como UTC y devolvemos ISO.
+   */
+
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+
+  const withTimezone = normalized.endsWith("Z") ? normalized : `${normalized}Z`;
+
+  const date = new Date(withTimezone);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
+}
+
+async function fetchMatchGroup(
+  query: "upcoming" | "live_score" | "results",
+): Promise<V2MatchSegment[]> {
+  const baseUrl = process.env.VLR_API_URL;
+
+  if (!baseUrl) {
+    throw new Error("VLR_API_URL is not configured");
+  }
+
+  const response = await fetch(`${baseUrl}/v2/match?q=${query}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`VLR API ${query} error ${response.status}`);
+  }
+
+  const json = (await response.json()) as V2MatchResponse;
+
+  return json.data?.segments ?? [];
+}
+
+export async function getVlrMatches(): Promise<VlrMatch[]> {
+  const [upcoming, live, results] = await Promise.all([
+    fetchMatchGroup("upcoming"),
+    fetchMatchGroup("live_score"),
+    fetchMatchGroup("results"),
+  ]);
+
+  const finalMatches: VlrMatch[] = [];
+
+  /*
+   * UPCOMING
+   */
+  for (const raw of upcoming) {
+    const vlrId = getMatchIdFromPage(raw.match_page);
+
+    const matchDate = normalizeMatchDate(raw.unix_timestamp);
+
+    if (!vlrId || !matchDate || !raw.team1 || !raw.team2) {
+      continue;
+    }
+
+    finalMatches.push({
+      vlrId,
+
+      teamA: {
+        vlrId: null,
+        name: raw.team1,
       },
-      next: { revalidate: 300 },
+
+      teamB: {
+        vlrId: null,
+        name: raw.team2,
+      },
+
+      matchDate,
+
+      status: "upcoming",
+
+      teamAScore: null,
+      teamBScore: null,
     });
-    if (!response.ok) return null;
-    return response.text();
-  };
+  }
 
-  const promises = [fetchPage(VLR_MATCHES_URL)];
-  if (upcomingPageCount >= 2) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=2`));
-  if (upcomingPageCount >= 3) promises.push(fetchPage(`${VLR_MATCHES_URL}/?page=3`));
-  
-  // Results pages
-  promises.push(fetchPage("https://www.vlr.gg/matches/results"));
-  promises.push(fetchPage("https://www.vlr.gg/matches/results/?page=2"));
-  promises.push(fetchPage("https://www.vlr.gg/matches/results/?page=3"));
+  /*
+   * LIVE
+   */
+  for (const raw of live) {
+    const vlrId = getMatchIdFromPage(raw.match_page);
 
-  const responses = await Promise.all(promises);
-  
-  // Upcoming matches are usually the first few pages (1 to 3)
-  const upcomingHtmls = responses.slice(0, upcomingPageCount);
-  const resultsHtmls = responses.slice(upcomingPageCount);
+    const matchDate = normalizeMatchDate(raw.unix_timestamp);
 
-  if (upcomingHtmls.length === 0) throw new Error("VLR page 1 fetch failed");
-  
-  const parseMatches = (html: string | null) => {
-    if (!html) return [];
-    const $ = cheerio.load(html);
-    const results: VlrMatch[] = [];
+    if (!vlrId || !matchDate || !raw.team1 || !raw.team2) {
+      continue;
+    }
 
-    $(".wf-label.mod-large").each((_, label) => {
-      const rawDate = $(label).text().trim();
-      let next = $(label).next();
-      while (next.length && !next.hasClass("wf-label")) {
-        const processItem = (item: any) => {
-          const card = $(item);
-          const id = card.attr("href")?.split("/")[1] || "";
-          const time = cleanText(card.find(".match-item-time").first().text());
-          const eta = cleanText(card.find(".match-item-eta").first().text());
-          const event = cleanText(card.find(".match-item-event").first().text());
-          const teams = card.find(".match-item-vs-team-name").map((__, team) => {
-            const raw = cleanText($(team).text());
-            return normalizeTeamName(raw);
-          }).get().filter(Boolean);
-          const teamsLabel = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : teams[0] ?? "";
-          
-          const scores = card.find(".match-item-vs-team-score").map((__, s) => {
-            const val = cleanText($(s).text());
-            return parseInt(val) || 0;
-          }).get();
-          const teamAScore = scores[0] || 0;
-          const teamBScore = scores[1] || 0;
+    finalMatches.push({
+      vlrId,
 
-          const eventUpper = event.toUpperCase();
-          const isVctEmea = (
-                           (eventUpper.includes("VCT") || eventUpper.includes("CHAMPIONS TOUR")) &&
-                           (eventUpper.includes("EMEA") || eventUpper.includes("EUROPE")) &&
-                           !eventUpper.includes("GAME CHANGERS") && 
-                           !eventUpper.includes("CHALLENGERS") &&
-                           !eventUpper.includes("ASCENSION")
-                         ) || (
-                           // Masters/Champions son globales (sin EMEA) pero incluyen jugadores EMEA
-                           (eventUpper.includes("MASTERS") || eventUpper.includes("CHAMPIONS")) &&
-                           eventUpper.includes("VCT") &&
-                           !eventUpper.includes("GAME CHANGERS")
-                         );
+      teamA: {
+        vlrId: null,
+        name: raw.team1,
+      },
 
-          if (teamsLabel && event) {
-            const parsed = parseVlrDate(rawDate, time); // Unadjusted
-            
-            results.push({ 
-              time: time || "LIVE", 
-              teams: teamsLabel, 
-              event, 
-              id, 
-              date: parsed ? parsed.date.toISOString() : undefined, 
-              rawDate: rawDate,
-              isVctEmea,
-              eta,
-              teamAScore,
-              teamBScore
-            });
-          }
-        };
-        if (next.hasClass("match-item")) processItem(next);
-        else next.find(".match-item").each((__, item) => processItem(item));
-        next = next.next();
-      }
+      teamB: {
+        vlrId: null,
+        name: raw.team2,
+      },
+
+      matchDate,
+
+      status: "live",
+
+      teamAScore: parseScore(raw.score1),
+
+      teamBScore: parseScore(raw.score2),
     });
-    return results;
-  };
+  }
 
-  const upcomingResults = upcomingHtmls.flatMap(html => parseMatches(html));
-  const finishedResults = resultsHtmls.flatMap(html => parseMatches(html));
-  
-  // Use map to dedup
-  const allMatchesMap = new Map();
-  [...upcomingResults, ...finishedResults].forEach(m => {
-    if (!allMatchesMap.has(m.id)) allMatchesMap.set(m.id, m);
-  });
-  
-  let results = Array.from(allMatchesMap.values()) as VlrMatch[];
+  /*
+   * RESULTS
+   */
+  for (const raw of results) {
+    const vlrId = getMatchIdFromPage(raw.match_page);
 
-  // --- DYNAMIC TIMEZONE CORRECTION ---
-  let offsetMs = 0;
-  
-  // Find a reference match: upcoming, with ETA in hours (e.g. "2h" or "2h 30m"), not days
-  // VLR ahora suele omitir "from now", así que buscamos simplemente 'h' o 'm'
-  const referenceMatch = upcomingResults.find(m => 
-    m.eta && (m.eta.includes('h') || m.eta.includes('m')) && !m.eta.includes('d') && !m.eta.includes('w') && m.date
+    if (!vlrId || !raw.team1 || !raw.team2) {
+      continue;
+    }
+
+    /*
+     * En results puede no venir una fecha
+     * absoluta exactamente igual.
+     * De momento conservamos el partido
+     * solo si hay unix_timestamp.
+     */
+
+    const matchDate = normalizeMatchDate(raw.unix_timestamp);
+
+    if (!matchDate) {
+      continue;
+    }
+
+    finalMatches.push({
+      vlrId,
+
+      teamA: {
+        vlrId: null,
+        name: raw.team1,
+      },
+
+      teamB: {
+        vlrId: null,
+        name: raw.team2,
+      },
+
+      matchDate,
+
+      status: "completed",
+
+      teamAScore: parseScore(raw.score1),
+
+      teamBScore: parseScore(raw.score2),
+    });
+  }
+
+  /*
+   * Quitamos duplicados.
+   *
+   * El último estado encontrado gana:
+   * results > live > upcoming
+   */
+
+  return Array.from(
+    new Map(finalMatches.map((match) => [match.vlrId, match])).values(),
   );
+}
+export interface VlrMatchDetails {
+  matchId: string;
 
-  if (referenceMatch && referenceMatch.date) {
-    // Parse ETA
-    // Parse ETA: support "2h 30m", "43m", "2h"
-    const hoursMatch = referenceMatch.eta!.match(/(\d+)h/);
-    const minsMatch = referenceMatch.eta!.match(/(\d+)m/);
-    
-    const h = hoursMatch ? parseInt(hoursMatch[1]) : 0;
-    const m = minsMatch ? parseInt(minsMatch[1]) : 0;
-    
-    if (h > 0 || m > 0) {
-        const etaMs = (h * 60 * 60 * 1000) + (m * 60 * 1000);
-        
-        const now = Date.now();
-        const expectedUtc = now + etaMs; 
-        const scrapedUtc = new Date(referenceMatch.date).getTime();
-        
-        // Offset = Expected - Scraped
-        // Example: Exp=16:00, Scraped=10:00 -> Offset = +6h
-        const diff = expectedUtc - scrapedUtc;
-        
-        // Round to nearest hour
-        const diffHours = Math.round(diff / 3600000);
-        offsetMs = diffHours * 3600000;
-        
-        console.log(`[VLR Sync] Calibrated Timezone Offset: ${diffHours}h (Ref: ${referenceMatch.teams} @ ${referenceMatch.time}, ETA: ${referenceMatch.eta})`);
-    }
-  } else {
-     console.log(`[VLR Sync] Could not calibrate timezone (no suitable ETA found). Defaulting to 0h offset.`);
-  }
+  status: string;
 
-  // Apply offset to ALL matches
-  if (offsetMs !== 0) {
-      results = results.map(m => {
-          if (!m.date) return m;
-          const d = new Date(new Date(m.date).getTime() + offsetMs);
-          return { ...m, date: d.toISOString() };
-      });
-  }
+  teams: Array<{
+    id: string;
+    name: string;
+    score: number | null;
+    logo: string | null;
+  }>;
 
-  const emeaMatches = results.filter((m) => m.isVctEmea);
-  
-  emeaMatches.sort((a, b) => {
-    const isLiveA = a.time === "LIVE";
-    const isLiveB = b.time === "LIVE";
-    if (isLiveA && !isLiveB) return -1;
-    if (isLiveB && !isLiveA) return 1;
+  maps: VlrMapDetails[];
+}
 
-    const dateA = a.date ? new Date(a.date).getTime() : 0;
-    const dateB = b.date ? new Date(b.date).getTime() : 0;
-    const now = Date.now();
+export interface VlrMapPlayer {
+  name: string;
+  agent: string | null;
 
-    const isFutureA = dateA > now;
-    const isFutureB = dateB > now;
+  rating: number | null;
+  acs: number | null;
 
-    if (isFutureA && !isFutureB) return -1;
-    if (isFutureB && !isFutureA) return 1;
+  kills: number | null;
+  deaths: number | null;
+  assists: number | null;
 
-    if (isFutureA && isFutureB) return dateA - dateB;
-    return dateB - dateA;
-  });
+  fk: number | null;
+  fd: number | null;
+}
 
-  const finalMatches = emeaMatches;
+export interface VlrMapDetails {
+  mapName: string;
 
-  // Sync with DB
-  await syncMatchesToDb(finalMatches);
+  score: {
+    team1: number;
+    team2: number;
+  };
 
-  return {
-    stats: [],
-    upcomingMatches: finalMatches,
-    scoring: [
-        { label: "Kill", value: "+2" }, // ... scores
-        { label: "Assist", value: "+1" },
-        { label: "First blood", value: "+3" },
-        { label: "Clutch round", value: "+4" },
-        { label: "Match win", value: "+5" },
-        { label: "Series MVP", value: "+6" },
-        { label: "Negative K/D", value: "-1" },
-    ],
+  players: {
+    team1: VlrMapPlayer[];
+    team2: VlrMapPlayer[];
   };
 }
 
-export function calculateFantasyPoints(stats: { 
-  kills: number; 
-  deaths: number; 
-  assists: number; 
-  fb: number; 
-  fd: number; 
-  clutches: number;
-  mvp?: boolean;
-  won?: boolean;
-}, role?: 'Duelista' | 'Iniciador' | 'Controlador' | 'Centinela'): number {
-  let points = 0;
+type V2RawPlayer = {
+  name?: string;
 
-  // Base Clutch points for everyone (4 per clutch)
-  points += (stats.clutches || 0) * 4;
+  agent?: string;
 
-  // Win Bonus
-  if (stats.won) points += 5;
+  rating?: string | number;
+  acs?: string | number;
 
-  if (!role || (role as string) === 'Flex') {
-    points += stats.kills * 2;
-    points += stats.assists * 1;
-    points += stats.fb * 3;
-    if (stats.kills < stats.deaths) points -= 1;
-    if (stats.mvp) points += 6; // Series MVP from scoring list
-    return Math.round(points);
-  }
+  kills?: string | number;
+  deaths?: string | number;
+  assists?: string | number;
 
-  switch (role) {
-    case 'Duelista':
-      points += stats.kills * 1.5; // Buffed from 1 to 1.5 to be more in line with +2
-      points += stats.assists * 0.5;
-      points += stats.fb * 5;
-      points += stats.fd * -3;
-      points += stats.deaths * -1;
-      if (stats.kills >= 45) points += 10;
-      if (stats.mvp) points += 10;
-      break;
-
-    case 'Centinela':
-      points += stats.kills * 2;
-      points += stats.assists * 0.5;
-      points += stats.fb * 6;
-      points += stats.fd * -4;
-      points += stats.deaths * -1;
-      if (stats.mvp) points += 5;
-      break;
-
-    case 'Iniciador':
-    case 'Controlador':
-      points += stats.kills * 1.5;
-      points += stats.assists * 2;
-      points += stats.fb * 3;
-      points += stats.fd * -2;
-      points += stats.deaths * -1;
-      if (stats.assists >= 20) points += 10;
-      if (stats.mvp) points += 5;
-      break;
-  }
-
-  return Math.round(points);
-}
-
-async function getOrCreateTeam(name: string) {
-    const upperName = name.toUpperCase();
-    const tag = TEAM_ALIASES[upperName] || upperName.substring(0, 4);
-    
-    // Buscar primero
-    const { data: existing } = await (supabaseAdmin
-        .from('pro_teams')
-        .select('id')
-        .or(`name.eq."${name}",tag.eq."${tag}"`) as any)
-        .maybeSingle();
-    
-    if (existing) return (existing as any).id;
-
-    console.log(`  🆕 Creando equipo faltante: ${name} (${tag})`);
-    const { data: created, error } = await (supabaseAdmin
-        .from('pro_teams')
-        .insert({
-            name: name,
-            tag: tag,
-            region: 'EMEA'
-        } as any) as any)
-        .select('id')
-        .single();
-    
-    if (error) {
-        console.error(`  ❌ Error creando equipo ${name}:`, error);
-        return null;
-    }
-    return (created as any).id;
-}
-
-const AGENT_ROLES: Record<string, string> = {
-  'jett': 'Duelista', 'raze': 'Duelista', 'phoenix': 'Duelista', 'reyna': 'Duelista', 'yoru': 'Duelista', 'neon': 'Duelista', 'iso': 'Duelista',
-  'sova': 'Iniciador', 'breach': 'Iniciador', 'skye': 'Iniciador', 'kayo': 'Iniciador', 'fade': 'Iniciador', 'gekko': 'Iniciador',
-  'brimstone': 'Controlador', 'omen': 'Controlador', 'viper': 'Controlador', 'astra': 'Controlador', 'harbor': 'Controlador', 'clove': 'Controlador',
-  'killjoy': 'Centinela', 'cypher': 'Centinela', 'sage': 'Centinela', 'chamber': 'Centinela', 'deadlock': 'Centinela', 'vyse': 'Centinela'
+  fk?: string | number;
+  fd?: string | number;
 };
 
-export async function scrapeMatchDetails(matchId: string): Promise<{ stats: PlayerStats[], status: string } | null> {
-    const baseUrl = `https://www.vlr.gg/${matchId}`;
-    
-    try {
-      const response = await fetch(baseUrl, {
-        headers: { 
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "text/html",
-        },
-      });
-    
-      if (!response.ok) return null;
-    
-      const html = await response.text();
-      const $ = cheerio.load(html);
-      
-      // Determine Status & Date
-      let status = 'upcoming';
-      const headerStatus = $(".match-header-vs-score").text().trim().toLowerCase();
-      if (headerStatus.includes("final") || /\d+/.test(headerStatus)) {
-          status = 'finished';
-      }
-      const liveIndicator = $(".match-header-vs-note").text().toLowerCase();
-      if (liveIndicator.includes("live") || liveIndicator.includes("map")) {
-          status = 'live';
-      }
+type V2RawMap = {
+  map_name?: string;
 
-      // Determine Winner
-      let winningTeamName = "";
-      const scoreA = parseInt($(".match-header-vs-score .js-spoiler span").first().text().trim());
-      const scoreB = parseInt($(".match-header-vs-score .js-spoiler span").last().text().trim());
-      
-      if (status === 'finished') {
-          if (scoreA > scoreB) {
-              winningTeamName = $(".match-header-vs-team-name").first().text().trim();
-          } else if (scoreB > scoreA) {
-              winningTeamName = $(".match-header-vs-team-name").last().text().trim();
-          }
-      }
-
-      // Extract UTC date if available
-      const utcTs = $(".moment-tz-convert[data-utc-ts]").first().attr("data-utc-ts");
-      // Note: We don't return the date here yet, but we could if needed for syncing back.
-      // For now, let's just make sure we identify the status correctly.
-
-      // --- IDENTIFY MAPS AND GAME IDS FOR CLUTCHES ---
-      const mapIdMap: Record<string, string> = {}; 
-      $(".vm-stats-gamesnav-item.js-map-switch").each((_, el) => {
-        const gameId = $(el).attr("data-game-id");
-        const name = $(el).text().replace(/\s+/g, " ").trim();
-        // The text is usually like "1 Lotus", we match "Lotus"
-        const cleanName = (name.match(/\d+\s+(.*)/)?.[1] || name).trim();
-        if (gameId && gameId !== "all") {
-          mapIdMap[cleanName.toLowerCase().trim()] = gameId;
-        }
-      });
-
-      const clutchData: Record<string, Record<string, number>> = {}; // mapName -> nickname -> clutchCount
-
-      // If we have maps, fetch performance tab for each to get clutches
-      for (const [mapName, gameId] of Object.entries(mapIdMap)) {
-          try {
-            const perfUrl = `${baseUrl}/?game=${gameId}&tab=performance`;
-            const perfRes = await fetch(perfUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
-            if (perfRes.ok) {
-              const perfHtml = await perfRes.text();
-              const p$ = cheerio.load(perfHtml);
-              const players = processClutchesFromPerformance(p$);
-              clutchData[mapName] = players;
-            }
-          } catch (e) {
-            console.error(`Error fetching clutches for map ${mapName}:`, e);
-          }
-      }
-
-      const allStats: any[] = [];
-      const mapContainers = $(".vm-stats-container .vm-stats-game"); 
-
-      if (!mapContainers.length) {
-          const table = $("table.wf-table-inset.mod-overview");
-          if (table.length) {
-              const stats = processVlrTable($, table.first(), "Map 1", winningTeamName);
-              allStats.push(...stats);
-          }
-      } else {
-        mapContainers.each((i, container) => {
-            let mapName = $(container).find(".map-name").text().trim() || `Map ${i + 1}`;
-            if (mapName.toLowerCase().includes("all maps")) return;
-
-            const table = $(container).find("table.wf-table-inset.mod-overview");
-            if (table.length) {
-                const stats = processVlrTable($, table, mapName, winningTeamName);
-                
-                // --- INJECT CLUTCHES ---
-                const mapKey = mapName.toLowerCase().trim();
-                const mapClutches = clutchData[mapKey];
-                if (mapClutches) {
-                  stats.forEach(s => {
-                    const count = mapClutches[s.nickname.toLowerCase().trim()];
-                    if (count) s.clutches = count;
-                  });
-                }
-
-                allStats.push(...stats);
-            }
-        });
-      }
-    
-      return { stats: allStats, status };
-    } catch (error) {
-      console.error(`Exception scraping match ${matchId}:`, error);
-      return null;
-    }
-}
-
-function processClutchesFromPerformance($: any): Record<string, number> {
-  const result: Record<string, number> = {};
-  const table = $("table.wf-table-inset.mod-adv-stats").first();
-  if (!table.length) return result;
-
-  const rows = table.find("tr").slice(1);
-  const headers = table.find("th").map((_: any, th: any) => $(th).text().trim().toLowerCase()).get();
-  
-  // VLR puede usar '1v1' o 'v1', buscar por substring
-  const findClutchIdx = (n: number) => {
-    const exact = headers.indexOf(`1v${n}`);
-    if (exact !== -1) return exact;
-    return headers.findIndex((h: string) => h.includes(`v${n}`));
+  score?: {
+    team1?: string | number;
+    team2?: string | number;
   };
 
-  const c1v1 = findClutchIdx(1);
-  const c1v2 = findClutchIdx(2);
-  const c1v3 = findClutchIdx(3);
-  const c1v4 = findClutchIdx(4);
-  const c1v5 = findClutchIdx(5);
+  players?: {
+    team1?: V2RawPlayer[];
+    team2?: V2RawPlayer[];
+  };
+};
 
-  if (c1v1 === -1 && c1v2 === -1) {
-    // Fallback: buscar columna 'cl' o 'clutch' directamente
-    const clIdx = headers.findIndex((h: string) => h.includes('cl') || h.includes('clutch'));
-    if (clIdx !== -1) {
-      rows.each((_: any, row: any) => {
-        const cols = $(row).find("td");
-        const playerCell = $(cols[0]);
-        let nickname = playerCell.find(".text-of").text().trim()
-          || playerCell.find("a").text().trim()
-          || playerCell.contents().filter((__: any, el: any) => el.type === 'text').first().text().trim()
-          || playerCell.text().replace(/\s+/g, " ").split(" ")[0].trim();
-        nickname = nickname.replace(/^\[.*?\]\s*/, "").replace(/\s+\[.*?\]$/, "").trim();
-        if (!nickname) return;
-        const val = parseInt($(cols[clIdx]).text().trim()) || 0;
-        if (val > 0) result[nickname.toLowerCase()] = val;
-      });
-      return result;
-    }
+type V2MatchDetailsSegment = {
+  match_id?: string;
+
+  status?: string;
+
+  teams?: Array<{
+    id?: string | number;
+    name?: string;
+    score?: string | number;
+    logo?: string;
+  }>;
+
+  maps?: V2RawMap[];
+};
+
+type V2MatchDetailsResponse = {
+  status?: string;
+
+  data?: {
+    status?: number;
+
+    segments?: V2MatchDetailsSegment[];
+  };
+
+  meta?: unknown;
+  message?: string | null;
+};
+
+function nullableNumber(
+  value:
+    | string
+    | number
+    | null
+    | undefined,
+): number | null {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return null;
   }
 
-  rows.each((_: any, row: any) => {
-    const cols = $(row).find("td");
-    const playerCell = $(cols[0]);
-    
-    // Intentar múltiples selectores para el nombre del jugador
-    let nickname = playerCell.find(".text-of").text().trim()
-      || playerCell.find(".team div").first().contents().filter((__: any, el: { type: string; }) => el.type === 'text').text().trim()
-      || playerCell.find("a").text().trim()
-      || playerCell.contents().filter((__: any, el: any) => el.type === 'text').first().text().trim()
-      || playerCell.text().replace(/\s+/g, " ").split(" ")[0].trim();
-    nickname = nickname.replace(/^\[.*?\]\s*/, "").replace(/\s+\[.*?\]$/, "").trim();
+  const parsed = Number(value);
 
-    if (!nickname) return;
-
-    const getVal = (idx: number) => {
-       if (idx === -1) return 0;
-       const col = $(cols[idx]);
-       // Usar el primer nodo de texto para evitar contenido de tooltips/popables
-       const val = col.contents().filter((_: any, el: any) => el.type === 'text').first().text().trim() 
-                || col.find(".stats-sq").contents().filter((_: any, el: any) => el.type === 'text').first().text().trim()
-                || col.text().trim().split(/\s+/)[0];
-       return parseInt(val) || 0;
-    };
-
-    const totalClutches = getVal(c1v1) + getVal(c1v2) + getVal(c1v3) + getVal(c1v4) + getVal(c1v5);
-    if (totalClutches > 0) {
-      result[nickname.toLowerCase()] = totalClutches;
-    }
-  });
-
-  return result;
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
 }
 
-function processVlrTable($: any, table: any, mapName: string, winningTeamName: string = ""): PlayerStats[] {
-    const results: PlayerStats[] = [];
-    const rows = $(table).find("tr");
-    const headerRow = rows.first();
-    const dataRows = rows.slice(1);
-    
-    const headers = headerRow.find("th").map((_: any, th: any) => $(th).text().trim().toUpperCase()).get();
-    const findIdx = (names: string[]) => headers.findIndex((h: string) => names.includes(h));
-    
-    // El agente suele no tener nombre en el header (th vacío), así que buscamos la columna 
-    // que suele estar entre Player y Kills que contenga imágenes.
-    let agentColIdx = 1; // Default
-    
-    const idx = {
-      k: findIdx(["K", "KILL", "KILLS"]),
-      d: findIdx(["D", "DEATH", "DEATHS"]),
-      a: findIdx(["A", "ASSIST", "ASSISTS"]),
-      fk: findIdx(["FK", "FIRST KILLS", "FB", "FIRST BLOODS", "FIRST BLOOD"]),
-      fd: findIdx(["FD", "FIRST DEATHS", "FIRST DEATH"]),
-      acs: findIdx(["ACS", "AVERAGE COMBAT SCORE", "COMBAT SCORE"]),
-      cl: findIdx(["CL", "CLUTCHES", "CLUTCH"]),
-    };
+function normalizeVlrMapPlayer(
+  player: V2RawPlayer,
+): VlrMapPlayer {
+  return {
+    name:
+      player.name ?? "",
 
-    dataRows.each((__: any, row: any) => {
-        const cols = $(row).find("td");
-        if (cols.length < 5) return;
+    agent:
+      player.agent &&
+      player.agent.trim() !== ""
+        ? player.agent
+        : null,
 
-        const playerCell = $(cols[0]);
-        const playerLink = playerCell.find("a").attr("href") || "";
-        const playerId = playerLink.split("/")[2] || "";
-        
-        let nickname = playerCell.find(".text-of").text().trim();
-        if (!nickname) {
-            // Fallback: take the first text node (usually the nickname) and ignore children (like the tag)
-            nickname = playerCell.contents().filter((_: any, el: any) => el.type === 'text').text().trim();
-            if (!nickname) nickname = playerCell.text().trim().split("\n")[0].trim();
-        }
-        
-        // Remove Tag from Nickname if it leaked in (e.g. "[FNC] Boaster" -> "Boaster")
-        nickname = nickname.replace(/^\[.*?\]\s*/, "").replace(/\s+\[.*?\]$/, "").trim();
+    rating:
+      nullableNumber(
+        player.rating,
+      ),
 
-        const teamTag = playerCell.find(".ge-text-light").text().trim();
-        if (!nickname || !playerId || nickname.toLowerCase().includes("team")) return;
+    acs:
+      nullableNumber(
+        player.acs,
+      ),
 
-        // MVP Detection: check for .mod-vlr-mvp class or "MVP" text
-        const isMvp = playerCell.find(".mod-vlr-mvp").length > 0 || playerCell.text().includes("MVP");
+    kills:
+      nullableNumber(
+        player.kills,
+      ),
 
-        // Detección dinámica de agente: buscamos una imagen de agente en las primeras columnas
-        let agentName = "";
-        for (let i = 1; i <= 2; i++) {
-           const img = $(cols[i]).find("img");
-           if (img.length > 0) {
-              const title = img.attr("title")?.toLowerCase();
-              if (title && AGENT_ROLES[title]) {
-                 agentName = title;
-                 break;
-              }
-           }
-        }
-        
-        const agentRole = AGENT_ROLES[agentName] || "";
+    deaths:
+      nullableNumber(
+        player.deaths,
+      ),
 
-        const getStat = (colIdx: number) => {
-            if (colIdx === -1 || colIdx >= cols.length) return 0;
-            const col = $(cols[colIdx]);
-            // Priorizar .mod-both (total)
-            let val = col.find(".mod-both").first().text().trim();
-            
-            if (!val) {
-                // Si no hay .mod-both, usar el primer nodo de texto para evitar popables
-                val = col.contents().filter((_: any, el: any) => el.type === 'text').first().text().trim()
-                   || col.find(".stats-sq").contents().filter((_: any, el: any) => el.type === 'text').first().text().trim()
-                   || col.text().trim();
-            }
-            
-            // Limpiar texto para obtener solo números (ej: "20 10 10" -> 20, "20 / 10" -> 20)
-            const firstPart = val.split('/')[0].split(/\s+/)[0].trim();
-            const cleanVal = firstPart.replace(/[^\d]/g, "");
-            return parseInt(cleanVal) || 0;
-        };
-        
-        results.push({
-            vlr_id: playerId,
-            nickname,
-            teamTag,
-            map_name: mapName,
-            agent_name: agentName,
-            agent_role: agentRole,
-            kills: getStat(idx.k),
-            deaths: getStat(idx.d),
-            assists: getStat(idx.a),
-            fb: getStat(idx.fk),
-            fd: getStat(idx.fd),
-            acs: getStat(idx.acs),
-            clutches: getStat(idx.cl),
-            mvp: isMvp,
-            won: winningTeamName !== "" && normalizeTeamName(teamTag) === normalizeTeamName(winningTeamName)
-        });
-    });
-    return results;
+    assists:
+      nullableNumber(
+        player.assists,
+      ),
+
+    fk:
+      nullableNumber(
+        player.fk,
+      ),
+
+    fd:
+      nullableNumber(
+        player.fd,
+      ),
+  };
 }
 
+export async function getVlrMatchDetails(
+  matchId: string,
+): Promise<VlrMatchDetails | null> {
+  const baseUrl =
+    process.env.VLR_API_URL;
 
+  if (!baseUrl) {
+    throw new Error(
+      "VLR_API_URL is not configured",
+    );
+  }
 
-async function getOrCreateGameweekByDate(dateStr: string) {
-    const date = new Date(dateStr);
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
+  const response = await fetch(
+    `${baseUrl}/v2/match/details?match_id=${encodeURIComponent(
+      matchId,
+    )}`,
+    {
+      cache: "no-store",
+    },
+  );
 
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
+  if (!response.ok) {
+    throw new Error(
+      `VLR match details error ${response.status} for match ${matchId}`,
+    );
+  }
 
-    const startStr = monday.toISOString();
-    
-    // Buscar si existe
-    const { data: existing } = await (supabaseAdmin
-        .from('gameweeks')
-        .select('id')
-        .eq('start_date', startStr)
-        .order('id', { ascending: true })
-        .limit(1) as any)
-        .maybeSingle();
-    
-    if (existing) return (existing as any).id;
+  const json =
+    (await response.json()) as V2MatchDetailsResponse;
 
-    // Crear nueva
-    const weekLabel = monday.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
-    const { data: created, error } = await (supabaseAdmin
-        .from('gameweeks')
-        .insert({
-            name: `Jornada ${weekLabel}`,
-            start_date: startStr,
-            end_date: sunday.toISOString(),
-            is_active: false,
-            is_locked: false
-        } as any) as any)
-        .select('id')
-        .single();
-    
-    if (error) {
-        console.error("Error creating gameweek:", error);
-        return null;
-    }
-    return (created as any).id;
-}
+  /*
+   * La API devuelve:
+   *
+   * data.segments[0]
+   *
+   * y dentro están:
+   * - teams
+   * - maps
+   * - match_id
+   * - status
+   */
+  const segment =
+    json.data?.segments?.[0];
 
-export async function syncMatchesToDb(matches: VlrMatch[]) {
-    const { data: teamsData } = await (supabaseAdmin.from('pro_teams').select('id, name, tag') as any);
-    
-    const { data: existingMatches } = await (supabaseAdmin.from('matches').select('vlr_id, status') as any);
-    const finishedIds = new Set((existingMatches as any[])?.filter((m: any) => m.status === 'finished').map((m: any) => m.vlr_id) || []);
+  if (!segment) {
+    return null;
+  }
 
-    const teamMap = new Map<string, string>();
-    (teamsData as any[])?.forEach((t: any) => {
-      if (t.name) teamMap.set(t.name.toUpperCase(), t.id);
-      if (t.tag) teamMap.set(t.tag.toUpperCase(), t.id);
-    });
+  const teams =
+    segment.teams?.map(
+      (team) => ({
+        id:
+          String(
+            team.id ?? "",
+          ),
 
-    const matchUpserts = [];
+        name:
+          team.name ?? "",
 
-    for (const m of matches) {
-        if (!m.isVctEmea) continue;
-        if (finishedIds.has(m.id)) continue;
+        score:
+          nullableNumber(
+            team.score,
+          ),
 
-        const parts = m.teams.split(" vs ");
-        if (parts.length < 2) continue;
+        logo:
+          team.logo ?? null,
+      }),
+    ) ?? [];
 
-        const rawNameA = parts[0].trim();
-        const rawNameB = parts[1].trim();
-        
-        const nameA = normalizeTeamName(rawNameA);
-        const nameB = normalizeTeamName(rawNameB);
-        
-        const tagA = TEAM_ALIASES[nameA.toUpperCase()] || nameA.substring(0, 4).toUpperCase();
-        const tagB = TEAM_ALIASES[nameB.toUpperCase()] || nameB.substring(0, 4).toUpperCase();
-        
-        let teamAId = teamMap.get(nameA.toUpperCase()) || teamMap.get(tagA);
-        let teamBId = teamMap.get(nameB.toUpperCase()) || teamMap.get(tagB);
-        
-        if (!teamAId) teamAId = await getOrCreateTeam(nameA);
-        if (!teamBId) teamBId = await getOrCreateTeam(nameB);
-        
-        if (!teamAId || !teamBId) {
-            continue;
-        }
+  if (teams.length < 2) {
+    return null;
+  }
 
-        const matchDate = m.date || null;
-        let gwId = null;
-        if (matchDate) {
-            gwId = await getOrCreateGameweekByDate(matchDate);
-        }
+  const maps: VlrMapDetails[] =
+    (segment.maps ?? []).map(
+      (map) => ({
+        mapName:
+          map.map_name ??
+          "TBD",
 
-        let status = 'upcoming';
-        const timeLower = m.time.toLowerCase();
-        if (timeLower.includes("live")) {
-            status = 'live';
-        } else if (timeLower.includes("final") || timeLower.includes("completed") || /\d+-\d+/.test(m.time)) {
-            status = 'finished';
-        }
+        score: {
+          team1:
+            nullableNumber(
+              map.score?.team1,
+            ) ?? 0,
 
-        matchUpserts.push({
-          vlr_id: m.id,
-          team_a: teamAId,
-          team_b: teamBId,
-          match_date: matchDate,
-          status: status,
-          gameweek_id: gwId,
-          team_a_score: m.teamAScore || 0,
-          team_b_score: m.teamBScore || 0,
-        });
-    }
+          team2:
+            nullableNumber(
+              map.score?.team2,
+            ) ?? 0,
+        },
 
-    if (matchUpserts.length > 0) {
-      console.log(`Syncing ${matchUpserts.length} matches to DB...`);
-      const { error: upsertError } = await supabaseAdmin.from('matches').upsert(matchUpserts as any, { onConflict: 'vlr_id' });
-      if (upsertError) console.error("Error upserting matches:", upsertError);
-    }
+        players: {
+          team1:
+            (
+              map.players?.team1 ??
+              []
+            ).map(
+              normalizeVlrMapPlayer,
+            ),
+
+          team2:
+            (
+              map.players?.team2 ??
+              []
+            ).map(
+              normalizeVlrMapPlayer,
+            ),
+        },
+      }),
+    );
+
+  return {
+    matchId:
+      segment.match_id ??
+      matchId,
+
+    status:
+      segment.status ??
+      "upcoming",
+
+    teams,
+
+    maps,
+  };
 }

@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { getTeamLogo, getTeamTag } from "@/lib/vlr-shared";
+import { getTeamLogo } from "@/lib/vlr-shared";
 import { useRouter } from "next/navigation";
 
 interface PlayerCardProps {
@@ -12,6 +11,7 @@ interface PlayerCardProps {
     pro_teams: {
       tag: string;
       name: string;
+      logo_url?: string | null;
     } | null;
     stats?: {
       acs: number;
@@ -63,24 +63,26 @@ export function PlayerCard({
 
   const currentRoleColor = (roleColors as any)[player.role] || 'border-white/20';
 
+  const teamLogo =
+    player.pro_teams?.logo_url ||
+    (player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null);
+
   return (
     <div onClick={() => router.push(`/players/${player.id}`)} className={`v-panel relative border-l-4 ${currentRoleColor} group hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all overflow-hidden`}>
       {/* Background Decor */}
       <div className="absolute top-0 right-0 group-hover:opacity-10 transition-opacity" style={{ opacity: 0.015 }}>
-         {(() => {
-           const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
-           return logo ? (
-             <img 
-               src={logo}
-               alt=""
-               className="w-48 h-48 object-contain grayscale brightness-200"
-             />
-           ) : (
-             <span className="text-6xl font-black italic uppercase leading-none select-none pointer-events-none">
-               {player.pro_teams?.tag || "FA"}
-             </span>
-           );
-         })()}
+         {teamLogo ? (
+           <img
+             src={teamLogo}
+             alt=""
+             loading="lazy"
+             className="w-48 h-48 object-contain grayscale brightness-200"
+           />
+         ) : (
+           <span className="text-6xl font-black italic uppercase leading-none select-none pointer-events-none">
+             {player.pro_teams?.tag || "FA"}
+           </span>
+         )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 relative z-10">
@@ -95,7 +97,7 @@ export function PlayerCard({
                   <div className="relative shrink-0">
                     <div className="w-12 h-12 bg-v-navy border border-white/10 overflow-hidden flex items-center justify-center">
                       {player.photo_url ? (
-                        <img src={player.photo_url} alt={player.nickname} className="w-full h-full object-cover" />
+                        <img src={player.photo_url} alt={player.nickname} loading="lazy" className="w-full h-full object-cover" />
                       ) : (
                         /* Fallback to local image or initials */
                         <img 
@@ -116,14 +118,16 @@ export function PlayerCard({
                       )}
                     </div>
                     {/* Team Patch overlay */}
-                    {(() => {
-                        const logo = player.pro_teams?.tag ? getTeamLogo(player.pro_teams.tag) : null;
-                        return logo ? (
-                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-v-navy border border-white/20 p-0.5 rounded-sm">
-                                <img src={logo} alt="" className="w-full h-full object-contain" />
-                            </div>
-                        ) : null;
-                    })()}
+                    {teamLogo ? (
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-v-navy border border-white/20 p-0.5 rounded-sm">
+                        <img
+                          src={teamLogo}
+                          alt={player.pro_teams?.name || ""}
+                          loading="lazy"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    ) : null}
                   </div>
                   <h3 className="text-xl sm:text-2xl tracking-wider flex items-center gap-2">
                     <span className="truncate pr-4">{player.nickname}</span>

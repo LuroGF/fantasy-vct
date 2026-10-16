@@ -2,500 +2,396 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { validatePlayerActionAvailability, validateRosterRoleLimits } from "./player-action-guards";
 import { getSession } from "./auth";
 
-export interface Team {
-  tag: string;
-  name: string;
-}
-
-export interface ProPlayer {
+export type MarketPlayer = {
   id: string;
   nickname: string;
   role: string;
   market_value: number;
-  pro_teams?: Team;
-}
+  photo_url: string | null;
+  pro_teams?: {
+    id?: string;
+    tag: string;
+    name: string;
+    logo_url?: string | null;
+  } | null;
+};
 
-export interface MarketAuction {
+export type MarketAuction = {
   id: string;
+  cycle_id: string;
   league_id: string;
-  seller_id: string;
   player_id: string;
-  starting_price: number;
-  current_bid: number;
-  highest_bidder_id: string | null;
-  expires_at: string;
-  status: 'active' | 'sold' | 'expired' | 'canceled';
-  pro_players?: ProPlayer;
-  is_revealed?: boolean;
+  market_value_snapshot: number;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  created_at?: string;
+  player?: MarketPlayer | null;
+  my_bid?: {
+    id: string;
+    amount: number;
+    submitted_at: string;
+  } | null;
+};
+
+async function requireUser(expectedProfileId?: string) {
+  const session = await getSession();
+  if (!session) throw new Error("Sesión no válida");
+  if (expectedProfileId && session.user.id !== expectedProfileId) {
+    throw new Error("Acceso no autorizado");
+  }
+  return session.user;
 }
 
-// Personal Market: 5 Daily Random Players
-export async function getPersonalMarket(leagueId: string, profileId: string) {
+export async function getMarketDashboard(leagueId: string, profileId: string) {
+  await requireUser(profileId);
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .rpc('get_or_generate_personal_market', { 
-      p_league_id: leagueId, 
-      p_profile_id: profileId 
-    });
 
-  if (error || !data) {
-    console.error("Error fetching personal market:", error);
-    return [];
+  const [
+    participantRes,
+    auctionsRes,
+    bidsRes,
+    rostersRes,
+    profilesRes,
+    listingsRes,
+    managerOffersRes,
+    leagueOffersRes,
+  ] = await Promise.all([
+    supabase
+      .from("league_participants")
+      .select("league_id, profile_id, current_budget, leagues(id, name, invite_code)")
+      .eq("league_id", leagueId)
+      .eq("profile_id", profileId)
+      .maybeSingle(),
+
+    supabase
+      .from("market_auctions")
+      .select("*")
+      .eq("league_id", leagueId)
+      .eq("status", "open")
+      .gt("ends_at", new Date().toISOString())
+      .order("ends_at", { ascending: true }),
+
+    supabase
+      .from("user_bids")
+      .select("id, auction_id, league_id, profile_id, amount, submitted_at")
+      .eq("league_id", leagueId)
+      .eq("profile_id", profileId),
+
+    supabase
+      .from("user_rosters")
+      .select("id, league_id, profile_id, player_id, slot_type, is_starter, is_active, release_clause, clause_protected_until, acquired_at")
+      .eq("league_id", leagueId)
+      .eq("is_active", true),
+
+    supabase
+      .from("profiles")
+      .select("id, username"),
+
+    supabase
+      .from("player_listings")
+      .select("*")
+      .eq("league_id", leagueId)
+      .eq("status", "active")
+      .order("listed_at", { ascending: false }),
+
+    supabase
+      .from("manager_offers")
+      .select("*")
+      .eq("league_id", leagueId)
+      .or(`from_profile_id.eq.${profileId},to_profile_id.eq.${profileId}`)
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("league_offers")
+      .select("*")
+      .eq("league_id", leagueId)
+      .eq("owner_profile_id", profileId)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const firstError = [
+    participantRes.error,
+    auctionsRes.error,
+    bidsRes.error,
+    rostersRes.error,
+    profilesRes.error,
+    listingsRes.error,
+    managerOffersRes.error,
+    leagueOffersRes.error,
+  ].find(Boolean);
+
+  if (firstError) {
+    console.error("Error loading market dashboard:", firstError);
+    throw new Error(firstError.message);
   }
 
-  // Hydrate player data
-  const playerIds = data.map((d: any) => d.player_id);
-  const { data: players } = await supabase
-    .from('pro_players')
-    .select('*, pro_teams(tag, name)')
-    .in('id', playerIds);
+  const auctions = auctionsRes.data || [];
+  const rosters = rostersRes.data || [];
+  const listings = listingsRes.data || [];
+  const managerOffers = managerOffersRes.data || [];
+  const leagueOffers = leagueOffersRes.data || [];
 
-  return data.map((d: any) => ({
-    ...d,
-    player: players?.find((p: any) => p.id === d.player_id)
+  const playerIds = Array.from(
+    new Set([
+      ...auctions.map((x: any) => x.player_id),
+      ...rosters.map((x: any) => x.player_id),
+      ...listings.map((x: any) => x.player_id),
+      ...managerOffers.map((x: any) => x.player_id),
+      ...leagueOffers.map((x: any) => x.player_id),
+    ].filter(Boolean)),
+  );
+
+  let players: any[] = [];
+  if (playerIds.length > 0) {
+    const { data, error } = await supabase
+      .from("pro_players")
+      .select("id, nickname, role, market_value, photo_url, team_id, pro_teams(id, tag, name, logo_url)")
+      .in("id", playerIds);
+
+    if (error) throw new Error(error.message);
+    players = data || [];
+  }
+
+  const playerMap = new Map(players.map((p: any) => [p.id, p]));
+  const bidMap = new Map((bidsRes.data || []).map((b: any) => [b.auction_id, b]));
+  const profileMap = new Map((profilesRes.data || []).map((p: any) => [p.id, p]));
+  const listingMap = new Map(listings.map((l: any) => [l.id, l]));
+
+  const hydratedAuctions = auctions.map((a: any) => ({
+    ...a,
+    player: playerMap.get(a.player_id) || null,
+    my_bid: bidMap.get(a.id) || null,
   }));
-}
 
-// Legendary Players: Only for Finals
-export async function getLegendaryPlayers() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('pro_players')
-    .select('*, pro_teams(tag, name)')
-    .eq('is_legend', true);
+  const rivals = Array.from(
+    new Set(rosters.filter((r: any) => r.profile_id !== profileId).map((r: any) => r.profile_id)),
+  ).map((rivalId: any) => ({
+    profile_id: rivalId,
+    username: profileMap.get(rivalId)?.username || "Manager",
+    roster: rosters
+      .filter((r: any) => r.profile_id === rivalId)
+      .map((r: any) => ({
+        ...r,
+        player: playerMap.get(r.player_id) || null,
+        listing: listings.find((l: any) => l.roster_id === r.id && l.status === "active") || null,
+      })),
+  }));
 
-  if (error) {
-    console.error("Error fetching legendary players:", error);
-    return [];
-  }
-  return data;
-}
-
-export async function checkIsFinal(leagueId: string) {
-  const supabase = await createClient();
-  
-  // 1. Check if ANY gameweek is marked as is_final
-  const { data: finalGw } = await supabase
-    .from('gameweeks')
-    .select('id')
-    .eq('is_active', true)
-    .eq('is_final', true)
-    .maybeSingle();
-  
-  if (finalGw) return true;
-
-  // 2. Logic fallback: more than  match this week?
-  const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).maybeSingle();
-  if (!activeGw) return false;
-
-  const { count } = await supabase
-    .from('matches')
-    .select('*', { count: 'exact', head: true })
-    .eq('gameweek_id', activeGw.id);
-
-  return count === 1;
-}
-
-
-export async function buyFromPersonalMarket(leagueId: string, profileId: string, playerId: string, personalMarketId: string) {
-  const session = await getSession();
-  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
-  
-  const supabase = await createClient();
-  try {
-    const { data: player } = await supabase.from('pro_players').select('role').eq('id', playerId).single();
-    if (player) {
-      await validateRosterRoleLimits(supabase, leagueId, profileId, player.role);
-    }
-
-    const { data: result, error: rpcError } = await supabase.rpc('handle_buy_from_personal_market', {
-        p_league_id: leagueId,
-        p_profile_id: profileId,
-        p_player_id: playerId,
-        p_personal_market_id: personalMarketId
-    });
-
-    if (rpcError) throw new Error("Error en la transmisión de datos al servidor.");
-    if (!result?.success) throw new Error(result?.message || "La compra no pudo completarse.");
-
-    revalidatePath("/market");
-    revalidatePath("/team");
-    revalidatePath("/");
-    
-    return { success: true, message: "Agente reclutado con éxito." };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-// Global Auctions
-export async function fetchActiveAuctions(leagueId: string, profileId?: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('market_auctions')
-    .select('*, pro_players(*, pro_teams(tag, name)), profiles!market_auctions_seller_id_fkey(username)')
-    .eq('league_id', leagueId)
-    .eq('status', 'active')
-    .gt('expires_at', new Date().toISOString());
-
-  if (error) {
-    console.error("Error fetching auctions:", error);
-    return [];
-  }
-
-  // Hydrate with reveal status if profileId is provided
-  if (profileId) {
-    const { data: reveals } = await supabase
-      .from('auction_reveals')
-      .select('auction_id')
-      .eq('profile_id', profileId);
-    
-    const revealSet = new Set(reveals?.map((r: any) => r.auction_id));
-    return (data || []).map((a: any) => ({
-      ...a,
-      is_revealed: revealSet.has(a.id)
+  const myListings = listings
+    .filter((l: any) => l.owner_profile_id === profileId)
+    .map((l: any) => ({
+      ...l,
+      player: playerMap.get(l.player_id) || null,
+      manager_offers: managerOffers
+        .filter((o: any) => o.listing_id === l.id)
+        .map((o: any) => ({
+          ...o,
+          from_username: profileMap.get(o.from_profile_id)?.username || "Manager",
+        })),
+      league_offer:
+        leagueOffers.find((o: any) => o.listing_id === l.id && o.status === "pending") || null,
     }));
-  }
 
-  return data || [];
-}
+  const hydratedManagerOffers = managerOffers.map((o: any) => ({
+    ...o,
+    player: playerMap.get(o.player_id) || null,
+    listing: listingMap.get(o.listing_id) || null,
+    from_username: profileMap.get(o.from_profile_id)?.username || "Manager",
+    to_username: profileMap.get(o.to_profile_id)?.username || "Manager",
+  }));
 
-export async function revealAuction(leagueId: string, profileId: string, auctionId: string) {
-  const supabase = await createClient();
-  try {
-    // 1. Get Spy Eye Power-up Type ID
-    const { data: spyType } = await supabase
-      .from('powerup_types')
-      .select('id')
-      .eq('code', 'SPY')
-      .single();
-    
-    if (!spyType) throw new Error("Objeto 'Ojo del Espía' no configurado.");
+  const bidExposure = (bidsRes.data || []).reduce(
+    (sum: number, bid: any) => sum + Number(bid.amount || 0),
+    0,
+  );
 
-    // 2. Call Atomic RPC
-    const { data: result, error: rpcError } = await supabase.rpc('handle_reveal_auction_atomic', {
-        p_auction_id: auctionId,
-        p_profile_id: profileId,
-        p_spy_eye_type_id: spyType.id
-    });
-
-    if (rpcError) throw new Error("Error en la transmisión de datos.");
-    if (!result?.success) throw new Error(result?.message || "No se pudo revelar la subasta.");
-
-    revalidatePath("/market");
-    return { success: true, message: "Puja revelada con éxito." };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-export async function createAuction(leagueId: string, profileId: string, playerId: string, startingPrice: number) {
-  const session = await getSession();
-  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
-  
-  const supabase = await createClient();
-  try {
-    await validatePlayerActionAvailability({
-      supabase,
-      leagueId,
-      playerId,
-      actionLabel: "subastarlo",
-      ignorePendingTradeForProfileId: profileId,
-    });
-
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // 24h auction
-
-    const { data: result, error: rpcError } = await supabase.rpc('handle_create_auction_atomic', {
-        p_league_id: leagueId,
-        p_seller_id: profileId,
-        p_player_id: playerId,
-        p_starting_price: startingPrice,
-        p_expires_at: expiresAt.toISOString()
-    });
-
-    if (rpcError) throw new Error("Error en la transmisión de datos.");
-    if (!result?.success) throw new Error(result?.message || "No se pudo crear la subasta.");
-    
-    revalidatePath("/market");
-    revalidatePath("/team");
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  return {
+    participant: participantRes.data,
+    auctions: hydratedAuctions,
+    rivals,
+    myListings,
+    managerOffers: hydratedManagerOffers,
+    leagueOffers: leagueOffers.map((o: any) => ({
+      ...o,
+      player: playerMap.get(o.player_id) || null,
+    })),
+    stats: {
+      activeBids: (bidsRes.data || []).length,
+      bidExposure,
+    },
+  };
 }
 
 export async function placeBid(auctionId: string, profileId: string, bidAmount: number) {
-  const session = await getSession();
-  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
-  
+  await requireUser(profileId);
   const supabase = await createClient();
-  try {
-    const { data: auction } = await supabase.from('market_auctions').select('league_id, player_id').eq('id', auctionId).single();
-    if (auction) {
-      const { data: player } = await supabase.from('pro_players').select('role').eq('id', auction.player_id).single();
-      if (player) {
-        await validateRosterRoleLimits(supabase, auction.league_id, profileId, player.role);
-      }
-    }
 
-    const { data: result, error: rpcError } = await supabase.rpc('handle_place_bid_atomic', {
-        p_auction_id: auctionId,
-        p_profile_id: profileId,
-        p_bid_amount: bidAmount
-    });
+  const { error } = await supabase.rpc("place_market_bid", {
+    p_auction_id: auctionId,
+    p_amount: bidAmount,
+  });
 
-    if (rpcError) throw new Error("Error en la transmisión de datos.");
-    if (!result?.success) throw new Error(result?.message || "La puja no pudo procesarse.");
-
-    revalidatePath("/market");
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  return { success: true };
 }
 
 export async function withdrawBid(auctionId: string, profileId: string) {
-  const session = await getSession();
-  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
-  
+  await requireUser(profileId);
   const supabase = await createClient();
-  try {
-    const { data: result, error: rpcError } = await supabase.rpc('handle_withdraw_bid_atomic', {
-        p_auction_id: auctionId,
-        p_profile_id: profileId
-    });
 
-    if (rpcError) throw new Error("Error en la transmisión de datos.");
-    if (!result?.success) throw new Error(result?.message || "No se pudo retirar la puja.");
+  const { error } = await supabase.rpc("cancel_market_bid", {
+    p_auction_id: auctionId,
+  });
 
-    revalidatePath("/market");
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  return { success: true };
+}
+
+export async function listPlayerForSale(
+  rosterId: string,
+  askingPrice: number,
+  profileId: string,
+) {
+  await requireUser(profileId);
+  const supabase = await createClient();
+
+  const { error } = await supabase.rpc("list_player_for_sale", {
+    p_roster_id: rosterId,
+    p_asking_price: askingPrice,
+  });
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  revalidatePath("/team");
+  return { success: true };
+}
+
+export async function withdrawPlayerListing(listingId: string, profileId: string) {
+  await requireUser(profileId);
+  const supabase = await createClient();
+
+  const { error } = await supabase.rpc("withdraw_player_listing", {
+    p_listing_id: listingId,
+  });
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  return { success: true };
 }
 
 
-export async function sellPlayer(leagueId: string, profileId: string, playerId: string) {
-  const session = await getSession();
-  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
-  
+export async function updatePlayerListingPrice(
+  listingId: string,
+  askingPrice: number,
+  profileId: string,
+) {
+  await requireUser(profileId);
   const supabase = await createClient();
-  try {
-    await validatePlayerActionAvailability({
-      supabase,
-      leagueId,
-      playerId,
-      actionLabel: "liberarlo",
-      ignorePendingTradeForProfileId: profileId,
-    });
 
-    const { data: playerData } = await supabase
-        .from('pro_players')
-        .select('market_value, nickname')
-        .eq('id', playerId)
-        .single();
-    
-    if (!playerData) throw new Error("Agente no detectado.");
-    const sellPrice = Math.floor(playerData.market_value * 0.9);
+  const { error } = await supabase.rpc("update_player_listing_price", {
+    p_listing_id: listingId,
+    p_asking_price: askingPrice,
+  });
 
-    const { getMarketLockStatus } = await import("@/lib/gameweek-logic");
-    const lockStatus = await getMarketLockStatus(supabase);
-    const { data: playerRoster } = await supabase.from('user_rosters').select('slot_type').eq('league_id', leagueId).eq('profile_id', profileId).eq('player_id', playerId).single();
+  if (error) return { success: false, error: error.message };
 
-    if (lockStatus.locked && playerRoster?.slot_type === 'starter') {
-      throw new Error(`Blindaje operacional: Los titulares no se pueden liberar durante la jornada.`);
-    }
+  revalidatePath("/market");
+  revalidatePath("/team");
 
-    const { data: result, error: rpcError } = await supabase.rpc('handle_sell_player_atomic', {
-        p_league_id: leagueId,
-        p_profile_id: profileId,
-        p_player_id: playerId,
-        p_price: sellPrice
-    });
-
-    if (rpcError) throw new Error("Error al procesar la baja del agente.");
-    if (!result?.success) throw new Error(result?.message || "No se pudo completar la venta.");
-
-    revalidatePath("/market");
-    revalidatePath("/team");
-    revalidatePath("/");
-    return { success: true, message: `${playerData.nickname} ha sido liberado. (+${(sellPrice/1000000).toFixed(1)}M VP)` };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  return { success: true };
 }
 
-export async function payClause(leagueId: string, buyerProfileId: string, playerId: string, targetProfileId: string) {
-  const session = await getSession();
-  if (!session || session.user.id !== buyerProfileId) throw new Error("Acceso no autorizado");
-  
+export async function makeManagerOffer(
+  listingId: string,
+  amount: number,
+  profileId: string,
+) {
+  await requireUser(profileId);
   const supabase = await createClient();
-  try {
-    // 1. Fetch player details to check role limits
-    const { data: player } = await supabase.from('pro_players').select('nickname, role').eq('id', playerId).single();
-    if (!player) throw new Error("Agente no detectado.");
 
-    // 2. Validate role limit (Max 2 per role, including Flex)
-    await validateRosterRoleLimits(supabase, leagueId, buyerProfileId, player.role);
+  const { error } = await supabase.rpc("make_manager_offer", {
+    p_listing_id: listingId,
+    p_amount: amount,
+  });
 
-    // Execute atomic RPC
-    const { data: result, error: rpcError } = await supabase.rpc('handle_pay_clause', {
-        p_league_id: leagueId,
-        p_buyer_id: buyerProfileId,
-        p_seller_id: targetProfileId,
-        p_player_id: playerId
-    });
-
-    if (rpcError) throw new Error("Error en la transmisión de datos al servidor.");
-    if (!result?.success) throw new Error(result?.message || "La compra por cláusula no pudo completarse.");
-
-    revalidatePath("/market");
-    revalidatePath("/team");
-    revalidatePath("/");
-    
-    return { 
-      success: true, 
-      message: `Has reclutado a ${player.nickname}. (${(result.price / 1000000).toFixed(1)}M VP)` 
-    };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  return { success: true };
 }
 
-export async function buyPlayer(leagueId: string, profileId: string, playerId: string, customPrice?: number) {
-  const session = await getSession();
-  if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
-  
+
+export async function updateManagerOffer(
+  offerId: string,
+  amount: number,
+  profileId: string,
+) {
+  await requireUser(profileId);
   const supabase = await createClient();
-  try {
-    // 1. Get player name for the success message (optional, but nice)
-    const { data: playerData } = await supabase.from('pro_players').select('market_value, nickname, role').eq('id', playerId).single();
-    if (!playerData) throw new Error("Agente no detectado.");
-    
-    await validateRosterRoleLimits(supabase, leagueId, profileId, playerData.role);
 
-    const price = customPrice || playerData.market_value;
+  const { error } = await supabase.rpc("update_manager_offer", {
+    p_offer_id: offerId,
+    p_amount: amount,
+  });
 
-    // 2. Transact via RPC for atomicity
-    const { data: result, error: rpcError } = await supabase.rpc('handle_buy_player', {
-        p_league_id: leagueId,
-        p_profile_id: profileId,
-        p_player_id: playerId,
-        p_price: price
-    });
+  if (error) return { success: false, error: error.message };
 
-    if (rpcError) throw new Error("Error en la transmisión de datos al servidor.");
-    if (!result?.success) throw new Error(result?.message || "La compra no pudo completarse.");
-
-    revalidatePath("/market");
-    revalidatePath("/team");
-    revalidatePath("/");
-    return { success: true, message: `Reclutamiento exitoso: ${playerData.nickname} se une al equipo.` };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  revalidatePath("/market");
+  return { success: true };
 }
 
-/**
- * Resuelve las subastas que han expirado.
- * Esta función es crítica y debe llamarse desde un Cron job (ej: cada 5-10 mins).
- */
-export async function resolveExpiredAuctions() {
-  const { supabaseAdmin } = await import("@/utils/supabase/admin");
-  console.log("Resolving expired auctions...");
-  
-  try {
-    const { data: expiredAuctions, error } = await supabaseAdmin
-      .from('market_auctions')
-      .select(`
-        *,
-        pro_players(nickname, market_value)
-      `)
-      .eq('status', 'active')
-      .lte('expires_at', new Date().toISOString());
+export async function acceptManagerOffer(offerId: string, profileId: string) {
+  await requireUser(profileId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("accept_manager_offer", { p_offer_id: offerId });
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  revalidatePath("/team");
+  return { success: true };
+}
 
-    if (error) throw error;
-    if (!expiredAuctions || expiredAuctions.length === 0) return { success: true, count: 0 };
+export async function rejectManagerOffer(offerId: string, profileId: string) {
+  await requireUser(profileId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reject_manager_offer", { p_offer_id: offerId });
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  return { success: true };
+}
 
-    const { createNotification } = await import("./notifications");
+export async function acceptLeagueOffer(offerId: string, profileId: string) {
+  await requireUser(profileId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("accept_league_offer", { p_offer_id: offerId });
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  revalidatePath("/team");
+  return { success: true };
+}
 
-    for (const auct of expiredAuctions) {
-      // Get all bids for this auction ordered by amount DESC
-      const { data: bids } = await supabaseAdmin
-        .from('user_bids')
-        .select('*')
-        .eq('auction_id', auct.id)
-        .order('bid_amount', { ascending: false });
+export async function rejectLeagueOffer(offerId: string, profileId: string) {
+  await requireUser(profileId);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reject_league_offer", { p_offer_id: offerId });
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  return { success: true };
+}
 
-      let resolved = false;
+export async function payReleaseClause(rosterId: string, profileId: string) {
+  await requireUser(profileId);
+  const supabase = await createClient();
 
-      if (bids && bids.length > 0) {
-        // Cascading attempt: try each bid until one succeeds atomically
-        for (const bid of bids) {
-          const { data: result } = await supabaseAdmin.rpc('handle_resolve_auction_winner', {
-            p_auction_id: auct.id,
-            p_winner_id: bid.profile_id,
-            p_bid_amount: bid.bid_amount
-          });
+  const { error } = await supabase.rpc("pay_release_clause", {
+    p_roster_id: rosterId,
+  });
 
-          if (result?.success) {
-            await createNotification({ 
-              profile_id: auct.seller_id, 
-              league_id: auct.league_id, 
-              title: "📋 AGENTE TRANSFERIDO", 
-              message: `Transferido: ${auct.pro_players.nickname} por ${(bid.bid_amount / 1000000).toFixed(1)}M VP.`, 
-              type: "sale" 
-            });
-            await createNotification({ 
-              profile_id: bid.profile_id, 
-              league_id: auct.league_id, 
-              title: "✅ ASIGNACIÓN EXITOSA", 
-              message: `Agente asignado: ${auct.pro_players.nickname} por ${(bid.bid_amount / 1000000).toFixed(1)}M VP.`, 
-              type: "buy" 
-            });
-            resolved = true;
-            break;
-          }
-        }
-      }
-
-      if (!resolved) {
-          // BANK FALLBACK: If no bids or all bids failed (full squad, no budget), sell to bank at 80%
-          const bankPrice = Math.floor(Number(auct.pro_players.market_value || 10000000) * 0.8);
-          
-          const { data: sellerPart } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', auct.league_id).eq('profile_id', auct.seller_id).single();
-          if (sellerPart) {
-              await supabaseAdmin.from('league_participants').update({ current_budget: Number(sellerPart.current_budget) + bankPrice }).eq('league_id', auct.league_id).eq('profile_id', auct.seller_id);
-          }
-          
-          await supabaseAdmin.from('user_rosters').delete().eq('league_id', auct.league_id).eq('profile_id', auct.seller_id).eq('player_id', auct.player_id);
-          await (supabaseAdmin.from('market_auctions') as any).update({ status: 'expired' }).eq('id', auct.id);
-
-          await createNotification({ 
-            profile_id: auct.seller_id, 
-            league_id: auct.league_id, 
-            title: "🔄 RETORNO A BASE", 
-            message: `Sin asignaciones válidas por ${auct.pro_players.nickname}. Retorno compensado: ${(bankPrice / 1000000).toFixed(1)}M VP.`, 
-            type: "sale" 
-          });
-      }
-
-      // Cleanup bids
-      await supabaseAdmin.from('user_bids').delete().eq('auction_id', auct.id);
-    }
-
-    revalidatePath("/market");
-    revalidatePath("/team");
-    revalidatePath("/");
-
-    return { success: true, count: expiredAuctions.length };
-  } catch (error: any) {
-    console.error("Error resolving auctions:", error);
-    return { success: false, error: error.message };
-  }
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/market");
+  revalidatePath("/team");
+  return { success: true };
 }

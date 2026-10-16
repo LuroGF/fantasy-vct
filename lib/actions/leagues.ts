@@ -4,210 +4,297 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "./auth";
 
-// Función para generar un código de invitación aleatorio
-function generateInviteCode(length = 6) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
+// ============================================================
+// GLOBAL RANK
+// ============================================================
 
 export async function getGlobalRank(userId: string) {
   const supabase = await createClient();
-  
-  // 1. Get user points
-  const { data: userProfile } = await supabase
-    .from("profiles")
-    .select("global_points")
-    .eq("id", userId)
-    .single();
-  
-  if (!userProfile) return 0;
-  
-  // 2. Count users with more points
-  const { count } = await supabase
-    .from("profiles")
-    .select("*", { count: 'exact', head: true })
-    .gt("global_points", userProfile.global_points);
-  
-  return (count || 0) + 1;
-}
 
-async function assignInitialRoster(supabase: any, leagueId: string, profileId: string) {
-    // FIX Bug #11: Use normalized role names for consistency
-    const targetRoles = ['DUELISTA', 'INICIADOR', 'CONTROLADOR', 'CENTINELA', 'FLEX'];
-    const selectedPlayers: any[] = [];
-    const playerIds = new Set<string>();
+  const { data: userProfile, error: profileError } =
+    await supabase
+      .from("profiles")
+      .select("global_points")
+      .eq("id", userId)
+      .single();
 
-    for (const role of targetRoles) {
-        let p: any = null;
-        
-        // Try to fetch by role first
-        if (role !== 'FLEX') {
-            const { data: players } = await supabase
-                .from('pro_players')
-                .select('id, market_value')
-                .eq('role', role)
-                .limit(20); 
-            
-            if (players && players.length > 0) {
-                 // Filter out already selected
-                 const available = players.filter((pl: any) => !playerIds.has(pl.id));
-                 if (available.length > 0) {
-                     p = available[Math.floor(Math.random() * available.length)];
-                 }
-            }
-        }
+  if (profileError || !userProfile) {
+    return 0;
+  }
 
-        // Fallback: If Flex, or specific role not found/exhausted, pick ANY random player
-        if (!p) {
-             const { data: randomPool } = await supabase
-                .from('pro_players')
-                .select('id, market_value')
-                .limit(50);
-            
-             if (randomPool) {
-                 const available = randomPool.filter((pl: any) => !playerIds.has(pl.id));
-                 if (available.length > 0) {
-                     p = available[Math.floor(Math.random() * available.length)];
-                 }
-             }
-        }
-
-        if (p) {
-            selectedPlayers.push(p);
-            playerIds.add(p.id);
-        }
-    }
-
-    if (selectedPlayers.length === 0) return;
-
-    // Insert ONLY 5 players as starters. Substitutes start empty.
-    const inserts = selectedPlayers.map((p) => ({
-        league_id: leagueId,
-        profile_id: profileId,
-        player_id: p.id,
-        acquisition_price: 0,
-        slot_type: 'starter',
-        is_starter: true,
-        is_active: true,
-        release_clause: Math.floor(p.market_value * 1.5)
-    }));
-
-    await supabase.from('user_rosters').insert(inserts);
-}
-
-
-
-export async function createLeague(name: string, userId: string) {
-  const session = await getSession();
-  if (!session || session.user.id !== userId) throw new Error("Acceso no autorizado");
-
-  const supabase = await createClient();
-  try {
-    const inviteCode = generateInviteCode();
-    
-    // 1. Crear la liga
-    const { data: league, error: leagueError } = await supabase
-      .from("leagues")
-      .insert({ 
-        name, 
-        invite_code: inviteCode, 
-        creator_id: session.user.id,
-        budget_limit: 100000000 // 100M por defecto
+  const { count, error: countError } =
+    await supabase
+      .from("profiles")
+      .select("*", {
+        count: "exact",
+        head: true,
       })
-      .select()
-      .single();
+      .gt(
+        "global_points",
+        userProfile.global_points ?? 0,
+      );
 
-    if (leagueError) throw leagueError;
+  if (countError) {
+    console.error(
+      "Error calculando ranking global:",
+      countError,
+    );
 
-    // 2. Unir al creador a la liga automáticamente como participante
-    const { error: joinError } = await supabase
-      .from("league_participants")
-      .insert({ 
-        profile_id: session.user.id, 
-        league_id: league.id,
-        current_budget: 100000000 
-      });
-
-    if (joinError) throw joinError;
-
-    // 3. Asignar equipo inicial
-    await assignInitialRoster(supabase, league.id, session.user.id);
-
-    revalidatePath("/leagues");
-    return { success: true, league };
-  } catch (error) {
-    console.error("Error creating league:", error);
-    return { success: false, error };
+    return 0;
   }
+
+  return (count ?? 0) + 1;
 }
 
-export async function joinLeague(inviteCode: string, userId: string) {
+// ============================================================
+// CREATE LEAGUE
+// ============================================================
+//
+// Toda la lógica importante ocurre ahora dentro de:
+//
+// create_fantasy_league()
+//
+// PostgreSQL:
+// - crea la liga
+// - genera invite_code
+// - añade al creador
+// - asigna 50 M€
+// - reparte 5 jugadores totalmente aleatorios
+// - los pone como titulares
+// - asigna cláusula inicial
+// - activa protección de 48 horas
+//
+// ============================================================
+
+export async function createLeague(
+  name: string,
+  userId: string,
+) {
   const session = await getSession();
-  if (!session || session.user.id !== userId) throw new Error("Acceso no autorizado");
 
-  const supabase = await createClient();
+  if (
+    !session ||
+    session.user.id !== userId
+  ) {
+    throw new Error(
+      "Acceso no autorizado",
+    );
+  }
+
+  const cleanName = name.trim();
+
+  if (cleanName.length < 3) {
+    return {
+      success: false,
+      error:
+        "El nombre de la liga debe tener al menos 3 caracteres.",
+    };
+  }
+
+  const supabase =
+    await createClient();
+
   try {
-    // 1. Buscar la liga por código
-    const { data: league, error: findError } = await supabase
-      .from("leagues")
-      .select("id, budget_limit")
-      .eq("invite_code", inviteCode.toUpperCase())
-      .single();
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
+      "create_fantasy_league",
+      {
+        p_name: cleanName,
+      },
+    );
 
-    if (findError) throw new Error("Código de invitación no válido");
-
-    // 2. Cálculo de presupuesto inicial (Late Joiner adjustment)
-    // Buscamos el presupuesto medio de la liga para no entrar en desventaja
-    const { data: others } = await supabase
-        .from('league_participants')
-        .select('current_budget')
-        .eq('league_id', league.id);
-    
-    let startingBudget = league.budget_limit;
-    if (others && others.length > 0) {
-        const avg = others.reduce((acc: number, curr: any) => acc + Number(curr.current_budget), 0) / others.length;
-        // Si la media es significativamente mayor (inflación), ajustamos. 
-        // Pero el usuario dijo "menos dinero", así que quizá quiere que empiecen con lo mismo? 
-        // "separarlo la primera jornada" implica aislamiento de puntos.
-        // Vamos a mantener el budget pero marcarlo como 'new_joiner' si hay jornada activa.
+    if (error) {
+      throw error;
     }
 
-    // 3. Unirse a la liga
-    const { error: joinError } = await supabase
-      .from("league_participants")
-      .insert({ 
-        profile_id: userId, 
-        league_id: league.id,
-        current_budget: startingBudget 
-      });
-
-    if (joinError) {
-       if (joinError.code === "23505") throw new Error("Ya perteneces a esta liga");
-       throw joinError;
-    }
-
-    // 4. Asignar equipo inicial
-    await assignInitialRoster(supabase, league.id, userId);
-
-    revalidatePath("/leagues");
     revalidatePath("/");
-    return { success: true };
+    revalidatePath("/leagues");
+    revalidatePath("/team");
+    revalidatePath("/market");
+
+    return {
+      success: true,
+
+      league: {
+        id: data?.league_id,
+        name: cleanName,
+        invite_code:
+          data?.invite_code,
+        budget_limit:
+          data?.starting_budget ??
+          50_000_000,
+      },
+
+      data,
+    };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Error al unirse a la liga";
-    return { success: false, error: message };
+    console.error(
+      "Error creating league:",
+      error,
+    );
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Error al crear la liga";
+
+    return {
+      success: false,
+      error: message,
+    };
   }
 }
 
-export async function getUserLeagues(userId: string) {
+// ============================================================
+// JOIN LEAGUE
+// ============================================================
+//
+// Ya NO:
+// - buscamos manualmente la liga
+// - calculamos presupuesto medio
+// - hacemos late join adjustment
+// - repartimos jugadores desde TypeScript
+//
+// PostgreSQL se encarga de todo.
+// ============================================================
 
-  const supabase = await createClient();
-  
-  // 1. Obtener las ligas del usuario
-  const { data: participations, error } = await supabase
+export async function joinLeague(
+  inviteCode: string,
+  userId: string,
+) {
+  const session = await getSession();
+
+  if (
+    !session ||
+    session.user.id !== userId
+  ) {
+    throw new Error(
+      "Acceso no autorizado",
+    );
+  }
+
+  const cleanCode =
+    inviteCode
+      .trim()
+      .toUpperCase();
+
+  if (!cleanCode) {
+    return {
+      success: false,
+      error:
+        "Introduce un código de invitación.",
+    };
+  }
+
+  const supabase =
+    await createClient();
+
+  try {
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
+      "join_fantasy_league",
+      {
+        p_invite_code:
+          cleanCode,
+      },
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    revalidatePath("/");
+    revalidatePath("/leagues");
+    revalidatePath("/team");
+    revalidatePath("/market");
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error(
+      "Error joining league:",
+      error,
+    );
+
+    const rawMessage =
+      error instanceof Error
+        ? error.message
+        : "Error al unirse a la liga";
+
+    let message = rawMessage;
+
+    if (
+      rawMessage.includes(
+        "Invalid invitation code",
+      )
+    ) {
+      message =
+        "Código de invitación no válido.";
+    }
+
+    if (
+      rawMessage.includes(
+        "You already belong to this league",
+      )
+    ) {
+      message =
+        "Ya perteneces a esta liga.";
+    }
+
+    if (
+      rawMessage.includes(
+        "League is full",
+      )
+    ) {
+      message =
+        "La liga está completa.";
+    }
+
+    if (
+      rawMessage.includes(
+        "Not enough free players",
+      )
+    ) {
+      message =
+        "No quedan suficientes jugadores libres para entrar en esta liga.";
+    }
+
+    return {
+      success: false,
+      error: message,
+    };
+  }
+}
+
+// ============================================================
+// GET USER LEAGUES
+// ============================================================
+
+export async function getUserLeagues(
+  userId: string,
+) {
+  const session = await getSession();
+
+  if (
+    !session ||
+    session.user.id !== userId
+  ) {
+    return [];
+  }
+
+  const supabase =
+    await createClient();
+
+  const {
+    data: participations,
+    error,
+  } = await supabase
     .from("league_participants")
     .select(`
       current_budget,
@@ -217,27 +304,102 @@ export async function getUserLeagues(userId: string) {
       leagues (
         id,
         name,
-        invite_code
+        invite_code,
+        creator_id,
+        max_participants,
+        budget_limit,
+        is_public,
+        created_at
       )
     `)
-    .eq("profile_id", userId);
+    .eq(
+      "profile_id",
+      userId,
+    );
 
   if (error) {
-    console.error("Error fetching leagues:", error);
+    console.error(
+      "Error fetching leagues:",
+      error,
+    );
+
     return [];
   }
 
-  return participations;
+  return participations ?? [];
 }
 
-export async function getLeagueClassification(leagueId: string) {
-  const supabase = await createClient();
-  
-  // 1. Obtener participantes con puntos directamente de league_participants
-  const { data: participants, error: pError } = await supabase
+// ============================================================
+// GET LEAGUE CLASSIFICATION
+// ============================================================
+//
+// V1:
+//
+// - clasificación
+// - roster de cada manager
+//
+// NO:
+// - powerups
+// - locks
+// - casters
+// ============================================================
+
+export async function getLeagueClassification(
+  leagueId: string,
+) {
+  const session =
+    await getSession();
+
+  if (!session) {
+    throw new Error(
+      "Acceso no autorizado",
+    );
+  }
+
+  const supabase =
+    await createClient();
+
+  // ==========================================================
+  // Comprobar que pertenece a la liga
+  // ==========================================================
+
+  const {
+    data: membership,
+    error: membershipError,
+  } = await supabase
+    .from("league_participants")
+    .select("profile_id")
+    .eq(
+      "league_id",
+      leagueId,
+    )
+    .eq(
+      "profile_id",
+      session.user.id,
+    )
+    .maybeSingle();
+
+  if (
+    membershipError ||
+    !membership
+  ) {
+    throw new Error(
+      "No perteneces a esta liga",
+    );
+  }
+
+  // ==========================================================
+  // PARTICIPANTES
+  // ==========================================================
+
+  const {
+    data: participants,
+    error: participantsError,
+  } = await supabase
     .from("league_participants")
     .select(`
       profile_id,
+      current_budget,
       total_points,
       profiles (
         id,
@@ -245,63 +407,552 @@ export async function getLeagueClassification(leagueId: string) {
         avatar_url
       )
     `)
-    .eq("league_id", leagueId)
-    .order('total_points', { ascending: false });
+    .eq(
+      "league_id",
+      leagueId,
+    )
+    .order(
+      "total_points",
+      {
+        ascending: false,
+      },
+    );
 
-  if (pError) throw pError;
+  if (participantsError) {
+    throw participantsError;
+  }
 
-  const participantsWithPoints = participants;
+  // ==========================================================
+  // ROSTERS
+  // ==========================================================
 
-  // 4. Obtener rosters de todos los participantes de esta liga (solo activos)
-  const { data: rosters, error: rError } = await supabase
+  const {
+    data: rosters,
+    error: rostersError,
+  } = await supabase
     .from("user_rosters")
     .select(`
+      id,
       profile_id,
       player_id,
+      acquisition_price,
       release_clause,
+      acquired_at,
+      clause_protected_until,
+      slot_type,
+      is_starter,
       pro_players (
         id,
         nickname,
+        full_name,
         role,
-        pro_teams (tag)
+        market_value,
+        photo_url,
+        country_code,
+        pro_teams (
+          id,
+          name,
+          tag,
+          logo_url,
+          region
+        )
       )
     `)
-    .eq("league_id", leagueId)
-    .eq("is_active", true);
+    .eq(
+      "league_id",
+      leagueId,
+    )
+    .eq(
+      "is_active",
+      true,
+    );
 
-  if (rError) throw rError;
-
-  // Agrupar rosters por profile_id
-  const rosterMap = new Map();
-  rosters.forEach((r: any) => {
-    if (!rosterMap.has(r.profile_id)) rosterMap.set(r.profile_id, []);
-    if (r.pro_players) {
-        rosterMap.get(r.profile_id).push({
-            ...r.pro_players,
-            release_clause: r.release_clause
-        });
-    }
-  });
-
-  // 5. Obtener bloqueos (LOCK) activos en esta liga/semana
-  const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).single();
-  let activeLocks: string[] = [];
-  if (activeGw) {
-      const { data: locks } = await supabase
-        .from('active_powerups')
-        .select('target_player_id, powerup_types!inner(code)')
-        .eq('league_id', leagueId)
-        .eq('gameweek_id', activeGw.id)
-        .eq('powerup_types.code', 'LOCK');
-      
-      activeLocks = (locks || []).map((l: any) => l.target_player_id);
+  if (rostersError) {
+    throw rostersError;
   }
 
+  // ==========================================================
+  // AGRUPAR ROSTERS POR MANAGER
+  // ==========================================================
+
+  const rosterMap =
+    new Map<
+      string,
+      any[]
+    >();
+
+  for (
+    const roster of
+      rosters ?? []
+  ) {
+    if (
+      !rosterMap.has(
+        roster.profile_id,
+      )
+    ) {
+      rosterMap.set(
+        roster.profile_id,
+        [],
+      );
+    }
+
+    if (
+      roster.pro_players
+    ) {
+      rosterMap
+        .get(
+          roster.profile_id,
+        )
+        ?.push({
+          roster_id:
+            roster.id,
+
+          ...roster.pro_players,
+
+          acquisition_price:
+            roster.acquisition_price,
+
+          release_clause:
+            roster.release_clause,
+
+          acquired_at:
+            roster.acquired_at,
+
+          clause_protected_until:
+            roster.clause_protected_until,
+
+          slot_type:
+            roster.slot_type,
+
+          is_starter:
+            roster.is_starter,
+        });
+    }
+  }
+
+  // ==========================================================
+  // RESULTADO
+  // ==========================================================
+
+  const standings =
+    (participants ?? []).map(
+      (
+        participant: any,
+        index,
+      ) => ({
+        rank:
+          index + 1,
+
+        ...participant,
+
+        roster:
+          rosterMap.get(
+            participant.profile_id,
+          ) ?? [],
+      }),
+    );
+
   return {
-      standings: participantsWithPoints.map((p: any) => ({
-        ...p,
-        roster: rosterMap.get(p.profiles.id) || []
-      })),
-      activeLocks
+    standings,
+
+    // Lo dejamos temporalmente para no romper
+    // componentes antiguos que aún hagan:
+    //
+    // const { standings, activeLocks } = ...
+    //
+    // Pero en V1 siempre está vacío.
+    activeLocks: [],
+  };
+}
+
+// ============================================================
+// GET LEAGUE GAMEWEEK OVERVIEW
+// ============================================================
+
+export async function getLeagueGameweekOverview(
+  leagueId: string,
+  requestedGameweekId?: number | null,
+) {
+  const session = await getSession();
+
+  if (!session) {
+    throw new Error("Acceso no autorizado");
+  }
+
+  const supabase = await createClient();
+
+  // ==========================================================
+  // COMPROBAR MEMBRESÍA
+  // ==========================================================
+
+  const { data: membership, error: membershipError } =
+    await supabase
+      .from("league_participants")
+      .select("profile_id")
+      .eq("league_id", leagueId)
+      .eq("profile_id", session.user.id)
+      .maybeSingle();
+
+  if (membershipError || !membership) {
+    throw new Error("No perteneces a esta liga");
+  }
+
+  // ==========================================================
+  // JORNADAS
+  // ==========================================================
+
+  const { data: gameweeks, error: gameweeksError } =
+    await supabase
+      .from("gameweeks")
+      .select(`
+        id,
+        name,
+        start_date,
+        end_date,
+        is_active,
+        is_locked,
+        is_final
+      `)
+      .order("start_date", {
+        ascending: false,
+      });
+
+  if (gameweeksError) {
+    throw gameweeksError;
+  }
+
+  const availableGameweeks =
+    gameweeks ?? [];
+
+  /*
+   * Prioridad:
+   *
+   * 1. jornada solicitada
+   * 2. jornada activa
+   * 3. última jornada disponible
+   */
+  let selectedGameweek =
+    requestedGameweekId
+      ? availableGameweeks.find(
+          (gw) =>
+            gw.id ===
+            requestedGameweekId,
+        )
+      : null;
+
+  if (!selectedGameweek) {
+    selectedGameweek =
+      availableGameweeks.find(
+        (gw) => gw.is_active,
+      ) ??
+      availableGameweeks[0] ??
+      null;
+  }
+
+  if (!selectedGameweek) {
+    return {
+      gameweeks: [],
+      selectedGameweek: null,
+      standings: [],
+    };
+  }
+
+  // ==========================================================
+  // PARTICIPANTES
+  // ==========================================================
+
+  const { data: participants, error: participantsError } =
+    await supabase
+      .from("league_participants")
+      .select(`
+        profile_id,
+        total_points,
+        profiles (
+          id,
+          username,
+          avatar_url
+        )
+      `)
+      .eq("league_id", leagueId);
+
+  if (participantsError) {
+    throw participantsError;
+  }
+
+  // ==========================================================
+  // RESULTADOS DE LA JORNADA
+  // ==========================================================
+
+  const { data: scores, error: scoresError } =
+    await supabase
+      .from("participant_scores_history")
+      .select(`
+        profile_id,
+        points_earned,
+        rank_in_league,
+        rewarded
+      `)
+      .eq("league_id", leagueId)
+      .eq(
+        "gameweek_id",
+        selectedGameweek.id,
+      );
+
+  if (scoresError) {
+    throw scoresError;
+  }
+
+  const scoreMap = new Map<
+    string,
+    {
+      points_earned: number;
+      rank_in_league: number | null;
+      rewarded: boolean;
+    }
+  >();
+
+  for (const score of scores ?? []) {
+    scoreMap.set(
+      score.profile_id,
+      {
+        points_earned:
+          Number(
+            score.points_earned,
+          ) || 0,
+
+        rank_in_league:
+          score.rank_in_league,
+
+        rewarded:
+          score.rewarded,
+      },
+    );
+  }
+
+  // ==========================================================
+  // SNAPSHOT DE TITULARES
+  // ==========================================================
+
+  const { data: lineups, error: lineupsError } =
+    await supabase
+      .from("gameweek_lineups")
+      .select(`
+        id,
+        profile_id,
+        player_id,
+        roster_id,
+        captured_at,
+        pro_players (
+          id,
+          nickname,
+          full_name,
+          role,
+          market_value,
+          photo_url,
+          country_code,
+          pro_teams (
+            id,
+            name,
+            tag,
+            logo_url,
+            region
+          )
+        )
+      `)
+      .eq("league_id", leagueId)
+      .eq(
+        "gameweek_id",
+        selectedGameweek.id,
+      );
+
+  if (lineupsError) {
+    throw lineupsError;
+  }
+
+  // ==========================================================
+  // PARTIDOS DE LA JORNADA
+  // ==========================================================
+
+  const { data: matches, error: matchesError } =
+    await supabase
+      .from("matches")
+      .select("id")
+      .eq(
+        "gameweek_id",
+        selectedGameweek.id,
+      );
+
+  if (matchesError) {
+    throw matchesError;
+  }
+
+  const matchIds =
+    (matches ?? []).map(
+      (match) => match.id,
+    );
+
+  // ==========================================================
+  // ACTUACIONES DE JUGADORES
+  // ==========================================================
+
+  let performances: Array<{
+    player_id: string;
+    fantasy_points: number;
+  }> = [];
+
+  if (matchIds.length > 0) {
+    const {
+      data: performanceRows,
+      error: performancesError,
+    } = await supabase
+      .from("player_performances")
+      .select(`
+        player_id,
+        fantasy_points
+      `)
+      .in(
+        "match_id",
+        matchIds,
+      );
+
+    if (performancesError) {
+      throw performancesError;
+    }
+
+    performances =
+      performanceRows ?? [];
+  }
+
+  // ==========================================================
+  // SUMAR PUNTOS POR JUGADOR
+  // ==========================================================
+
+  const playerPoints =
+    new Map<string, number>();
+
+  for (const performance of performances) {
+    const current =
+      playerPoints.get(
+        performance.player_id,
+      ) ?? 0;
+
+    playerPoints.set(
+      performance.player_id,
+      current +
+        Number(
+          performance.fantasy_points,
+        ),
+    );
+  }
+
+  // ==========================================================
+  // AGRUPAR SNAPSHOT POR MANAGER
+  // ==========================================================
+
+  const lineupMap =
+    new Map<string, any[]>();
+
+  for (const lineup of lineups ?? []) {
+    if (
+      !lineupMap.has(
+        lineup.profile_id,
+      )
+    ) {
+      lineupMap.set(
+        lineup.profile_id,
+        [],
+      );
+    }
+
+    if (!lineup.pro_players) {
+      continue;
+    }
+
+    lineupMap
+      .get(
+        lineup.profile_id,
+      )
+      ?.push({
+        ...lineup.pro_players,
+
+        roster_id:
+          lineup.roster_id,
+
+        captured_at:
+          lineup.captured_at,
+
+        gameweek_points:
+          playerPoints.get(
+            lineup.player_id,
+          ) ?? 0,
+      });
+  }
+
+  // ==========================================================
+  // CLASIFICACIÓN DE ESTA JORNADA
+  // ==========================================================
+
+  const standings =
+    (participants ?? [])
+      .map((participant: any) => {
+        const score =
+          scoreMap.get(
+            participant.profile_id,
+          );
+
+        return {
+          profile_id:
+            participant.profile_id,
+
+          profiles:
+            participant.profiles,
+
+          total_points:
+            Number(
+              participant.total_points,
+            ) || 0,
+
+          gameweek_points:
+            score?.points_earned ??
+            0,
+
+          gameweek_rank:
+            score?.rank_in_league ??
+            null,
+
+          rewarded:
+            score?.rewarded ??
+            false,
+
+          lineup:
+            lineupMap.get(
+              participant.profile_id,
+            ) ?? [],
+        };
+      })
+      .sort((a, b) => {
+        if (
+          a.gameweek_rank !== null &&
+          b.gameweek_rank !== null
+        ) {
+          return (
+            a.gameweek_rank -
+            b.gameweek_rank
+          );
+        }
+
+        return (
+          b.gameweek_points -
+          a.gameweek_points
+        );
+      });
+
+  return {
+    gameweeks:
+      availableGameweeks,
+
+    selectedGameweek,
+
+    standings,
   };
 }

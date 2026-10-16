@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { PlayerCard } from "@/components/PlayerCard";
-import { setStarterStatus, getUserFullRoster } from "@/lib/actions/roster";
-import Link from "next/link";
 import { haptic } from "@/lib/utils/haptics";
 import { useRouter } from "next/navigation";
 // import { FeedbackBanner } from "@/components/FeedbackBanner";
@@ -13,24 +11,12 @@ interface TeamViewProps {
   initialRoster: any[];
   initialLeagues: any[];
   profileId: string;
-  initialInventory: any[];
-  initialActivePowerUps: any[];
-  activeGameweekId?: any;
-  hasScoutActive?: boolean;
-  casters?: any[];
-  initialActiveCasters?: any[];
 }
 
 export default function TeamView({
   initialRoster,
   initialLeagues,
   profileId,
-  initialInventory,
-  initialActivePowerUps,
-  activeGameweekId,
-  hasScoutActive = false,
-  casters = [],
-  initialActiveCasters = [],
 }: TeamViewProps) {
   const [roster, setRoster] = useState(initialRoster);
   const [activeLeagueId, setActiveLeagueId] = useState(
@@ -38,20 +24,11 @@ export default function TeamView({
   );
   const [leagues, setLeagues] = useState(initialLeagues);
   const router = useRouter();
-  const [inventory, setInventory] = useState(initialInventory);
-  const [activePowerUps, setActivePowerUps] = useState(initialActivePowerUps);
-  const [activeCasters, setActiveCasters] = useState(initialActiveCasters);
-  const [availableCasters, setAvailableCasters] = useState(casters);
-  const [status, setStatus] = useState<{
-    type: string;
-    message: string;
-  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [auctions, setAuctions] = useState<any[]>([]);
-  const [selectedPowerUp, setSelectedPowerUp] = useState<any>(null);
-  const [selectedCaster, setSelectedCaster] = useState<any>(null);
+  const [myListings, setMyListings] = useState<any[]>([]);
 
-  const [auctionDialog, setAuctionDialog] = useState<{
+  const [listingDialog, setListingDialog] = useState<{
     show: boolean;
     player: any | null;
     price: string;
@@ -61,6 +38,36 @@ export default function TeamView({
     price: "",
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [listingSaving, setListingSaving] = useState(false);
+  const listingInFlight = useRef(false);
+  const [listingError, setListingError] = useState<string | null>(null);
+
+  function successAlert(title: string, description?: string) {
+    sileo.success({
+      title,
+      description,
+      duration: 7000,
+    } as any);
+  }
+
+  function errorAlert(title: string, description?: string) {
+    sileo.error({
+      title,
+      description,
+      duration: 9000,
+    } as any);
+  }
+  // Preserve the exact price in VP; rounding to tenths can violate the V1 range.
+  function priceInMillions(price: number) {
+    return String(price / 1_000_000);
+  }
+
+  function closeListingDialog() {
+    if (listingInFlight.current) return;
+    setListingError(null);
+    setListingSaving(false);
+    setListingDialog({ show: false, player: null, price: "" });
+  }
 
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -78,180 +85,57 @@ export default function TeamView({
     () => leagues.find((l) => l.leagues.id === activeLeagueId),
     [activeLeagueId, leagues],
   );
+
+  const starters = useMemo(
+    () =>
+      roster.filter((r) => r.is_starter === true || r.slot_type === "starter"),
+    [roster],
+  );
+
+  const substitutes = useMemo(
+    () =>
+      roster.filter(
+        (r) =>
+          r.slot_type === "bench" ||
+          r.slot_type === "substitute" ||
+          (!r.is_starter && r.slot_type !== "starter"),
+      ),
+    [roster],
+  );
+
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const { getUserFullRoster } = await import("@/lib/actions/roster");
-      const { fetchActiveAuctions } = await import("@/lib/actions/market");
-      const { getUserInventory, getActivePowerUps } =
-        await import("@/lib/actions/inventory");
-      const { getActiveCasters, getCasters } =
-        await import("@/lib/actions/casters");
 
-      const [
-        rosterData,
-        auctionsData,
-        inventoryData,
-        powerUpsData,
-        activeCasterData,
-        casterList,
-      ] = await Promise.all([
-        getUserFullRoster(activeLeagueId, profileId),
-        fetchActiveAuctions(activeLeagueId),
-        getUserInventory(activeLeagueId, profileId),
-        getActivePowerUps(activeLeagueId, profileId),
-        activeGameweekId
-          ? getActiveCasters(activeLeagueId, profileId, activeGameweekId)
-          : Promise.resolve([]),
-        getCasters(),
-      ]);
+      try {
+        const { getUserFullRoster } = await import("@/lib/actions/roster");
+        const { getMarketDashboard } = await import("@/lib/actions/market");
 
-      setRoster(rosterData);
-      setAuctions(auctionsData);
-      setInventory(inventoryData);
-      setActivePowerUps(powerUpsData);
-      setActiveCasters(activeCasterData);
-      setAvailableCasters(casterList);
-      setLoading(false);
-    }
-    if (activeLeagueId) loadData();
-  }, [activeLeagueId, profileId, activeGameweekId, refreshTrigger]);
+        const [rosterData, marketData] = await Promise.all([
+          getUserFullRoster(activeLeagueId, profileId),
+          getMarketDashboard(activeLeagueId, profileId),
+        ]);
 
-  // Auto-dismiss status banner after 5 seconds
-  useEffect(() => {
-    if (status) {
-      const timer = setTimeout(() => setStatus(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [status]);
-
-  async function handleHireCaster(casterId: string, nickname: string) {
-    setConfirmDialog({
-      show: true,
-      title: "Contratar Analista",
-      message: `¿Deseas contratar a ${nickname} para tu mesa de análisis por esta jornada?`,
-      onConfirm: async () => {
-        haptic.medium();
-        setLoading(true);
-        const { hireCaster } = await import("@/lib/actions/casters");
-        const res = await hireCaster(
-          activeLeagueId,
-          profileId,
-          activeGameweekId,
-          casterId,
-        );
-
-        if (res.success) {
-          haptic.success();
-          sileo.success({
-            title: "Contrato firmado",
-            description: `${nickname} se une a tu mesa de análisis`,
-          });
-          setSelectedCaster(null);
-          setRefreshTrigger((prev) => prev + 1);
-          router.refresh();
-        } else {
-          haptic.error();
-          sileo.error({
-            title: "No se pudo contratar",
-            description: res.error as string,
-          });
-        }
+        setRoster(rosterData);
+        setAuctions(marketData.auctions || []);
+        setMyListings(marketData.myListings || []);
+      } finally {
         setLoading(false);
-      },
-    });
-  }
+      }
+    }
 
-  // Grouping by slot type
-  const starters = useMemo(
-    () => roster.filter((r) => r.slot_type === "starter"),
-    [roster],
-  );
-  const substitutes = useMemo(
-    () => roster.filter((r) => r.slot_type === "substitute"),
-    [roster],
-  );
-
-  const isLocked = (playerId: string) => {
-    return activePowerUps.some(
-      (ap) =>
-        ap.target_player_id === playerId && ap.powerup_types?.code === "LOCK",
-    );
-  };
-
-  const isCaptain = (playerId: string) => {
-    return activePowerUps.some(
-      (ap) =>
-        ap.target_player_id === playerId &&
-        ap.powerup_types?.code === "CAPTAIN",
-    );
-  };
-
-  const getBoostedRoles = useMemo(() => {
-    return activeCasters
-      .map((ac) => {
-        const code = ac.casters.buff_code;
-        if (code === "KAQUKA_TACTICS") return "Iniciador";
-        if (code === "URI_CONTROL") return "Centinela";
-        if (code === "IKER_HEROIC") return "Duelista";
-        if (code === "LUIGI_STATS") return "Controlador";
-        return null;
-      })
-      .filter(Boolean);
-  }, [activeCasters]);
-
-  const hasUlisesBoost = useMemo(
-    () => activeCasters.some((ac) => ac.casters.buff_code === "ULISES_HYPE"),
-    [activeCasters],
-  );
-
-  async function handleActivate(
-    powerUpTypeId: string,
-    targetPlayerId?: string,
-  ) {
-    setConfirmDialog({
-      show: true,
-      title: "Activar Carta",
-      message: "¿Confirmar activación de carta de poder?",
-      onConfirm: async () => {
-        haptic.medium();
-        setLoading(true);
-        const { activatePowerUp } = await import("@/lib/actions/inventory");
-        const res = await activatePowerUp(
-          activeLeagueId,
-          profileId,
-          powerUpTypeId,
-          targetPlayerId,
-        );
-
-        if (res.success) {
-          haptic.success();
-          sileo.success({
-            title: "Carta activada",
-            description: res.message || "La carta se activó correctamente",
-          });
-          setRefreshTrigger((prev) => prev + 1);
-          router.refresh();
-        } else {
-          haptic.error();
-          sileo.error({
-            title: "Error al activar carta",
-            description: res.error as string,
-          });
-        }
-        setSelectedPowerUp(null);
-        setLoading(false);
-      },
-    });
-  }
+    if (activeLeagueId) {
+      void loadData();
+    }
+  }, [activeLeagueId, profileId, refreshTrigger]);
 
   async function handleSlotChange(
     player_id: string,
     nickname: string,
-    newSlot: "starter" | "substitute",
+    newSlot: "starter" | "bench",
   ) {
     const actionText =
-      newSlot === "starter" ? "Ascender a Titular" : "Mover a Suplentes";
+      newSlot === "starter" ? "Ascender a Titular" : "Mover al Banquillo";
 
     setConfirmDialog({
       show: true,
@@ -271,139 +155,155 @@ export default function TeamView({
           return;
         }
 
-        if (newSlot === "substitute" && substitutes.length >= 5) {
-          sileo.error({
-            title: "Límite alcanzado",
-            description: "Máximo 5 suplentes.",
-          });
-          setLoading(false);
-          return;
-        }
-
         const { setStarterStatus } = await import("@/lib/actions/roster");
 
-        await sileo.promise(
-          setStarterStatus(activeLeagueId, profileId, player_id, newSlot),
-          {
-            loading: {
-              title: "Actualizando alineación...",
-            },
-            success: (res) => {
-              if (!res.success) {
-                throw new Error(res.error as string);
-              }
+        try {
+          const res = await setStarterStatus(
+            activeLeagueId,
+            profileId,
+            player_id,
+            newSlot,
+          );
 
-              // 👉 lógica de éxito
-              haptic.success();
-              setRoster((prev) =>
-                prev.map((r) =>
-                  r.player_id === player_id
-                    ? {
-                        ...r,
-                        slot_type: newSlot,
-                        is_starter: newSlot === "starter",
-                      }
-                    : r,
-                ),
-              );
-              setRefreshTrigger((prev) => prev + 1);
-              router.refresh();
+          if (!res.success) {
+            throw new Error(
+              res.error || "No se pudo actualizar la alineación.",
+            );
+          }
 
-              return {
-                title: "Movimiento realizado",
-                description: `${nickname} movido a ${
-                  newSlot === "starter" ? "Titulares" : "Suplentes"
-                }`,
-              };
-            },
-            error: (err) => {
-              haptic.error();
-              return {
-                title: "Error",
-                description:
-                  err instanceof Error ? err.message : "No se pudo completar",
-              };
-            },
-          },
-        );
+          setRoster((prev) =>
+            prev.map((r) =>
+              r.player_id === player_id
+                ? {
+                    ...r,
+                    slot_type: newSlot,
+                    is_starter: newSlot === "starter",
+                  }
+                : r,
+            ),
+          );
 
+          setRefreshTrigger((prev) => prev + 1);
+
+          haptic.success();
+
+          successAlert(
+            newSlot === "starter"
+              ? "Jugador ascendido"
+              : "Jugador al banquillo",
+            newSlot === "starter"
+              ? `${nickname} ahora forma parte del quinteto titular.`
+              : `${nickname} ha pasado al banquillo.`,
+          );
+        } catch (error: any) {
+          haptic.error();
+
+          errorAlert(
+            "No se pudo cambiar la alineación",
+            error instanceof Error
+              ? error.message
+              : "No se pudo completar la operación.",
+          );
+        } finally {
+          setLoading(false);
+        }
         setLoading(false);
       },
     });
   }
 
-  async function handleSell(player: any) {
-    haptic.warning();
-    setAuctionDialog({
+  function handleSell(rosterEntry: any) {
+    if (listingInFlight.current) return;
+    setListingError(null);
+    setListingSaving(false);
+    setListingDialog({
       show: true,
-      player: player,
-      price: (player.market_value / 1000000).toFixed(1),
+      player: {
+        ...rosterEntry.pro_players,
+        roster_id: rosterEntry.id,
+      },
+      price: priceInMillions(Number(rosterEntry.pro_players.market_value)),
     });
   }
 
-  async function confirmAuction() {
-    if (!auctionDialog.player) return;
+  async function confirmListing() {
+    if (listingInFlight.current) return;
+    setListingError(null);
+    const player = listingDialog.player;
 
-    const player = auctionDialog.player;
-    const minPrice = Math.floor(player.market_value * 0.8);
-    const maxPrice = Math.floor(player.market_value * 1.15);
-    const startingPrice = Math.floor(parseFloat(auctionDialog.price) * 1000000);
-
-    if (isNaN(startingPrice) || startingPrice <= 0) {
-      haptic.error();
-      sileo.error({
-        title: "Precio inválido",
-        description: "Introduce un valor válido para la subasta",
-      });
+    if (!player?.roster_id || !profileId) {
+      setListingError(
+        "No se ha encontrado el jugador o la sesión no es válida.",
+      );
       return;
     }
 
-    if (startingPrice < minPrice) {
-      haptic.error();
-      sileo.error({
-        title: "Precio demasiado bajo",
-        description: `Mínimo: ${(minPrice / 1000000).toFixed(2)}M VP`,
-      });
+    const minPrice = Number(player.market_value);
+    const maxPrice = Math.floor(minPrice * 1.15);
+    if (!Number.isSafeInteger(minPrice) || minPrice <= 0) {
+      setListingError("El valor de mercado del jugador no es válido.");
       return;
     }
 
-    if (startingPrice > maxPrice) {
-      haptic.error();
-      sileo.error({
-        title: "Precio demasiado alto",
-        description: `Máximo: ${(maxPrice / 1000000).toFixed(2)}M VP`,
-      });
+    const normalizedPrice = listingDialog.price.trim().replace(",", ".");
+    const askingPrice = Math.round(Number(normalizedPrice) * 1_000_000);
+    if (
+      !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalizedPrice) ||
+      !Number.isSafeInteger(askingPrice) ||
+      askingPrice <= 0
+    ) {
+      setListingError("Introduce un precio válido en millones de VP.");
+      return;
+    }
+    if (askingPrice < minPrice || askingPrice > maxPrice) {
+      setListingError(
+        "El precio debe estar entre " +
+          priceInMillions(minPrice) +
+          " y " +
+          priceInMillions(maxPrice) +
+          " M VP (100%–115%).",
+      );
       return;
     }
 
-    setAuctionDialog({ show: false, player: null, price: "" });
-    haptic.heavy();
-    setLoading(true);
+    listingInFlight.current = true;
+    setListingSaving(true);
+    try {
+      const { listPlayerForSale } = await import("@/lib/actions/market");
+      const res = await listPlayerForSale(
+        player.roster_id,
+        askingPrice,
+        profileId,
+      );
+      if (!res.success) {
+        throw new Error(res.error || "No se pudo poner el jugador en venta.");
+      }
 
-    const { createAuction } = await import("@/lib/actions/market");
-    const res = await createAuction(
-      activeLeagueId,
-      profileId,
-      player.id,
-      startingPrice,
-    );
-
-    if (res.success) {
-      haptic.success();
-      sileo.success({
-        title: "Subasta creada",
-        description: `${player.nickname} ya está en el mercado durante 24h`,
+      // Close only after the server confirms the listing, before optional feedback.
+      setListingDialog({
+        show: false,
+        player: null,
+        price: "",
       });
+
       setRefreshTrigger((prev) => prev + 1);
-      router.refresh();
-    } else {
-      haptic.error();
-      sileo.error({
-        title: "No se pudo crear la subasta",
-        description: res.error as string,
-      });
+
+      haptic.success();
+
+      successAlert(
+        "Jugador puesto en venta",
+        `${player.nickname} ya puede recibir ofertas.`,
+      );
+    } catch (error) {
+      setListingError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo completar la operación",
+      );
+    } finally {
+      listingInFlight.current = false;
+      setListingSaving(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -459,7 +359,7 @@ export default function TeamView({
                 Agentes
               </p>
               <p className="text-2xl font-black italic tracking-wider cursor-default text-white group-hover:scale-105 origin-left transition-transform">
-                {roster.length} / 10
+                {roster.length}
               </p>
             </div>
             <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-v-red shadow-[0_0_10px_rgba(255,70,85,0.5)]" />
@@ -468,327 +368,6 @@ export default function TeamView({
       </div>
 
       {/* <FeedbackBanner status={status} /> */}
-
-      {/* Inventario de Cartas */}
-      <div className="v-panel p-4 space-y-4">
-        <div className="flex justify-between items-end border-b border-white/5 pb-2">
-          <div>
-            <h2 className="text-2xl italic uppercase text-white tracking-widest leading-none">
-              Inventario
-            </h2>
-            <p className="text-[9px] uppercase tracking-[0.2em] text-v-red font-black mt-1">
-              Suministros Tácticos
-            </p>
-          </div>
-          <Link
-            href="/shop"
-            className="group flex items-center gap-2 text-[10px] font-black uppercase bg-v-navy/80 border border-white/10 px-3 py-1.5 hover:bg-v-red hover:text-white transition-all"
-          >
-            <span>Tienda</span>
-            <svg
-              className="w-3 h-3 translate-x-0 group-hover:translate-x-1 transition-transform"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="3"
-                d="M14 5l7 7m0 0l-7 7m7-7H3"
-              ></path>
-            </svg>
-          </Link>
-        </div>
-
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
-          {inventory.length > 0 ? (
-            inventory.map((item: any) => {
-              const isActive = activePowerUps.some(
-                (ap) => ap.powerup_type_id === item.powerup_types.id,
-              );
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    haptic.light();
-                    setSelectedPowerUp(
-                      selectedPowerUp?.id === item.id ? null : item,
-                    );
-                  }}
-                  className={`shrink-0 relative w-24 h-32 v-panel flex flex-col items-center justify-center gap-2 transition-all border-2 snap-center
-                            ${
-                              selectedPowerUp?.id === item.id
-                                ? "border-v-red bg-v-red/20 shadow-red scale-105"
-                                : isActive
-                                  ? "border-green-500/50 bg-green-500/10"
-                                  : "border-white/5 bg-black/40 hover:border-white/20"
-                            }`}
-                >
-                  <span className="text-4xl drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
-                    {item.powerup_types.icon}
-                  </span>
-                  <span
-                    className={`text-[8px] font-black uppercase text-center px-1 leading-tight tracking-wider ${isActive ? "text-green-500" : ""}`}
-                  >
-                    {item.powerup_types.name}
-                  </span>
-                  {isActive && (
-                    <div className="absolute top-1 left-1 flex gap-0.5">
-                      <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-                    </div>
-                  )}
-                  <span className="absolute top-2 right-2 bg-v-red text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm shadow-xl">
-                    x{item.quantity}
-                  </span>
-                </button>
-              );
-            })
-          ) : (
-            <div className="w-full py-8 text-center border-2 border-dashed border-white/5 opacity-30 rounded-lg">
-              <p className="text-[10px] font-black uppercase tracking-widest italic">
-                Suministros Agotados
-              </p>
-            </div>
-          )}
-        </div>
-
-        {selectedPowerUp && (
-          <div className="bg-v-red/10 border border-v-red/30 p-3 animate-in slide-in-from-left duration-200">
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex-1">
-                <p className="text-[10px] font-black uppercase text-v-red tracking-widest mb-1">
-                  {selectedPowerUp.powerup_types.code === "MONEY"
-                    ? "💡 ACCIÓN DIRECTA"
-                    : selectedPowerUp.powerup_types.code === "SPY"
-                      ? "🛒 USO EN MERCADO"
-                      : "🎯 SELECCIONA OBJETIVO"}
-                </p>
-                <p className="text-xs text-v-white/80 leading-tight">
-                  {activePowerUps.some(
-                    (ap) =>
-                      ap.powerup_type_id === selectedPowerUp.powerup_types.id,
-                  )
-                    ? `Ya has activado esta carta en esta jornada. Solo se permite una por tipo.`
-                    : selectedPowerUp.powerup_types.code === "MONEY"
-                      ? `¿Activar "${selectedPowerUp.powerup_types.name}" para recibir 5M VP extra ahora?`
-                      : selectedPowerUp.powerup_types.code === "SPY"
-                        ? `El "${selectedPowerUp.powerup_types.name}" se utiliza directamente en el Mercado sobre las subastas.`
-                        : `Selecciona un agente de tu equipo para aplicar "${selectedPowerUp.powerup_types.name}".`}
-                </p>
-              </div>
-              {selectedPowerUp.powerup_types.code === "MONEY" && (
-                <button
-                  onClick={() =>
-                    handleActivate(selectedPowerUp.powerup_types.id)
-                  }
-                  disabled={activePowerUps.some(
-                    (ap) =>
-                      ap.powerup_type_id === selectedPowerUp.powerup_types.id,
-                  )}
-                  className="bg-v-red text-v-white px-4 py-2 text-[10px] font-black uppercase italic hover:brightness-110 transition-all shadow-lg shadow-v-red/20 disabled:opacity-50 disabled:grayscale"
-                >
-                  {activePowerUps.some(
-                    (ap) =>
-                      ap.powerup_type_id === selectedPowerUp.powerup_types.id,
-                  )
-                    ? "LÍMITE ALCANZADO"
-                    : "ACTIVAR YA"}
-                </button>
-              )}
-              {selectedPowerUp.powerup_types.code === "SPY" && (
-                <Link
-                  href="/market"
-                  className="bg-v-white text-v-navy px-4 py-2 text-[10px] font-black uppercase italic hover:bg-v-red hover:text-v-white transition-all"
-                >
-                  IR AL MERCADO
-                </Link>
-              )}
-            </div>
-            <button
-              onClick={() => setSelectedPowerUp(null)}
-              className="w-full mt-3 pt-2 border-t border-v-red/20 text-[7px] font-black uppercase text-v-white/40 hover:text-v-white transition-colors"
-            >
-              [ CANCELAR ]
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Mesa de Análisis (Casters) */}
-      <div className="v-panel p-4 space-y-4">
-        <div className="flex justify-between items-end">
-          <div>
-            <h2 className="text-xl italic uppercase text-v-white/80 leading-none">
-              Mesa de Análisis
-            </h2>
-            <p className="text-[7px] uppercase tracking-[0.2em] text-amber-500 font-black">
-              Broadcast Boosts Disponibles
-            </p>
-          </div>
-          {activeCasters.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 px-2 py-1">
-              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-              <span className="text-[8px] font-black uppercase text-amber-500">
-                LIVE ({activeCasters.length}/2)
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-4 overflow-x-auto p-2 scrollbar-hide">
-          {availableCasters?.length > 0 ? (
-            availableCasters.map((caster) => {
-              const isActive = activeCasters.some(
-                (ac) => ac.caster_id === caster.id,
-              );
-              return (
-                <button
-                  key={caster.id}
-                  onClick={() => {
-                    haptic.light();
-                    setSelectedCaster(
-                      selectedCaster?.id === caster.id ? null : caster,
-                    );
-                  }}
-                  className={`shrink-0 relative w-16 h-16 rounded-full v-panel flex items-center justify-center p-0.5 transition-all border-2 overflow-hidden
-                            ${
-                              selectedCaster?.id === caster.id
-                                ? "border-amber-500 scale-110 ring-4 ring-amber-500/10"
-                                : isActive
-                                  ? "border-amber-500 shadow-lg shadow-amber-500/20"
-                                  : "border-white/5 opacity-60 hover:opacity-100"
-                            }`}
-                >
-                  {caster.photo_url ? (
-                    <img
-                      src={caster.photo_url}
-                      alt={caster.nickname}
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-full bg-v-navy flex items-center justify-center text-v-white font-black italic text-xs cursor-pointer">
-                      {caster.nickname.substring(0, 2).toUpperCase()}
-                    </div>
-                  )}
-                  {isActive && (
-                    <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
-                      <span className="text-[14px]">🎙️</span>
-                    </div>
-                  )}
-                </button>
-              );
-            })
-          ) : (
-            <div className="w-full py-6 text-center border-2 border-dashed border-white/5 opacity-20 rounded-lg">
-              <p className="text-[10px] font-black uppercase tracking-widest italic">
-                No hay analistas disponibles
-              </p>
-            </div>
-          )}
-        </div>
-
-        {(selectedCaster || activeCasters.length > 0) && (
-          <div
-            className={`border p-4 animate-in slide-in-from-bottom duration-300 relative overflow-hidden group 
-                ${activeCasters.length > 0 && !selectedCaster ? "border-amber-500/30 bg-amber-500/5" : "border-v-white/10 bg-v-white/5"}`}
-          >
-            <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-amber-500/5 to-transparent pointer-events-none" />
-
-            <div className="flex justify-between items-start relative z-10">
-              <div>
-                <h3 className="text-2xl font-black italic uppercase text-v-white leading-none">
-                  {(selectedCaster || activeCasters[0].casters).nickname}
-                </h3>
-                <p className="text-[8px] font-black uppercase text-amber-500 tracking-[0.3em] mt-1">
-                  {(selectedCaster || activeCasters[0].casters).name}
-                </p>
-              </div>
-              {selectedCaster &&
-                !activeCasters.some(
-                  (ac) => ac.caster_id === selectedCaster.id,
-                ) && (
-                  <div className="text-right">
-                    <p className="text-[7px] font-black uppercase text-v-white/40 mb-1">
-                      Coste del Contrato
-                    </p>
-                    <p className="text-lg font-black italic text-v-white leading-none">
-                      {(selectedCaster.base_price / 1000000).toFixed(1)}M VP
-                    </p>
-                  </div>
-                )}
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 relative z-10">
-              <div className="space-y-1">
-                <p className="text-[7px] font-black uppercase text-v-white/30 tracking-widest">
-                  Análisis Operativo:
-                </p>
-                <p className="text-[10px] text-v-white/70 leading-relaxed italic">
-                  {(selectedCaster || activeCasters[0].casters).description}
-                </p>
-              </div>
-              <div className="bg-amber-500/10 border-l-2 border-amber-500 p-2">
-                <p className="text-[7px] font-black uppercase text-amber-500 tracking-widest mb-1">
-                  Broadcast Boost:
-                </p>
-                <p className="text-[11px] font-black uppercase italic text-amber-500 leading-tight">
-                  {
-                    (selectedCaster || activeCasters[0].casters)
-                      .buff_description
-                  }
-                </p>
-              </div>
-            </div>
-
-            {selectedCaster &&
-              !activeCasters.some(
-                (ac) => ac.caster_id === selectedCaster.id,
-              ) && (
-                <button
-                  onClick={() =>
-                    handleHireCaster(selectedCaster.id, selectedCaster.nickname)
-                  }
-                  disabled={loading || activeCasters.length >= 2}
-                  className="w-full mt-4 bg-amber-500 text-v-navy py-3 text-[10px] font-black uppercase cursor-pointer italic hover:bg-v-white transition-all shadow-lg shadow-amber-500/10 disabled:opacity-50"
-                >
-                  {activeCasters.length >= 2
-                    ? "MÁXIMO DE CONTRATOS"
-                    : loading
-                      ? "FIRMANDO..."
-                      : "FIRMAR CONTRATO DE JORNADA"}
-                </button>
-              )}
-
-            {!selectedCaster && activeCasters.length > 0 && (
-              <div className="mt-4 space-y-2 border-t border-amber-500/20 pt-3">
-                {activeCasters.map((ac, idx) => (
-                  <div
-                    key={ac.id}
-                    className="flex justify-between items-center bg-amber-500/5 p-2 rounded-sm"
-                  >
-                    <span className="text-[9px] font-black uppercase text-amber-500 italic">
-                      CONTRATO #{idx + 1}: {ac.casters.nickname}
-                    </span>
-                    <span className="text-[7px] font-black uppercase text-amber-500/60">
-                      ACTIVO
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {selectedCaster &&
-              activeCasters.some(
-                (ac) => ac.caster_id === selectedCaster.id,
-              ) && (
-                <p className="w-full mt-4 border-t border-amber-500/20 pt-2 text-center text-[7px] font-black uppercase text-amber-500/40 italic tracking-widest">
-                  ESTE ANALISTA YA ESTÁ EN TU MESA
-                </p>
-              )}
-          </div>
-        )}
-      </div>
 
       {/* Titulares (5) */}
       <div className="space-y-4">
@@ -803,59 +382,21 @@ export default function TeamView({
             <div key={r.player_id} className="pl-2">
               <PlayerCard
                 player={{ ...r.pro_players, releaseClause: r.release_clause }}
-                onAction={() => {
-                  if (selectedPowerUp) {
-                    if (
-                      activePowerUps.some(
-                        (ap) =>
-                          ap.powerup_type_id ===
-                          selectedPowerUp.powerup_types.id,
-                      )
-                    )
-                      return;
-                    handleActivate(
-                      selectedPowerUp.powerup_types.id,
-                      r.player_id,
-                    );
-                  } else {
-                    handleSlotChange(
-                      r.player_id,
-                      r.pro_players.nickname,
-                      "substitute",
-                    );
-                  }
-                }}
-                actionLabel={
-                  selectedPowerUp
-                    ? activePowerUps.some(
-                        (ap) =>
-                          ap.powerup_type_id ===
-                          selectedPowerUp.powerup_types.id,
-                      )
-                      ? "Límite"
-                      : `Aplicar ${selectedPowerUp.powerup_types.icon}`
-                    : "A Suplentes"
+                onAction={() =>
+                  handleSlotChange(r.player_id, r.pro_players.nickname, "bench")
                 }
-                actionDisabled={
-                  !!selectedPowerUp &&
-                  activePowerUps.some(
-                    (ap) =>
-                      ap.powerup_type_id === selectedPowerUp.powerup_types.id,
-                  )
+                actionLabel="A Suplentes"
+                onSecondAction={
+                  myListings.some((listing) => listing.roster_id === r.id)
+                    ? undefined
+                    : () => handleSell(r)
                 }
-                onSecondAction={() => handleSell(r.pro_players)}
                 secondActionLabel="Vender"
                 secondActionClassName="text-v-red hover:bg-v-red/10"
-                isLocked={isLocked(r.player_id)}
-                isCaptain={isCaptain(r.player_id)}
                 inAuction={auctions.some(
                   (a) =>
                     a.player_id === r.player_id && a.seller_id === profileId,
                 )}
-                isBoosted={
-                  (getBoostedRoles as any).includes(r.pro_players.role) ||
-                  hasUlisesBoost
-                }
               />
             </div>
           ))}
@@ -873,12 +414,12 @@ export default function TeamView({
         </div>
       </div>
 
-      {/* Suplentes (5) */}
+      {/* Suplentes */}
       <div className="space-y-4 pt-4 border-t border-white/5">
         <h2 className="text-2xl italic tracking-tighter uppercase px-1 text-v-white/70">
           Suplentes Próx. Jornada{" "}
           <span className="text-sm font-black text-v-red ml-2">
-            {substitutes.length}/5
+            {substitutes.length}
           </span>
         </h2>
         <div className="grid gap-3">
@@ -889,50 +430,21 @@ export default function TeamView({
             >
               <PlayerCard
                 player={{ ...r.pro_players, releaseClause: r.release_clause }}
-                onAction={() => {
-                  if (selectedPowerUp) {
-                    if (
-                      activePowerUps.some(
-                        (ap) =>
-                          ap.powerup_type_id ===
-                          selectedPowerUp.powerup_types.id,
-                      )
-                    )
-                      return;
-                    handleActivate(
-                      selectedPowerUp.powerup_types.id,
-                      r.player_id,
-                    );
-                  } else {
-                    handleSlotChange(
-                      r.player_id,
-                      r.pro_players.nickname,
-                      "starter",
-                    );
-                  }
-                }}
-                actionLabel={
-                  selectedPowerUp
-                    ? activePowerUps.some(
-                        (ap) =>
-                          ap.powerup_type_id ===
-                          selectedPowerUp.powerup_types.id,
-                      )
-                      ? "Límite"
-                      : `Aplicar ${selectedPowerUp.powerup_types.icon}`
-                    : "Ascender a Titular"
-                }
-                actionDisabled={
-                  !!selectedPowerUp &&
-                  activePowerUps.some(
-                    (ap) =>
-                      ap.powerup_type_id === selectedPowerUp.powerup_types.id,
+                onAction={() =>
+                  handleSlotChange(
+                    r.player_id,
+                    r.pro_players.nickname,
+                    "starter",
                   )
                 }
-                onSecondAction={() => handleSell(r.pro_players)}
+                actionLabel="Ascender a Titular"
+                onSecondAction={
+                  myListings.some((listing) => listing.roster_id === r.id)
+                    ? undefined
+                    : () => handleSell(r)
+                }
                 secondActionLabel="Vender"
                 secondActionClassName="text-v-red hover:bg-v-red/10"
-                isLocked={isLocked(r.player_id)}
                 inAuction={auctions.some(
                   (a) =>
                     a.player_id === r.player_id && a.seller_id === profileId,
@@ -940,62 +452,65 @@ export default function TeamView({
               />
             </div>
           ))}
-          {substitutes.length < 5 &&
-            Array.from({ length: 5 - substitutes.length }).map((_, i) => (
-              <div
-                key={`empty-sub-${i}`}
-                className="v-panel border-dashed border-v-white/10 h-24 flex items-center justify-center opacity-20"
-              >
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-                  Espacio Suplente
-                </p>
-              </div>
-            ))}
+          {substitutes.length === 0 && (
+            <div className="v-panel border-dashed border-v-white/10 h-24 flex items-center justify-center opacity-20">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+                Sin suplentes
+              </p>
+            </div>
+          )}
         </div>
       </div>
-      {/* Auction Dialog */}
-      {auctionDialog.show && auctionDialog.player && (
+      {/* Player Listing Dialog */}
+      {listingDialog.show && listingDialog.player && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-v-navy/90 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="v-panel w-full max-w-sm p-6 space-y-6 border-t-4 border-v-red animate-in zoom-in-95 duration-200">
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase text-v-white/40 tracking-widest">
-                Crear Subasta
+                Poner en Venta
               </p>
               <h3 className="text-2xl font-black italic uppercase leading-none">
-                {auctionDialog.player.nickname}
+                {listingDialog.player.nickname}
               </h3>
               <p className="text-[10px] font-black uppercase text-v-red tracking-widest">
-                {auctionDialog.player.pro_teams?.name}
+                {listingDialog.player.pro_teams?.name}
               </p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-v-white/60">
-                  Precio de Salida (M VP)
+                  Precio de Venta (M VP)
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
-                    step="0.1"
-                    value={auctionDialog.price}
-                    onChange={(e) =>
-                      setAuctionDialog((prev) => ({
+                    type="text"
+                    inputMode="decimal"
+                    disabled={listingSaving}
+                    aria-invalid={Boolean(listingError)}
+                    aria-describedby={
+                      listingError ? "listing-error" : undefined
+                    }
+                    value={listingDialog.price}
+                    onChange={(e) => {
+                      setListingError(null);
+                      setListingDialog((prev) => ({
                         ...prev,
                         price: e.target.value,
-                      }))
-                    }
+                      }));
+                    }}
                     className="flex-1 bg-v-navy/50 border border-white/10 px-4 py-3 text-lg font-black italic focus:border-v-red outline-none transition-colors"
                   />
                   <div className="flex flex-col gap-1">
                     <button
+                      type="button"
+                      disabled={listingSaving}
                       onClick={() =>
-                        setAuctionDialog((prev) => ({
+                        setListingDialog((prev) => ({
                           ...prev,
                           price: (
-                            (auctionDialog.player!.market_value * 0.8) /
-                            1000000
-                          ).toFixed(1),
+                            Number(listingDialog.player!.market_value) / 1000000
+                          ).toString(),
                         }))
                       }
                       className="px-3 py-1 bg-v-navy/80 border border-white/5 text-[8px] font-black uppercase hover:bg-v-red/20 transition-colors"
@@ -1003,13 +518,16 @@ export default function TeamView({
                       MIN
                     </button>
                     <button
+                      type="button"
+                      disabled={listingSaving}
                       onClick={() =>
-                        setAuctionDialog((prev) => ({
+                        setListingDialog((prev) => ({
                           ...prev,
                           price: (
-                            (auctionDialog.player!.market_value * 1.15) /
-                            1000000
-                          ).toFixed(1),
+                            Math.floor(
+                              Number(listingDialog.player!.market_value) * 1.15,
+                            ) / 1000000
+                          ).toString(),
                         }))
                       }
                       className="px-3 py-1 bg-v-navy/80 border border-white/5 text-[8px] font-black uppercase hover:bg-v-red/20 transition-colors"
@@ -1022,34 +540,45 @@ export default function TeamView({
                   <span>
                     Rango:{" "}
                     {(
-                      (auctionDialog.player.market_value * 0.8) /
-                      1000000
-                    ).toFixed(1)}
+                      Number(listingDialog.player.market_value) / 1000000
+                    ).toString()}
                     M VP -{" "}
                     {(
-                      (auctionDialog.player.market_value * 1.15) /
-                      1000000
-                    ).toFixed(1)}
+                      Math.floor(
+                        Number(listingDialog.player.market_value) * 1.15,
+                      ) / 1000000
+                    ).toString()}
                     M VP
                   </span>
                 </div>
               </div>
 
+              {listingError && (
+                <p
+                  id="listing-error"
+                  role="alert"
+                  className="text-xs text-v-red"
+                >
+                  {listingError}
+                </p>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() =>
-                    setAuctionDialog({ show: false, player: null, price: "" })
-                  }
-                  className="flex-1 py-3 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-v-white/5 transition-colors"
+                  type="button"
+                  disabled={listingSaving}
+                  onClick={closeListingDialog}
+                  className="flex-1 py-3 text-[9px] font-black uppercase disabled:opacity-40"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={confirmAuction}
-                  disabled={loading}
-                  className="flex-1 py-3 bg-v-red text-v-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
+                  type="button"
+                  disabled={listingSaving}
+                  onClick={confirmListing}
+                  className="flex-1 bg-v-red py-3 text-[9px] font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Confirmar Subasta
+                  {listingSaving ? "PUBLICANDO..." : "PONER EN VENTA"}
                 </button>
               </div>
             </div>
