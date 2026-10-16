@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { payClause } from "@/lib/actions/market";
+import { payReleaseClause } from "@/lib/actions/market";
 import { haptic } from "@/lib/utils/haptics";
 import { useRouter } from "next/navigation";
 import { getLeagueClassification } from "@/lib/actions/leagues";
@@ -34,7 +34,10 @@ export function RankingView({
 
   useEffect(() => {
     async function loadClassification() {
-      if (activeLeagueId === initialLeagueId && standings === initialStandings) {
+      if (
+        activeLeagueId === initialLeagueId &&
+        standings === initialStandings
+      ) {
         return;
       }
 
@@ -61,57 +64,57 @@ export function RankingView({
     return activeLocks.includes(playerId);
   };
 
-const handlePayClause = async (player: any) => {
-  if (!activeLeagueId || !profileId || !selectedTeam) return;
+  const handlePayClause = async (player: any) => {
+    if (!activeLeagueId || !profileId || !selectedTeam) return;
 
-  setConfirmPay(null);
-  setLoading(true);
+    setConfirmPay(null);
+    setLoading(true);
 
-  try {
-    const res = await sileo.promise(
-      payClause(activeLeagueId, profileId, player.id, selectedTeam.profile_id),
-      {
-        loading: {
-          title: "Ejecutando cláusula...",
+    try {
+      const res = await sileo.promise(
+        payReleaseClause(player.roster_id, profileId),
+        {
+          loading: {
+            title: "Ejecutando cláusula...",
+          },
+          success: (res) => {
+            if (!res.success) {
+              throw new Error(res.error || "Error al pagar cláusula");
+            }
+
+            return {
+              title: "Cláusula ejecutada",
+              description: `${player.nickname} fichado correctamente`,
+            };
+          },
+          error: (err) => {
+            haptic.error();
+            return {
+              title: "Error al pagar cláusula",
+              description:
+                err instanceof Error ? err.message : "Error inesperado",
+            };
+          },
         },
-        success: (res) => {
-          if (!res.success) {
-            throw new Error(res.error || "Error al pagar cláusula");
-          }
+      );
 
-          return {
-            title: "Cláusula ejecutada",
-            description: `${player.nickname} fichado correctamente`,
-          };
-        },
-        error: (err) => {
-          haptic.error();
-          return {
-            title: "Error al pagar cláusula",
-            description:
-              err instanceof Error ? err.message : "Error inesperado",
-          };
-        },
-      }
-    );
+      if (!res.success) return;
 
-    if (!res.success) return;
+      haptic.success();
+      setSelectedTeam(null);
 
-    haptic.success();
-    setSelectedTeam(null);
+      const { standings: newStandings, activeLocks: newLocks } =
+        await getLeagueClassification(activeLeagueId);
 
-    const { standings: newStandings, activeLocks: newLocks } =
-      await getLeagueClassification(activeLeagueId);
+      setStandings(newStandings);
+      setActiveLocks(newLocks);
 
-    setStandings(newStandings);
-    setActiveLocks(newLocks);
-
-    router.refresh();
-  } catch {
-  } finally {
-    setLoading(false);
-  }
-};
+      router.refresh();
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6 px-4 sm:px-6">
@@ -151,7 +154,9 @@ const handlePayClause = async (player: any) => {
           {standings.map((row: any, index: number) => (
             <div
               key={row.profile_id}
-              onClick={() => row.profile_id !== profileId && setSelectedTeam(row)}
+              onClick={() =>
+                row.profile_id !== profileId && setSelectedTeam(row)
+              }
               className={`flex items-center justify-between p-3 border-l-2 transition-all cursor-pointer ${
                 index === 0
                   ? "bg-v-red/10 border-v-red hover:bg-v-red/20"
@@ -170,7 +175,9 @@ const handlePayClause = async (player: any) => {
                   <div className="flex items-center gap-2">
                     <span
                       className={`text-sm font-black uppercase tracking-wider italic ${
-                        row.profile_id === profileId ? "text-v-red" : "text-v-white"
+                        row.profile_id === profileId
+                          ? "text-v-red"
+                          : "text-v-white"
                       }`}
                     >
                       {row.profiles.username}
@@ -203,7 +210,9 @@ const handlePayClause = async (player: any) => {
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-lg font-black italic">{row.total_points}</span>
+                <span className="text-lg font-black italic">
+                  {row.total_points}
+                </span>
                 <span className="text-[10px] font-black uppercase text-v-white/20 ml-1 italic">
                   Pts
                 </span>
@@ -282,8 +291,10 @@ const handlePayClause = async (player: any) => {
                           Rescisión
                         </p>
                         <p className="text-sm font-black italic text-v-white">
-                          {(Number(player.release_clause || 0) / 1000000).toFixed(1)}M
-                          VP
+                          {(
+                            Number(player.release_clause || 0) / 1000000
+                          ).toFixed(1)}
+                          M VP
                         </p>
                       </div>
                       <button
@@ -320,8 +331,10 @@ const handlePayClause = async (player: any) => {
               <p className="text-xs text-v-white/60">
                 ¿Pagar rescisión de{" "}
                 <span className="text-v-white font-black">
-                  {(Number(confirmPay.player.release_clause || 0) / 1000000).toFixed(1)}M
-                  VP
+                  {(
+                    Number(confirmPay.player.release_clause || 0) / 1000000
+                  ).toFixed(1)}
+                  M VP
                 </span>{" "}
                 por{" "}
                 <span className="text-v-red font-black uppercase">
