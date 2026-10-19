@@ -13,7 +13,7 @@ export interface VlrMatch {
     name: string;
   };
 
-  matchDate: string;
+  matchDate: string | null;
 
   status: VlrMatchStatus;
 
@@ -82,18 +82,51 @@ function normalizeMatchDate(raw?: string): string | null {
     return null;
   }
 
+  const value = raw.trim();
+
   /*
-   * Esta API puede devolver una fecha tipo:
-   * 2026-08-28 14:00:00
+   * La API puede devolver:
    *
-   * La interpretamos como UTC y devolvemos ISO.
+   * 1) Fecha UTC:
+   *    2026-08-28 14:00:00
+   *
+   * 2) ISO:
+   *    2026-08-28T14:00:00Z
+   *
+   * 3) Unix timestamp en segundos:
+   *    1713996000
+   *
+   * 4) Unix timestamp en milisegundos:
+   *    1713996000000
    */
 
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  // Unix timestamp: segundos o milisegundos
+  if (/^\d+$/.test(value)) {
+    const numeric = Number(value);
 
-  const withTimezone = normalized.endsWith("Z") ? normalized : `${normalized}Z`;
+    if (!Number.isFinite(numeric)) {
+      return null;
+    }
 
-  const date = new Date(withTimezone);
+    const milliseconds = value.length >= 13 ? numeric : numeric * 1000;
+
+    const date = new Date(milliseconds);
+
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+
+  // ISO con timezone explícita
+  if (/Z$/i.test(value) || /[+-]\d{2}:\d{2}$/.test(value)) {
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+
+  // Formato UTC de vlrggapi:
+  // YYYY-MM-DD HH:mm:ss
+  const normalized = value.replace(" ", "T");
+
+  const date = new Date(`${normalized}Z`);
 
   if (Number.isNaN(date.getTime())) {
     return null;
@@ -221,10 +254,47 @@ export async function getVlrMatches(): Promise<VlrMatch[]> {
 
     const matchDate = normalizeMatchDate(raw.unix_timestamp);
 
-    if (!matchDate) {
-      continue;
-    }
+    /*
+     * RESULTS
+     */
+    for (const raw of results) {
+      const vlrId = getMatchIdFromPage(raw.match_page);
 
+      if (!vlrId || !raw.team1 || !raw.team2) {
+        continue;
+      }
+
+      /*
+       * En results puede no venir unix_timestamp.
+       *
+       * Si no viene fecha, mantenemos el partido igualmente.
+       * La ruta de sincronización intentará recuperar
+       * match_date desde Supabase usando el vlr_id.
+       */
+      const matchDate = normalizeMatchDate(raw.unix_timestamp);
+
+      finalMatches.push({
+        vlrId,
+
+        teamA: {
+          vlrId: null,
+          name: raw.team1,
+        },
+
+        teamB: {
+          vlrId: null,
+          name: raw.team2,
+        },
+
+        matchDate,
+
+        status: "completed",
+
+        teamAScore: parseScore(raw.score1),
+
+        teamBScore: parseScore(raw.score2),
+      });
+    }
     finalMatches.push({
       vlrId,
 
@@ -362,93 +432,50 @@ type V2MatchDetailsResponse = {
 };
 
 function nullableNumber(
-  value:
-    | string
-    | number
-    | null
-    | undefined,
+  value: string | number | null | undefined,
 ): number | null {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
+  if (value === undefined || value === null || value === "") {
     return null;
   }
 
   const parsed = Number(value);
 
-  return Number.isFinite(parsed)
-    ? parsed
-    : null;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeVlrMapPlayer(
-  player: V2RawPlayer,
-): VlrMapPlayer {
+function normalizeVlrMapPlayer(player: V2RawPlayer): VlrMapPlayer {
   return {
-    name:
-      player.name ?? "",
+    name: player.name ?? "",
 
-    agent:
-      player.agent &&
-      player.agent.trim() !== ""
-        ? player.agent
-        : null,
+    agent: player.agent && player.agent.trim() !== "" ? player.agent : null,
 
-    rating:
-      nullableNumber(
-        player.rating,
-      ),
+    rating: nullableNumber(player.rating),
 
-    acs:
-      nullableNumber(
-        player.acs,
-      ),
+    acs: nullableNumber(player.acs),
 
-    kills:
-      nullableNumber(
-        player.kills,
-      ),
+    kills: nullableNumber(player.kills),
 
-    deaths:
-      nullableNumber(
-        player.deaths,
-      ),
+    deaths: nullableNumber(player.deaths),
 
-    assists:
-      nullableNumber(
-        player.assists,
-      ),
+    assists: nullableNumber(player.assists),
 
-    fk:
-      nullableNumber(
-        player.fk,
-      ),
+    fk: nullableNumber(player.fk),
 
-    fd:
-      nullableNumber(
-        player.fd,
-      ),
+    fd: nullableNumber(player.fd),
   };
 }
 
 export async function getVlrMatchDetails(
   matchId: string,
 ): Promise<VlrMatchDetails | null> {
-  const baseUrl =
-    process.env.VLR_API_URL;
+  const baseUrl = process.env.VLR_API_URL;
 
   if (!baseUrl) {
-    throw new Error(
-      "VLR_API_URL is not configured",
-    );
+    throw new Error("VLR_API_URL is not configured");
   }
 
   const response = await fetch(
-    `${baseUrl}/v2/match/details?match_id=${encodeURIComponent(
-      matchId,
-    )}`,
+    `${baseUrl}/v2/match/details?match_id=${encodeURIComponent(matchId)}`,
     {
       cache: "no-store",
     },
@@ -460,8 +487,7 @@ export async function getVlrMatchDetails(
     );
   }
 
-  const json =
-    (await response.json()) as V2MatchDetailsResponse;
+  const json = (await response.json()) as V2MatchDetailsResponse;
 
   /*
    * La API devuelve:
@@ -474,85 +500,47 @@ export async function getVlrMatchDetails(
    * - match_id
    * - status
    */
-  const segment =
-    json.data?.segments?.[0];
+  const segment = json.data?.segments?.[0];
 
   if (!segment) {
     return null;
   }
 
   const teams =
-    segment.teams?.map(
-      (team) => ({
-        id:
-          String(
-            team.id ?? "",
-          ),
+    segment.teams?.map((team) => ({
+      id: String(team.id ?? ""),
 
-        name:
-          team.name ?? "",
+      name: team.name ?? "",
 
-        score:
-          nullableNumber(
-            team.score,
-          ),
+      score: nullableNumber(team.score),
 
-        logo:
-          team.logo ?? null,
-      }),
-    ) ?? [];
+      logo: team.logo ?? null,
+    })) ?? [];
 
   if (teams.length < 2) {
     return null;
   }
 
-  const maps: VlrMapDetails[] =
-    (segment.maps ?? []).map(
-      (map) => ({
-        mapName:
-          map.map_name ??
-          "TBD",
+  const maps: VlrMapDetails[] = (segment.maps ?? []).map((map) => ({
+    mapName: map.map_name ?? "TBD",
 
-        score: {
-          team1:
-            nullableNumber(
-              map.score?.team1,
-            ) ?? 0,
+    score: {
+      team1: nullableNumber(map.score?.team1) ?? 0,
 
-          team2:
-            nullableNumber(
-              map.score?.team2,
-            ) ?? 0,
-        },
+      team2: nullableNumber(map.score?.team2) ?? 0,
+    },
 
-        players: {
-          team1:
-            (
-              map.players?.team1 ??
-              []
-            ).map(
-              normalizeVlrMapPlayer,
-            ),
+    players: {
+      team1: (map.players?.team1 ?? []).map(normalizeVlrMapPlayer),
 
-          team2:
-            (
-              map.players?.team2 ??
-              []
-            ).map(
-              normalizeVlrMapPlayer,
-            ),
-        },
-      }),
-    );
+      team2: (map.players?.team2 ?? []).map(normalizeVlrMapPlayer),
+    },
+  }));
 
   return {
-    matchId:
-      segment.match_id ??
-      matchId,
+    matchId: segment.match_id ?? matchId,
 
-    status:
-      segment.status ??
-      "upcoming",
+    status: segment.status ?? "upcoming",
 
     teams,
 

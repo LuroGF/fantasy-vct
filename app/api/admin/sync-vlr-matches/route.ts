@@ -175,7 +175,50 @@ export async function POST(request: Request) {
         } else if (detailedStatus === "live") {
           status = "live";
         }
+        /*
+         * Algunos resultados terminados pueden venir desde VLR
+         * sin unix_timestamp.
+         *
+         * Si ya conocemos el partido, conservamos la fecha que
+         * tenemos guardada en Supabase.
+         */
+        let matchDate = match.matchDate;
 
+        if (!matchDate) {
+          const { data: existingMatch, error: existingMatchError } =
+            await supabaseAdmin
+              .from("matches")
+              .select("match_date")
+              .eq("vlr_id", match.vlrId)
+              .maybeSingle();
+
+          if (existingMatchError) {
+            errors++;
+
+            details.push({
+              vlrId: match.vlrId,
+              status: "error",
+              reason: `Could not recover existing match date: ${existingMatchError.message}`,
+            });
+
+            continue;
+          }
+
+          if (!existingMatch?.match_date) {
+            skipped++;
+
+            details.push({
+              vlrId: match.vlrId,
+              status: "skipped",
+              reason:
+                "Completed match has no date and was not previously synced",
+            });
+
+            continue;
+          }
+
+          matchDate = existingMatch.match_date;
+        }
         const { error } = await supabaseAdmin.rpc("upsert_vlr_match", {
           p_vlr_id: match.vlrId,
 
@@ -183,8 +226,7 @@ export async function POST(request: Request) {
 
           p_team_b_vlr_id: teamB.id,
 
-          p_match_date: match.matchDate,
-
+          p_match_date: matchDate,
           p_status: status,
 
           p_team_a_score: teamAScore,
