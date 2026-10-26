@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "@/lib/actions/auth";
-import Image from "next/image";
 import { sileo } from "sileo";
 
 export default function LoginPage() {
@@ -99,41 +98,10 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-white/5"></span>
-                </div>
-                <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest text-v-white/20">
-                  <span className="bg-[#0b0f12] px-4 text-white">
-                    Métodos Alternativos
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <button className="v-btn-secondary py-3 text-[10px] cursor-pointer font-black text-white tracking-widest bg-red-600">
-                  <Image
-                    src="/logos/RiotLogo.png"
-                    alt="Logo Riot"
-                    width={20}
-                    height={20}
-                  />
-                  <span className="pl-4 black">Iniciar con Riot</span>
-                </button>
-                <button className="v-btn-secondary py-3 text-[10px] cursor-pointer font-black text-black hover:text-white tracking-widest bg-white">
-                  <Image
-                    src="/logos/GoogleLogo.png"
-                    alt="Logo Google"
-                    width={20}
-                    height={20}
-                  />
-                  <span className="pl-4 black">Iniciar con Google</span>
-                </button>
-              </div>
             </div>
 
             <p className="text-center text-xs text-v-white/40 font-medium tracking-tight">
-              ¿Aún no eres agente operativo?{" "}
+              ¿Aún no tienes una cuenta?{" "}
               <Link
                 href="/register"
                 className="text-v-red font-black uppercase hover:underline ml-1"

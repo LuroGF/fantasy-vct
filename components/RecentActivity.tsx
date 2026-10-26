@@ -1,6 +1,6 @@
 
 import { createClient } from "@/utils/supabase/server";
-import { UserPlus, UserMinus, Zap, Cpu } from "lucide-react";
+import { UserPlus, UserMinus, Zap } from "lucide-react";
 
 export async function RecentActivity({ profileId }: { profileId: string }) {
   const supabase = await createClient();
@@ -20,6 +20,7 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
     .from('market_transactions')
     .select('*, pro_players(nickname), leagues(name), profiles(username)')
     .in('league_id', leagueIds)
+    .neq('type', 'buy_item')
     .order('created_at', { ascending: false })
     .limit(5);
 
@@ -36,7 +37,6 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
       case 'buy': return { icon: UserPlus, color: 'text-green-400', label: 'Reclutamiento' };
       case 'sell': return { icon: UserMinus, color: 'text-v-red', label: 'Baja' };
       case 'clause_paid': return { icon: Zap, color: 'text-v-role-iniciador', label: 'Reasignación' };
-      case 'buy_item': return { icon: Cpu, color: 'text-v-role-controlador', label: 'Suministro' };
       case 'trade': return { icon: UserPlus, color: 'text-blue-400', label: 'Intercambio' };
       case 'auction_sold': return { icon: Zap, color: 'text-amber-400', label: 'Subasta' };
       default: return { icon: UserPlus, color: 'text-v-white/50', label: 'Operación' };
@@ -77,7 +77,7 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
 
               <div className="text-right">
                 <p className="text-[10px] lg:text-sm font-black text-v-white italic leading-none">
-                  {(action.price / 1000000).toFixed(1)}M <span className="text-[8px] lg:text-[10px] text-v-red/50">VP</span>
+                  {(action.price / 1000000).toFixed(1)}M <span className="text-[8px] lg:text-[10px] text-v-red/50">€</span>
                 </p>
                 <p className="text-[7px] lg:text-[9px] text-v-white/20 font-black uppercase mt-1">
                   {new Date(action.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

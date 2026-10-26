@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, ShoppingCart, Trophy, MoreHorizontal, ShoppingBag } from "lucide-react";
+import { Home, Users, ShoppingCart, Trophy, MoreHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -18,7 +18,6 @@ const navItems = [
   { href: "/leagues", label: "Ligas", icon: Trophy },
   { href: "/team", label: "Mi equipo", icon: Users },
   { href: "/market", label: "Mercado", icon: ShoppingCart },
-  { href: "/shop", label: "Tienda", icon: ShoppingBag },
   { href: "/more", label: "Más", icon: MoreHorizontal },
 ];
 
@@ -94,7 +93,7 @@ return (
 
       {/* Footer hint */}
       <div className="mt-3 px-2 pb-2 text-[10px] font-black uppercase tracking-[0.3em] text-v-white/20">
-        S3 // 2026
+        VCT // 2027
       </div>
     </div>
   </aside>

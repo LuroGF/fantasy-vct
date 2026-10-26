@@ -3,6 +3,9 @@ export type VlrMatchStatus = "upcoming" | "live" | "finished" | "completed";
 export interface VlrMatch {
   vlrId: string;
 
+  eventName: string | null;
+  eventSeries: string | null;
+
   teamA: {
     vlrId: string | null;
     name: string;
@@ -157,174 +160,77 @@ async function fetchMatchGroup(
   return json.data?.segments ?? [];
 }
 
+/**
+ * Alcance actual: ligas internacionales VCT, Masters, Champions y LOCK//IN.
+ * Las etiquetas desconocidas se excluyen hasta incorporarlas al catalogo.
+ * No basta con que un nombre contenga VCT: Game Changers y Challengers
+ * tambien pueden llevar ese prefijo.
+ */
+export function isVctEvent(raw: {
+  match_event?: string;
+  tournament_name?: string;
+  match_series?: string;
+}): boolean {
+  const labels = [raw.match_event, raw.tournament_name, raw.match_series]
+    .map((value) => (value ?? '').trim())
+    .filter(Boolean);
+  const normalized = labels.map((value) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(),
+  );
+  const allLabels = normalized.join(' ');
+
+  if (/\b(game\s*changers?|gc|challengers?|ascension|threshold|off\s*season|showmatch)\b/.test(allLabels)) {
+    return false;
+  }
+
+  // Algunas respuestas solo proporcionan match_series como titulo del evento.
+  return normalized.some((title) =>
+    /^(?:vct|valorant champions tour)\s+(?:20\d{2}\s+)?(?:americas|emea|pacific|china|cn|masters|champions|lock\s+in)\b/.test(title) ||
+    /^(?:valorant\s+)?champions\s+20\d{2}\b/.test(title) ||
+    /^(?:valorant\s+)?masters\s+(?:20\d{2}|[a-z]+\s+20\d{2})\b/.test(title),
+  );
+}
+
 export async function getVlrMatches(): Promise<VlrMatch[]> {
   const [upcoming, live, results] = await Promise.all([
-    fetchMatchGroup("upcoming"),
-    fetchMatchGroup("live_score"),
-    fetchMatchGroup("results"),
+    fetchMatchGroup('upcoming'),
+    fetchMatchGroup('live_score'),
+    fetchMatchGroup('results'),
   ]);
 
   const finalMatches: VlrMatch[] = [];
+  const groups: Array<{ rows: V2MatchSegment[]; status: VlrMatchStatus }> = [
+    { rows: upcoming, status: 'upcoming' },
+    { rows: live, status: 'live' },
+    { rows: results, status: 'completed' },
+  ];
 
-  /*
-   * UPCOMING
-   */
-  for (const raw of upcoming) {
-    const vlrId = getMatchIdFromPage(raw.match_page);
+  for (const { rows, status } of groups) {
+    for (const raw of rows) {
+      if (!isVctEvent(raw)) continue;
 
-    const matchDate = normalizeMatchDate(raw.unix_timestamp);
-
-    if (!vlrId || !matchDate || !raw.team1 || !raw.team2) {
-      continue;
-    }
-
-    finalMatches.push({
-      vlrId,
-
-      teamA: {
-        vlrId: null,
-        name: raw.team1,
-      },
-
-      teamB: {
-        vlrId: null,
-        name: raw.team2,
-      },
-
-      matchDate,
-
-      status: "upcoming",
-
-      teamAScore: null,
-      teamBScore: null,
-    });
-  }
-
-  /*
-   * LIVE
-   */
-  for (const raw of live) {
-    const vlrId = getMatchIdFromPage(raw.match_page);
-
-    const matchDate = normalizeMatchDate(raw.unix_timestamp);
-
-    if (!vlrId || !matchDate || !raw.team1 || !raw.team2) {
-      continue;
-    }
-
-    finalMatches.push({
-      vlrId,
-
-      teamA: {
-        vlrId: null,
-        name: raw.team1,
-      },
-
-      teamB: {
-        vlrId: null,
-        name: raw.team2,
-      },
-
-      matchDate,
-
-      status: "live",
-
-      teamAScore: parseScore(raw.score1),
-
-      teamBScore: parseScore(raw.score2),
-    });
-  }
-
-  /*
-   * RESULTS
-   */
-  for (const raw of results) {
-    const vlrId = getMatchIdFromPage(raw.match_page);
-
-    if (!vlrId || !raw.team1 || !raw.team2) {
-      continue;
-    }
-
-    /*
-     * En results puede no venir una fecha
-     * absoluta exactamente igual.
-     * De momento conservamos el partido
-     * solo si hay unix_timestamp.
-     */
-
-    const matchDate = normalizeMatchDate(raw.unix_timestamp);
-
-    /*
-     * RESULTS
-     */
-    for (const raw of results) {
       const vlrId = getMatchIdFromPage(raw.match_page);
-
-      if (!vlrId || !raw.team1 || !raw.team2) {
-        continue;
-      }
-
-      /*
-       * En results puede no venir unix_timestamp.
-       *
-       * Si no viene fecha, mantenemos el partido igualmente.
-       * La ruta de sincronización intentará recuperar
-       * match_date desde Supabase usando el vlr_id.
-       */
       const matchDate = normalizeMatchDate(raw.unix_timestamp);
+
+      if (!vlrId || !raw.team1 || !raw.team2) continue;
+      // Conservar resultados sin fecha para recuperar match_date en la sincronizacion.
+      if (status !== 'completed' && !matchDate) continue;
 
       finalMatches.push({
         vlrId,
-
-        teamA: {
-          vlrId: null,
-          name: raw.team1,
-        },
-
-        teamB: {
-          vlrId: null,
-          name: raw.team2,
-        },
-
+        eventName: raw.match_event?.trim() || raw.tournament_name?.trim() || raw.match_series?.trim() || null,
+        eventSeries: raw.match_series?.trim() || null,
+        teamA: { vlrId: null, name: raw.team1 },
+        teamB: { vlrId: null, name: raw.team2 },
         matchDate,
-
-        status: "completed",
-
-        teamAScore: parseScore(raw.score1),
-
-        teamBScore: parseScore(raw.score2),
+        status,
+        teamAScore: status === 'upcoming' ? null : parseScore(raw.score1),
+        teamBScore: status === 'upcoming' ? null : parseScore(raw.score2),
       });
     }
-    finalMatches.push({
-      vlrId,
-
-      teamA: {
-        vlrId: null,
-        name: raw.team1,
-      },
-
-      teamB: {
-        vlrId: null,
-        name: raw.team2,
-      },
-
-      matchDate,
-
-      status: "completed",
-
-      teamAScore: parseScore(raw.score1),
-
-      teamBScore: parseScore(raw.score2),
-    });
   }
 
-  /*
-   * Quitamos duplicados.
-   *
-   * El último estado encontrado gana:
-   * results > live > upcoming
-   */
-
+  // El ultimo estado gana: results > live > upcoming.
   return Array.from(
     new Map(finalMatches.map((match) => [match.vlrId, match])).values(),
   );
@@ -342,6 +248,17 @@ export interface VlrMatchDetails {
   }>;
 
   maps: VlrMapDetails[];
+}
+
+export type VlrRosterStatus = "active" | "benched" | "former";
+
+export interface VlrTeamRosterPlayer {
+  vlrId: string;
+  alias: string;
+  realName: string | null;
+  country: string | null;
+  role: string | null;
+  status: VlrRosterStatus;
 }
 
 export interface VlrMapPlayer {
@@ -429,6 +346,27 @@ type V2MatchDetailsResponse = {
 
   meta?: unknown;
   message?: string | null;
+};
+
+type V2TeamRosterPlayer = {
+  id?: string | number;
+  alias?: string;
+  real_name?: string;
+  country?: string;
+  role?: string;
+  is_staff?: boolean;
+};
+
+type V2TeamRosterSegment = {
+  active?: V2TeamRosterPlayer[];
+  benched?: V2TeamRosterPlayer[];
+  former?: V2TeamRosterPlayer[];
+};
+
+type V2TeamRosterResponse = {
+  data?: {
+    segments?: V2TeamRosterSegment[];
+  };
 };
 
 function nullableNumber(
@@ -546,4 +484,65 @@ export async function getVlrMatchDetails(
 
     maps,
   };
+}
+
+export async function getVlrTeamRoster(
+  teamId: string,
+): Promise<VlrTeamRosterPlayer[]> {
+  const baseUrl = process.env.VLR_API_URL;
+
+  if (!baseUrl) {
+    throw new Error("VLR_API_URL is not configured");
+  }
+
+  const response = await fetch(
+    `${baseUrl}/v2/team?id=${encodeURIComponent(teamId)}&q=roster`,
+    {
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `VLR team roster error ${response.status} for team ${teamId}`,
+    );
+  }
+
+  const json = (await response.json()) as V2TeamRosterResponse;
+  const segment = json.data?.segments?.[0];
+
+  if (!segment) {
+    return [];
+  }
+
+  const groups: Array<{
+    status: VlrRosterStatus;
+    players: V2TeamRosterPlayer[];
+  }> = [
+    { status: "active", players: segment.active ?? [] },
+    { status: "benched", players: segment.benched ?? [] },
+    { status: "former", players: segment.former ?? [] },
+  ];
+
+  return groups.flatMap(({ status, players }) =>
+    players.flatMap((player) => {
+      const vlrId = String(player.id ?? "").trim();
+      const alias = player.alias?.trim() ?? "";
+
+      if (!vlrId || !alias || player.is_staff) {
+        return [];
+      }
+
+      return [
+        {
+          vlrId,
+          alias,
+          realName: player.real_name?.trim() || null,
+          country: player.country?.trim() || null,
+          role: player.role?.trim() || null,
+          status,
+        },
+      ];
+    }),
+  );
 }

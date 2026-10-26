@@ -3,22 +3,25 @@ import { getSession } from "@/lib/actions/auth";
 import { redirect } from "next/navigation";
 import {
   getUserNotifications,
+  getNotificationPreferences,
   markAllAsRead,
   markNotificationAsRead,
 } from "@/lib/actions/notifications";
 import { revalidatePath } from "next/cache";
 import { AutoMarkRead } from "@/components/AutoMarkRead";
+import { NotificationSettings } from "@/components/NotificationSettings";
 
 export default async function NotificationsPage() {
   const session = await getSession();
   if (!session) return redirect("/login");
 
-  const notifications = await getUserNotifications(session.user.id);
+  const notifications = await getUserNotifications();
+  const preferences = await getNotificationPreferences();
   const unreadNotifications = notifications.filter((n) => !n.is_read);
 
   async function handleMarkAllAsRead() {
     "use server";
-    await markAllAsRead(session!.user.id);
+    await markAllAsRead();
     revalidatePath("/more/notifications");
   }
 
@@ -86,6 +89,8 @@ export default async function NotificationsPage() {
         </div>
       )}
 
+      <NotificationSettings initial={preferences} />
+
       <div className="grid gap-3">
         {notifications.map((n) => (
           <div
@@ -110,6 +115,14 @@ export default async function NotificationsPage() {
             <p className="text-xs text-v-white/60 leading-relaxed">
               {n.message}
             </p>
+            {n.action_url && (
+              <Link
+                href={n.action_url}
+                className="mt-3 inline-flex text-[9px] font-black uppercase tracking-wider text-v-red hover:underline"
+              >
+                Abrir
+              </Link>
+            )}
             {!n.is_read && (
               <form
                 action={handleMarkOneAsRead.bind(null, n.id)}
@@ -133,7 +146,7 @@ export default async function NotificationsPage() {
         </div>
       )}
 
-      <AutoMarkRead profileId={session.user.id} />
+      <AutoMarkRead />
     </div>
   );
 }

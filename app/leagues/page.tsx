@@ -167,10 +167,10 @@ export default function LeaguesPage() {
           <div>
             <h1 className="text-4xl leading-none italic uppercase">Ligas</h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red mt-1">
-              Gestión de Ligas VCF
+              Gestión de Ligas VCT
             </p>
           </div>
-          <StatusBadge label="S3-ACTIVE" variant="red" />
+          <StatusBadge label="VCT 2027" variant="red" />
         </div>
 
         {selectedLeagueId ? (
@@ -324,7 +324,7 @@ export default function LeaguesPage() {
                         <div className="shrink-0 flex flex-col items-end">
                           <div className="bg-v-red/10 border border-v-red/20 px-2 py-0.5">
                             <span className="text-[7px] font-black text-v-red uppercase tracking-widest italic">
-                              Rank #--
+                              Rank #{ul.rank ?? "--"}
                             </span>
                           </div>
                         </div>
@@ -342,11 +342,11 @@ export default function LeaguesPage() {
                         </div>
                         <div className="text-right border-l border-white/5 pl-4">
                           <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest flex items-center justify-end gap-1.5">
-                            Créditos
+                            Presupuesto
                             <span className="w-1 h-1 bg-v-red/40" />
                           </p>
                           <p className="text-xl font-black italic text-v-red mt-1">
-                            {(ul.current_budget / 1000000).toFixed(1)}M VP
+                            {(ul.current_budget / 1000000).toFixed(1)}M €
                           </p>
                         </div>
                       </div>

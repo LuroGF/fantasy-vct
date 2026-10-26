@@ -3,8 +3,11 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "./auth";
+import { V1_FEATURES, V1_PAUSED_FEATURE_MESSAGE } from "@/lib/features";
 
 export async function getPowerUpTypes() {
+  if (!V1_FEATURES.powerUps) return [];
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("powerup_types")
@@ -19,6 +22,8 @@ export async function getPowerUpTypes() {
 }
 
 export async function getUserInventory(leagueId: string, profileId: string) {
+  if (!V1_FEATURES.powerUps) return [];
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_inventory")
@@ -43,6 +48,8 @@ export async function getUserInventory(leagueId: string, profileId: string) {
 }
 
 export async function getActivePowerUps(leagueId: string, profileId: string) {
+  if (!V1_FEATURES.powerUps) return [];
+
   const supabase = await createClient();
   const { data: activeGw } = await supabase.from('gameweeks').select('id').eq('is_active', true).single();
   
@@ -65,6 +72,9 @@ export async function getActivePowerUps(leagueId: string, profileId: string) {
 export async function buyPowerUp(leagueId: string, profileId: string, powerUpCode: string) {
   const session = await getSession();
   if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  if (!V1_FEATURES.powerUps) {
+    return { success: false, error: V1_PAUSED_FEATURE_MESSAGE };
+  }
   
   const supabase = await createClient();
   try {
@@ -110,6 +120,9 @@ export async function buyPowerUp(leagueId: string, profileId: string, powerUpCod
 export async function activatePowerUp(leagueId: string, profileId: string, powerUpTypeId: string, targetPlayerId?: string) {
     const session = await getSession();
     if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+    if (!V1_FEATURES.powerUps) {
+        return { success: false, error: V1_PAUSED_FEATURE_MESSAGE };
+    }
     
     const supabase = await createClient();
     try {

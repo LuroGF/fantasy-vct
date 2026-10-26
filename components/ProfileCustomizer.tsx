@@ -25,7 +25,7 @@ const PRESET_TITLES = [
   "Caza-Cláusulas",
   "Ojeador Maestro",
   "Magnate del E-sport",
-  "Leyenda de la Terminal",
+  "Referente del Fantasy",
 ];
 
 export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizerProps) {

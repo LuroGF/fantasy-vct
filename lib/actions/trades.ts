@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { validatePlayerActionAvailability } from "./player-action-guards";
 import { getSession } from "./auth";
+import { createNotification } from "@/lib/notifications/create";
 
 export async function createTradeOffer(
   leagueId: string, 
@@ -55,6 +56,24 @@ export async function createTradeOffer(
 
     if (rpcError) throw new Error("Error en la transmisión del intercambio.");
     if (!result?.success) throw new Error(result?.message || "No se pudo crear la oferta.");
+
+    const [{ data: sender }, { data: players }] = await Promise.all([
+      supabase.from("profiles").select("username").eq("id", senderId).maybeSingle(),
+      supabase
+        .from("pro_players")
+        .select("id, nickname")
+        .in("id", [senderPlayerId, receiverPlayerId].filter(Boolean) as string[]),
+    ]);
+    const playerNames = (players || []).map((player: any) => player.nickname).join(" / ");
+    await createNotification({
+      profile_id: receiverId,
+      league_id: leagueId,
+      title: "Nueva propuesta de intercambio",
+      message: `${sender?.username || "Otro entrenador"} te ha enviado una propuesta${playerNames ? ` por ${playerNames}` : ""}.`,
+      type: "trade_offer_received",
+      category: "market",
+      action_url: `/market?league=${leagueId}`,
+    });
 
     revalidatePath("/market");
     revalidatePath("/team");
@@ -135,6 +154,17 @@ export async function acceptTradeOffer(offerId: string, userId: string) {
       throw new Error(result.error || 'Error desconocido al aceptar trade');
     }
 
+    await createNotification({
+      profile_id: offer.sender_id,
+      league_id: offer.league_id,
+      title: "Intercambio aceptado",
+      message: "Tu propuesta de intercambio ha sido aceptada.",
+      type: "trade_offer_accepted",
+      category: "market",
+      action_url: `/team?league=${offer.league_id}`,
+      dedupe_key: `trade-accepted:${offerId}`,
+    });
+
     revalidatePath("/market");
     revalidatePath("/team");
     revalidatePath("/");
@@ -152,6 +182,11 @@ export async function rejectTradeOffer(offerId: string, userId: string) {
     }
     const { supabaseAdmin } = await import("@/utils/supabase/admin");
     try {
+        const { data: offer } = await supabaseAdmin
+            .from('trade_offers')
+            .select('league_id, sender_id, receiver_id')
+            .eq('id', offerId)
+            .maybeSingle();
         const { error, data } = await supabaseAdmin
             .from('trade_offers')
             .update({ status: 'rejected' })
@@ -161,6 +196,19 @@ export async function rejectTradeOffer(offerId: string, userId: string) {
         
         if (error) throw error;
         if (!data || data.length === 0) throw new Error("No se pudo rechazar la oferta. Verifique sus permisos.");
+
+        if (offer?.sender_id && offer.sender_id !== userId) {
+            await createNotification({
+                profile_id: offer.sender_id,
+                league_id: offer.league_id,
+                title: "Intercambio rechazado",
+                message: "Tu propuesta de intercambio ha sido rechazada.",
+                type: "trade_offer_rejected",
+                category: "market",
+                action_url: `/market?league=${offer.league_id}`,
+                dedupe_key: `trade-rejected:${offerId}`,
+            });
+        }
 
         revalidatePath("/market");
         return { success: true, message: "Oferta rechazada." };

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { getMarketEligiblePlayerIds } from "@/lib/player-eligibility";
 
 export async function getScoutingPlayers() {
     const supabase = await createClient();
@@ -14,6 +15,8 @@ export async function getScoutingPlayers() {
             role,
             market_value,
             photo_url,
+            team_id,
+            is_legend,
             pro_teams (
                 id,
                 tag,
@@ -27,6 +30,14 @@ export async function getScoutingPlayers() {
         return [];
     }
 
+    const eligiblePlayerIds = await getMarketEligiblePlayerIds(
+        supabase,
+        players.map((player: any) => player.id),
+    );
+    const eligiblePlayers = players.filter((player: any) =>
+        eligiblePlayerIds.has(player.id),
+    );
+
     // 2. Fetch performance aggregates
     const { data: performances, error: perfError } = await supabase
         .from('player_performances')
@@ -34,7 +45,7 @@ export async function getScoutingPlayers() {
 
     if (perfError) {
         console.error("Error fetching performance aggregates:", perfError);
-        return players.map((p: any) => ({ ...p, stats: { acs: 0, kd: 0, avgPoints: 0 } }));
+        return eligiblePlayers.map((p: any) => ({ ...p, stats: { acs: 0, kd: 0, avgPoints: 0 } }));
     }
 
     // 3. Group and calculate stats
@@ -50,7 +61,7 @@ export async function getScoutingPlayers() {
         statsMap.set(perf.player_id, current);
     });
 
-    return players.map((p: any) => {
+    return eligiblePlayers.map((p: any) => {
         const s = statsMap.get(p.id);
         return {
             ...p,

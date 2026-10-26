@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
-import "./globals.css";
+import "@/app/globals.css";
 import LayoutShell from "@/components/LayoutShell";
 import PWAInstaller from "@/components/PWAInstaller";
 import PushManager from "@/components/PushManager";
@@ -18,13 +18,13 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
-  title: "Draftant",
+  title: "VFantasy",
   description: "Compite con tus amigos en la mejor liga fantasy de Valorant",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Draftant",
+    title: "VFantasy",
   },
   icons: {
     icon: [

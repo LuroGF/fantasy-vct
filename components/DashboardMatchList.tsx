@@ -1,270 +1,190 @@
-import { getVlrMatches } from "@/lib/vlr";
-import { getTeamTag, getTeamLogo } from "@/lib/vlr-shared";
 import Link from "next/link";
 
+import { createClient } from "@/utils/supabase/server";
+
+const VCT_SEASON_YEAR = 2027;
+const MAX_LIVE_AGE_MS = 12 * 60 * 60 * 1000;
+
+function relation<T>(value: T | T[] | null): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
 export async function DashboardMatchList() {
-  // Obtenemos los partidos desde el nuevo adaptador VLR
-  const matches = await getVlrMatches();
+  const supabase = await createClient();
+  const [matchesResult, seasonTeamsResult] = await Promise.all([
+    supabase
+      .from("matches")
+      .select(`
+        id,
+        vlr_id,
+        match_date,
+        status,
+        team_a_id,
+        team_b_id,
+        team_a_score,
+        team_b_score,
+        team_a:pro_teams!matches_team_a_fkey (name, tag, logo_url),
+        team_b:pro_teams!matches_team_b_fkey (name, tag, logo_url)
+      `)
+      .in("status", ["upcoming", "live"])
+      .order("match_date", { ascending: true }),
+    supabase
+      .from("vct_season_teams")
+      .select("team_id")
+      .eq("season_year", VCT_SEASON_YEAR)
+      .eq("confirmation_status", "confirmed")
+      .eq("fantasy_eligible", true),
+  ]);
+
+  const matches = matchesResult.data;
+  const error = matchesResult.error ?? seasonTeamsResult.error;
+  const eligibleTeamIds = new Set(
+    (seasonTeamsResult.data ?? []).map((entry) => entry.team_id),
+  );
 
   const now = new Date();
-
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
-
   const endOfWeek = new Date(now);
-  const daysUntilSunday = 7 - now.getDay();
-
-  endOfWeek.setDate(now.getDate() + daysUntilSunday);
+  endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
   endOfWeek.setHours(23, 59, 59, 999);
 
-  /*
-   * En dashboard mostramos:
-   * - partidos LIVE
-   * - próximos partidos hasta final de semana
-   *
-   * No mostramos partidos terminados.
-   */
-  const filteredMatches = matches
+  const visibleMatches = (matches ?? [])
     .filter((match) => {
-      // Los LIVE se muestran siempre.
+      if (
+        !match.team_a_id ||
+        !match.team_b_id ||
+        !eligibleTeamIds.has(match.team_a_id) ||
+        !eligibleTeamIds.has(match.team_b_id)
+      ) {
+        return false;
+      }
+      if (!match.match_date) return false;
+      const date = new Date(match.match_date);
+      if (Number.isNaN(date.getTime())) return false;
+
       if (match.status === "live") {
-        return true;
-      }
-
-      // El resto solo si son próximos.
-      if (match.status !== "upcoming") {
-        return false;
-      }
-
-      // Un próximo partido necesita fecha válida.
-      if (!match.matchDate) {
-        return false;
-      }
-
-      const matchDate = new Date(match.matchDate);
-
-      if (Number.isNaN(matchDate.getTime())) {
-        return false;
+        const age = now.getTime() - date.getTime();
+        return age >= 0 && age <= MAX_LIVE_AGE_MS;
       }
 
       return (
-        matchDate >= startOfToday &&
-        matchDate <= endOfWeek
+        date >= startOfToday &&
+        date <= endOfWeek
       );
     })
     .sort((a, b) => {
-      // LIVE siempre arriba.
-      if (a.status === "live" && b.status !== "live") {
-        return -1;
-      }
-
-      if (a.status !== "live" && b.status === "live") {
-        return 1;
-      }
-
-      /*
-       * Si alguno no tiene fecha válida,
-       * lo mandamos al final.
-       */
-      const aTime = a.matchDate
-        ? new Date(a.matchDate).getTime()
-        : Number.POSITIVE_INFINITY;
-
-      const bTime = b.matchDate
-        ? new Date(b.matchDate).getTime()
-        : Number.POSITIVE_INFINITY;
-
-      const safeATime = Number.isNaN(aTime)
-        ? Number.POSITIVE_INFINITY
-        : aTime;
-
-      const safeBTime = Number.isNaN(bTime)
-        ? Number.POSITIVE_INFINITY
-        : bTime;
-
-      return safeATime - safeBTime;
+      if (a.status === "live" && b.status !== "live") return -1;
+      if (a.status !== "live" && b.status === "live") return 1;
+      return (
+        new Date(a.match_date ?? 0).getTime() -
+        new Date(b.match_date ?? 0).getTime()
+      );
     });
 
   return (
-    <div className="space-y-4">
+    <section className="space-y-4">
       <div className="flex items-end justify-between px-1">
-        <h2 className="text-2xl italic tracking-wider">
-          PARTIDOS
-        </h2>
-
-        <Link
-          href="/schedule"
-          className="text-[10px] font-black uppercase text-v-red hover:tracking-widest transition-all mb-1"
-        >
-          Ver Agenda
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-v-white/30">
+            Esta semana
+          </p>
+          <h2 className="text-2xl">Próximos partidos VCT</h2>
+        </div>
+        <Link href="/schedule" className="mb-1 text-[10px] font-black uppercase text-v-red hover:tracking-widest">
+          Ver agenda
         </Link>
       </div>
 
-      <div className="grid gap-4">
-        {filteredMatches.map((match) => {
+      <div className="grid gap-3">
+        {visibleMatches.map((match) => {
+          const teamA = relation(match.team_a);
+          const teamB = relation(match.team_b);
           const isLive = match.status === "live";
-
-          const teamA = match.teamA.name || "TBD";
-          const teamB = match.teamB.name || "TBD";
-
-          /*
-           * matchDate puede ser null, especialmente
-           * en ciertos resultados/datos procedentes de VLR.
-           */
-          const parsedMatchDate = match.matchDate
-            ? new Date(match.matchDate)
-            : null;
-
-          const hasValidMatchDate =
-            parsedMatchDate !== null &&
-            !Number.isNaN(parsedMatchDate.getTime());
+          const date = match.match_date ? new Date(match.match_date) : null;
+          const validDate = date && !Number.isNaN(date.getTime()) ? date : null;
 
           return (
-            <div
-              key={match.vlrId}
-              className="v-card-animated group active:scale-[0.98]"
-            >
-              <div className="flex items-stretch h-16 sm:h-20 overflow-hidden">
-                {/* Team A */}
-                <div className="flex-1 flex items-center px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0">
-                  <div className="flex items-center gap-3 relative z-10 group-hover:translate-x-1 transition-all duration-300">
-                    <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-white/5 p-1 rounded-sm border border-white/5">
-                      {(() => {
-                        const logo = getTeamLogo(teamA);
-
-                        return logo ? (
-                          <img
-                            src={logo}
-                            alt={teamA}
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <span className="text-[10px] font-black opacity-20">
-                            {getTeamTag(teamA)}
-                          </span>
-                        );
-                      })()}
-                    </div>
-
-                    <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
-                      {teamA}
-                    </span>
+            <article key={match.id} className="v-card-animated overflow-hidden">
+              <div className="grid min-h-20 grid-cols-[1fr_auto_1fr] items-stretch">
+                <div className="flex min-w-0 items-center gap-3 px-3 sm:px-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-white/5 bg-white/5 p-1">
+                    {teamA?.logo_url ? (
+                      <img src={teamA.logo_url} alt="" className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-[9px] font-black text-v-white/30">{teamA?.tag ?? "TBD"}</span>
+                    )}
                   </div>
-
-                  {isLive && (
-                    <span className="ml-auto text-xl font-black italic text-v-red mr-2">
-                      {match.teamAScore ?? 0}
-                    </span>
-                  )}
+                  <span className="truncate text-xs font-black uppercase italic sm:text-sm">
+                    {teamA?.tag || teamA?.name || "TBD"}
+                  </span>
+                  {isLive && <span className="ml-auto text-xl font-black text-live">{match.team_a_score ?? 0}</span>}
                 </div>
 
-                {/* Center Info */}
-                <div className="w-16 sm:w-28 shrink-0 flex flex-col items-center justify-center bg-v-navy/60 border-x border-white/10 relative z-10">
-                  <div className="absolute inset-0 bg-v-red/5 animate-pulse-slow" />
-
-                  <span
-                    className={`text-[9px] sm:text-xs font-black relative z-10 ${
-                      isLive
-                        ? "text-v-red animate-pulse"
-                        : "text-v-white"
-                    }`}
-                  >
+                <div className="relative flex w-20 flex-col items-center justify-center border-x border-white/10 bg-v-navy/60 sm:w-28">
+                  <span className={`text-[10px] font-black ${isLive ? "animate-pulse text-live" : "text-v-red"}`}>
                     {isLive
                       ? "LIVE"
-                      : hasValidMatchDate
+                      : validDate
                         ? new Intl.DateTimeFormat("es-ES", {
                             timeZone: "Europe/Madrid",
                             hour: "2-digit",
                             minute: "2-digit",
-                          }).format(parsedMatchDate)
+                          }).format(validDate)
                         : "--:--"}
                   </span>
-
-                  <div className="h-px w-6 sm:w-8 bg-v-white/10 my-1 relative z-10" />
-
-                  <span className="text-[6px] sm:text-[8px] font-black uppercase text-v-white/40 relative z-10">
-                    {hasValidMatchDate
+                  <span className="mt-1 text-[7px] font-black uppercase text-v-white/35">
+                    {validDate
                       ? new Intl.DateTimeFormat("es-ES", {
                           timeZone: "Europe/Madrid",
-                          month: "short",
+                          weekday: "short",
                           day: "numeric",
-                        }).format(parsedMatchDate)
+                          month: "short",
+                        }).format(validDate)
                       : ""}
                   </span>
                 </div>
 
-                {/* Team B */}
-                <div className="flex-1 flex items-center justify-end px-3 sm:px-4 relative overflow-hidden transition-colors min-w-0 text-right">
-                  {isLive && (
-                    <span className="mr-auto text-xl font-black italic text-v-red ml-2">
-                      {match.teamBScore ?? 0}
-                    </span>
-                  )}
-
-                  <div className="flex items-center gap-3 relative z-10 group-hover:-translate-x-1 transition-all duration-300 justify-end">
-                    <span className="text-[11px] sm:text-sm font-black uppercase italic tracking-wider truncate group-hover:text-v-red transition-all duration-300">
-                      {teamB}
-                    </span>
-
-                    <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-white/5 p-1 rounded-sm border border-white/5">
-                      {(() => {
-                        const logo = getTeamLogo(teamB);
-
-                        return logo ? (
-                          <img
-                            src={logo}
-                            alt={teamB}
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <span className="text-[10px] font-black opacity-20">
-                            {getTeamTag(teamB)}
-                          </span>
-                        );
-                      })()}
-                    </div>
+                <div className="flex min-w-0 items-center justify-end gap-3 px-3 text-right sm:px-4">
+                  {isLive && <span className="mr-auto text-xl font-black text-live">{match.team_b_score ?? 0}</span>}
+                  <span className="truncate text-xs font-black uppercase italic sm:text-sm">
+                    {teamB?.tag || teamB?.name || "TBD"}
+                  </span>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-white/5 bg-white/5 p-1">
+                    {teamB?.logo_url ? (
+                      <img src={teamB.logo_url} alt="" className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-[9px] font-black text-v-white/30">{teamB?.tag ?? "TBD"}</span>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
+            </article>
           );
         })}
 
-        {filteredMatches.length === 0 && (
-          <div className="v-panel border-white/5 py-12 text-center opacity-30">
-            <div className="mb-2 flex justify-center">
-              <div className="w-1 h-1 bg-v-red rounded-full animate-ping" />
-            </div>
-
-            <p className="text-[10px] font-black uppercase tracking-widest italic">
-              No hay transmisiones programadas
+        {(error || visibleMatches.length === 0) && (
+          <div className="v-panel border-white/5 py-10 text-center">
+            <p className="text-xs text-v-white/40">
+              {error
+                ? "No se han podido cargar los partidos en este momento."
+                : "No hay partidos VCT programados para esta semana."}
             </p>
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
 export function DashboardMatchListSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between px-1">
-        <h2 className="text-2xl italic tracking-wider">
-          PARTIDOS
-        </h2>
-
-        <span className="text-[10px] font-black uppercase text-v-white/20">
-          Cargando...
-        </span>
-      </div>
-
+      <div className="h-7 w-52 animate-pulse rounded bg-v-white/5" />
       <div className="grid gap-3">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-16 bg-v-white/5 animate-pulse rounded border-l-2 border-v-white/10"
-          />
+        {[1, 2, 3].map((item) => (
+          <div key={item} className="h-20 animate-pulse rounded bg-v-white/5" />
         ))}
       </div>
     </div>

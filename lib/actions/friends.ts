@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { getSession } from "./auth";
-import { createNotification } from "./notifications";
+import { createNotification } from "@/lib/notifications/create";
 import { revalidatePath } from "next/cache";
 
 export async function sendFriendRequest(targetId: string) {
@@ -46,7 +46,10 @@ export async function sendFriendRequest(targetId: string) {
     profile_id: targetId,
     title: "Nueva solicitud de amistad",
     message: `${senderProfile?.username || "Alguien"} quiere ser tu amigo en Fantasy VCT.`,
-    type: "friend_request"
+    type: "friend_request",
+    category: "social",
+    action_url: `/more/profile/${senderId}`,
+    dedupe_key: `friend-request:${senderId}`,
   });
 
   revalidatePath(`/more/profile/${targetId}`);
@@ -75,7 +78,10 @@ export async function acceptFriendRequest(senderId: string) {
     profile_id: senderId,
     title: "Solicitud de amistad aceptada",
     message: `${userProfile?.username || "Alguien"} ha aceptado tu solicitud de amistad.`,
-    type: "friend_accept"
+    type: "friend_accept",
+    category: "social",
+    action_url: `/more/profile/${userId}`,
+    dedupe_key: `friend-accepted:${userId}`,
   });
 
   revalidatePath(`/more/profile/${senderId}`);

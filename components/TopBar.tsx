@@ -2,19 +2,40 @@
 
 import { useState, useEffect } from "react";
 import { getSession } from "@/lib/actions/auth";
-import { getUnreadCount } from "@/lib/actions/notifications";
-import { getBonusStatus, claimDailyBonus } from "@/lib/actions/bonus";
-import { Bell, CheckCircle, Gift } from "lucide-react";
+import {
+    deleteReadNotification,
+    getUnreadCount,
+    markNotificationAsRead,
+} from "@/lib/actions/notifications";
+import {
+    getBonusStatus,
+    claimDailyBonus,
+} from "@/lib/actions/bonus";
+import { Bell, CheckCircle, Eye, Gift, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from "@/lib/utils/haptics";
 
 import { useRouter } from "next/navigation";
 
+type DailyBonusStatus = {
+    canClaim: boolean;
+    rewardAmount: number;
+    eligibleLeagues: number;
+    claimedAt: string | null;
+    nextAvailableAt: string | null;
+};
+
 export default function TopBar() {
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [bonusStatus, setBonusStatus] = useState<{ canClaim: boolean }>({ canClaim: false });
+    const [bonusStatus, setBonusStatus] = useState<DailyBonusStatus>({
+        canClaim: false,
+        rewardAmount: 500_000,
+        eligibleLeagues: 0,
+        claimedAt: null,
+        nextAvailableAt: null,
+    });
     const [showNotifications, setShowNotifications] = useState(false);
     const [claiming, setClaiming] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
@@ -25,14 +46,21 @@ export default function TopBar() {
             const session = await getSession();
             if (session) {
                 setUser(session.user);
-                const bonus = await getBonusStatus(session.user.id);
+                const {
+                    getUserNotifications,
+                    syncMyAuctionNotifications,
+                    flushMyPendingPushNotifications,
+                } = await import("@/lib/actions/notifications");
+
+                await syncMyAuctionNotifications();
+                await flushMyPendingPushNotifications();
+                const bonus = await getBonusStatus();
                 setBonusStatus(bonus);
                 
-                const count = await getUnreadCount(session.user.id);
+                const count = await getUnreadCount();
                 setUnreadCount(count);
                 
-                const { getUserNotifications } = await import("@/lib/actions/notifications");
-                const list = await getUserNotifications(session.user.id);
+                const list = await getUserNotifications();
                 setNotifications(list.slice(0, 5));
             }
         }
@@ -46,17 +74,17 @@ export default function TopBar() {
         setClaiming(true);
         haptic.medium();
         
-        const res = await claimDailyBonus(user.id);
+        const res = await claimDailyBonus();
         
         if (res.success) {
             haptic.success();
-            setClaimMessage(res.message || "Claimed!");
+            setClaimMessage(res.message || "Recompensa reclamada");
+            setBonusStatus((current) => ({ ...current, canClaim: false }));
             router.refresh();
 
             // Hide after 2 seconds
             setTimeout(() => {
                 setClaimMessage(null);
-                setBonusStatus({ canClaim: false });
                 setShowNotifications(false);
             }, 2000);
         } else {
@@ -65,6 +93,32 @@ export default function TopBar() {
             setTimeout(() => setClaimMessage(null), 2000);
         }
         setClaiming(false);
+    };
+
+    const handleMarkAsRead = async (notificationId: string) => {
+        const notification = notifications.find((item) => item.id === notificationId);
+        if (!notification || notification.is_read) return true;
+
+        const result = await markNotificationAsRead(notificationId);
+        if (!result.success) return false;
+
+        setNotifications((current) =>
+            current.map((item) =>
+                item.id === notificationId ? { ...item, is_read: true } : item,
+            ),
+        );
+        setUnreadCount((current) => Math.max(0, current - 1));
+        return true;
+    };
+
+    const handleDeleteNotification = async (notificationId: string) => {
+        const result = await deleteReadNotification(notificationId);
+        if (!result.success) return;
+
+        haptic.light();
+        setNotifications((current) =>
+            current.filter((item) => item.id !== notificationId),
+        );
     };
 
     if (!user) return null;
@@ -78,10 +132,10 @@ export default function TopBar() {
             
             <div className="flex items-center gap-4 relative z-10">
                  <div className="flex flex-col">
-                    <span className="text-[11px] font-black italic text-v-red leading-none tracking-wider sm:text-xs">DRAFTANT // TERMINAL</span>
+                    <span className="text-[11px] font-black italic text-v-red leading-none tracking-wider sm:text-xs">VCT Fantasy 2027</span>
                     <div className="flex items-center gap-2 mt-1">
                         <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
-                        <span className="text-[7px] font-black uppercase text-green-500/60 tracking-[0.3em] font-sans">EN LÍNEA</span>
+                        <span className="text-[7px] font-black uppercase text-green-500/60 tracking-[0.3em] font-sans">Sesión activa</span>
                     </div>
                  </div>
             </div>
@@ -89,7 +143,7 @@ export default function TopBar() {
             <div className="flex items-center gap-3 sm:gap-6 relative z-10">
                 <div className="flex flex-col items-end">
                     <span className="text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">Usuario</span>
-                    <span className="text-[11px] font-black uppercase italic text-white leading-tight sm:text-xs">{user.user_metadata?.username || "OPERATOR"}</span>
+                    <span className="text-[11px] font-black uppercase italic text-white leading-tight sm:text-xs">{user.user_metadata?.username || "Entrenador"}</span>
                 </div>
                 
                 <div className="h-6 w-px bg-white/5 hidden sm:block" />
@@ -135,11 +189,66 @@ export default function TopBar() {
                                         <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">Notificaciones</h3>
                                             <span className="text-[8px] font-black text-white/20">
-                                                {unreadCount > 0 ? `${unreadCount} NUEVA${unreadCount > 1 ? 'S' : ''}` : 'SYSTEM v2.0'}
+                                                {unreadCount > 0 ? `${unreadCount} NUEVA${unreadCount > 1 ? 'S' : ''}` : 'AL DÍA'}
                                             </span>
                                         </div>
                                         
                                         <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
+                                            {/* System Notifications List */}
+                                            {notifications.length > 0 && (
+                                                <div className="border-b border-white/5 bg-black/20 px-4 py-2 text-[7px] font-black uppercase tracking-[0.25em] text-white/25">
+                                                    Actividad reciente
+                                                </div>
+                                            )}
+                                            {notifications.map((n) => (
+                                                <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                    <div className="flex justify-between items-start gap-3 mb-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                          <p className="text-[10px] font-black uppercase text-v-red italic">{n.title}</p>
+                                                          {!n.is_read && <span className="text-[7px] px-1 py-0.5 bg-v-red text-white uppercase font-black tracking-wider">Nuevo</span>}
+                                                        </div>
+                                                        <div className="flex shrink-0 items-center gap-1">
+                                                            <span className="mr-1 text-[7px] text-white/20">{new Date(n.created_at).toLocaleDateString()}</span>
+                                                            {!n.is_read ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleMarkAsRead(n.id)}
+                                                                    className="rounded-sm p-1 text-white/35 transition hover:bg-white/10 hover:text-white"
+                                                                    title="Marcar como leído"
+                                                                    aria-label={`Marcar como leído: ${n.title}`}
+                                                                >
+                                                                    <Eye size={13} />
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleDeleteNotification(n.id)}
+                                                                    className="rounded-sm p-1 text-white/25 transition hover:bg-v-red/15 hover:text-v-red"
+                                                                    title="Eliminar notificación"
+                                                                    aria-label={`Eliminar notificación: ${n.title}`}
+                                                                >
+                                                                    <X size={13} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[10px] text-white/70 leading-tight">{n.message}</p>
+                                                    {n.action_url && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                await handleMarkAsRead(n.id);
+                                                                setShowNotifications(false);
+                                                                router.push(n.action_url);
+                                                            }}
+                                                            className="mt-2 text-[8px] font-black uppercase tracking-wider text-v-red hover:underline"
+                                                        >
+                                                            Abrir
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+
                                             {/* Daily Bonus Item */}
                                             {bonusStatus.canClaim && (
                                                 <div className="p-4 border-b border-white/5 bg-v-red/5 hover:bg-v-red/10 transition-colors group">
@@ -150,7 +259,12 @@ export default function TopBar() {
                                                         <div className="flex-1 space-y-3">
                                                             <div>
                                                                 <p className="text-[11px] font-black uppercase text-white tracking-wider italic">Recompensa Diaria</p>
-                                                                <p className="text-[10px] text-white/50 leading-tight mt-1">Créditos de operación detectados. Procede con el reclamo.</p>
+                                                                <p className="text-[10px] text-white/50 leading-tight mt-1">
+                                                                    Reclama 500.000 € para fichar
+                                                                    {bonusStatus.eligibleLeagues > 1
+                                                                        ? ` en cada una de tus ${bonusStatus.eligibleLeagues} ligas.`
+                                                                        : " en tu liga."}
+                                                                </p>
                                                             </div>
                                                             
                                                             {claimMessage ? (
@@ -166,27 +280,13 @@ export default function TopBar() {
                                                                     disabled={claiming}
                                                                     className="w-full v-btn-primary !px-0 !py-2 !text-[9px] italic"
                                                                 >
-                                                                    {claiming ? "Sincronizando..." : "RECLAMAR CRÉDITOS"}
+                                                                    {claiming ? "Reclamando..." : "RECLAMAR 500.000 €"}
                                                                 </button>
                                                             )}
                                                         </div>
                                                     </div>
                                                 </div>
                                             )}
-
-                                            {/* System Notifications List */}
-                                            {!bonusStatus.canClaim && notifications.map((n) => (
-                                                <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <div className="flex items-center gap-1.5">
-                                                          <p className="text-[10px] font-black uppercase text-v-red italic">{n.title}</p>
-                                                          {!n.is_read && <span className="text-[7px] px-1 py-0.5 bg-v-red text-white uppercase font-black tracking-wider">Nuevo</span>}
-                                                        </div>
-                                                        <span className="text-[7px] text-white/20">{new Date(n.created_at).toLocaleDateString()}</span>
-                                                    </div>
-                                                    <p className="text-[10px] text-white/70 leading-tight">{n.message}</p>
-                                                </div>
-                                            ))}
 
                                             {/* Empty State */}
                                             {!bonusStatus.canClaim && unreadCount === 0 && notifications.length === 0 && (

@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
 import Link from "next/link";
 
+const VCT_SEASON_YEAR = 2027;
+
 export const dynamic = "force-dynamic";
 
 export default async function SchedulePage() {
@@ -12,14 +14,26 @@ export default async function SchedulePage() {
 
   if (!session) redirect("/login");
 
-  // 1. Obtener jornada activa para saber qué mostrar
+  // 1. Mostrar la jornada activa o, durante la pretemporada, la próxima.
   const { data: activeGw } = await supabase
     .from("gameweeks")
     .select("*")
     .eq("is_active", true)
     .maybeSingle();
 
-  if (!activeGw) {
+  const { data: nextGw } = activeGw
+    ? { data: null }
+    : await supabase
+        .from("gameweeks")
+        .select("*")
+        .gt("start_date", new Date().toISOString())
+        .order("start_date", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+  const selectedGw = activeGw ?? nextGw;
+
+  if (!selectedGw) {
     return (
       <div
         className="
@@ -60,7 +74,7 @@ export default async function SchedulePage() {
         </Link>
         <div className="v-panel text-center py-20 opacity-40">
           <p className="text-xs italic">
-            No hay ninguna jornada activa en este momento.
+            Todavía no hay jornadas configuradas.
           </p>
         </div>
       </div>
@@ -68,22 +82,43 @@ export default async function SchedulePage() {
   }
 
   // 2. Obtener todos los partidos de esta jornada
-  const { data: matches } = await supabase
-    .from("matches")
-    .select(
-      `
-      id,
-      vlr_id,
-      match_date,
-      status,
-      team_a:pro_teams!matches_team_a_fkey (name, tag),
-      team_b:pro_teams!matches_team_b_fkey (name, tag),
-      team_a_score,
-      team_b_score
-    `,
-    )
-    .eq("gameweek_id", activeGw.id)
-    .order("match_date", { ascending: true });
+  const [matchesResult, seasonTeamsResult] = await Promise.all([
+    supabase
+      .from("matches")
+      .select(
+        `
+        id,
+        vlr_id,
+        match_date,
+        status,
+        team_a_id:team_a,
+        team_b_id:team_b,
+        team_a:pro_teams!matches_team_a_fkey (name, tag),
+        team_b:pro_teams!matches_team_b_fkey (name, tag),
+        team_a_score,
+        team_b_score
+      `,
+      )
+      .eq("gameweek_id", selectedGw.id)
+      .order("match_date", { ascending: true }),
+    supabase
+      .from("vct_season_teams")
+      .select("team_id")
+      .eq("season_year", VCT_SEASON_YEAR)
+      .eq("confirmation_status", "confirmed")
+      .eq("fantasy_eligible", true),
+  ]);
+
+  const eligibleTeamIds = new Set(
+    (seasonTeamsResult.data ?? []).map((entry) => entry.team_id),
+  );
+  const matches = (matchesResult.data ?? []).filter(
+    (match) =>
+      Boolean(match.team_a_id) &&
+      Boolean(match.team_b_id) &&
+      eligibleTeamIds.has(match.team_a_id) &&
+      eligibleTeamIds.has(match.team_b_id),
+  );
 
   return (
     <div
@@ -100,16 +135,20 @@ export default async function SchedulePage() {
         <div>
           <h1 className="text-4xl leading-none italic uppercase">Calendario</h1>
           <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">
-            {activeGw.name} // 2026
+            {selectedGw.name} // VCT 2027
           </p>
         </div>
-        <StatusBadge label="S3-SCHEDULE" variant="white" />
+        <StatusBadge
+          label={activeGw ? "EN CURSO" : "PRÓXIMA"}
+          variant="white"
+        />
       </div>
 
       <div className="space-y-4">
         {matches?.map((match: any) => {
           const isLive = match.status === "live";
-          const isFinished = match.status === "finished";
+          const isFinished =
+            match.status === "finished" || match.status === "completed";
           const date = match.match_date ? new Date(match.match_date) : null;
 
           return (
@@ -167,7 +206,7 @@ export default async function SchedulePage() {
         {(!matches || matches.length === 0) && (
           <div className="v-panel text-center py-12 opacity-40">
             <p className="text-xs italic">
-              No hay partidos programados para esta jornada.
+              Todavía no hay partidos confirmados para esta jornada.
             </p>
           </div>
         )}
@@ -177,7 +216,7 @@ export default async function SchedulePage() {
         href="/dashboard"
         className="v-btn-secondary w-full py-3 text-[10px]"
       >
-        Volver al Centro de Mando
+        Volver al inicio
       </Link>
     </div>
   );

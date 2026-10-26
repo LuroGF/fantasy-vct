@@ -1,29 +1,76 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0b1119;
-  --foreground: #ece8e1;
+  /* =========================================================
+     DRAFTANT — CHAMPIONS / BLACK & GOLD
+     ========================================================= */
 
-  /* Valorant Premium Palette */
-  --valorant-red: #ff4655;
-  --valorant-red-hover: #ff5d6a;
-  --valorant-red-dark: #cc3844;
-  --valorant-navy: #0f1923;
-  --valorant-glass: rgba(31, 35, 38, 0.7);
-  --valorant-white: #ece8e1;
-  --valorant-dark-gray: #1f2326;
-  --valorant-light-gray: #7b8084;
+  --background: #060606;
+  --foreground: #f4f1e8;
+
+  --surface: #0d0d0d;
+  --surface-elevated: #141414;
+  --surface-hover: #191919;
+
+  --gold: #d6b25e;
+  --gold-bright: #f0d58a;
+  --gold-dark: #8f7135;
+  --gold-muted: #a88b4b;
+
+  --border-gold: rgba(214, 178, 94, 0.16);
+  --border-soft: rgba(255, 255, 255, 0.08);
+
+  --text-primary: #f4f1e8;
+  --text-secondary: #a7a39a;
+  --text-muted: #68655f;
+
+  --danger: #ff4655;
+  --live: #ff4655;
+
+  /*
+   * Compatibilidad temporal con componentes actuales.
+   *
+   * v-red pasa a representar el color de marca dorado.
+   * v-navy pasa a representar el negro principal.
+   *
+   * Más adelante podremos cambiar las clases a nombres
+   * semánticos sin tener que hacerlo todo de golpe.
+   */
+  --valorant-red: var(--gold);
+  --valorant-red-hover: var(--gold-bright);
+  --valorant-red-dark: var(--gold-dark);
+
+  --valorant-navy: #080808;
+  --valorant-glass: rgba(13, 13, 13, 0.82);
+
+  --valorant-white: var(--text-primary);
+  --valorant-dark-gray: var(--surface-elevated);
+  --valorant-light-gray: var(--text-secondary);
 
   /* Role Colors */
-  --duelista: #00f0ff;
-  --iniciador: #ffea00;
-  --controlador: #ab47bc;
-  --centinela: #00ff7f;
+  --duelista: #dc7373;
+  --iniciador: #d6b25e;
+  --controlador: #8e79bd;
+  --centinela: #71a58d;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Nuevos nombres semánticos */
+  --color-brand: var(--gold);
+  --color-brand-bright: var(--gold-bright);
+  --color-brand-dark: var(--gold-dark);
+
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+
+  --color-muted: var(--text-secondary);
+  --color-danger: var(--danger);
+  --color-live: var(--live);
+
+  /* Compatibilidad actual */
   --color-v-red: var(--valorant-red);
   --color-v-navy: var(--valorant-navy);
   --color-v-white: var(--valorant-white);
@@ -37,11 +84,25 @@
   --font-valorant: "Oswald", sans-serif;
   --font-sans: "Inter", sans-serif;
 
-  --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  --shadow-red: 0 0 20px rgba(255, 70, 85, 0.2);
+  --shadow-premium:
+    0 18px 50px -20px rgba(0, 0, 0, 0.85);
+
+  --shadow-gold:
+    0 0 24px rgba(214, 178, 94, 0.12);
+
+  /*
+   * Alias para componentes actuales que aún usan
+   * shadow-red.
+   */
+  --shadow-red:
+    0 0 24px rgba(214, 178, 94, 0.12);
 
   --animate-shimmer: shimmer 2s infinite;
 }
+
+/* =========================================================
+   BASE
+   ========================================================= */
 
 html {
   background-color: var(--background);
@@ -50,39 +111,81 @@ html {
 
 body {
   background-color: var(--background);
+
   background-image:
     radial-gradient(
-      circle at 0% 0%,
-      rgba(255, 70, 85, 0.08) 0%,
-      transparent 40%
+      circle at 15% -10%,
+      rgba(214, 178, 94, 0.09) 0%,
+      transparent 32%
     ),
     radial-gradient(
-      circle at 100% 100%,
-      rgba(0, 240, 255, 0.05) 0%,
-      transparent 40%
+      circle at 95% 110%,
+      rgba(143, 113, 53, 0.07) 0%,
+      transparent 34%
     ),
-    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  color: var(--valorant-white);
+    linear-gradient(
+      180deg,
+      #080808 0%,
+      #050505 55%,
+      #030303 100%
+    );
+
+  color: var(--text-primary);
+
   min-height: 100vh;
+
   font-family: var(--font-sans);
+
   overflow: hidden;
+
   -webkit-font-smoothing: antialiased;
-  letter-spacing: 0.02em;
+
+  letter-spacing: 0.015em;
 }
 
-/* Premium Glassmorphism Panel */
+/* =========================================================
+   PANELS
+   ========================================================= */
+
 @utility v-panel {
-  @apply relative bg-v-gray/40 backdrop-blur-xl border border-white/5 rounded-sm p-4 sm:p-6 transition-all duration-300;
-  box-shadow: var(--shadow-premium);
+  @apply relative rounded-sm p-4 sm:p-6 transition-all duration-300;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.025),
+      rgba(255, 255, 255, 0.008)
+    ),
+    rgba(13, 13, 13, 0.9);
+
+  border: 1px solid var(--border-soft);
+
+  backdrop-filter: blur(18px);
+
+  box-shadow:
+    0 20px 45px -20px rgba(0, 0, 0, 0.9);
 }
 
 @utility v-panel-red {
-  @apply v-panel border-l-4 border-l-v-red;
+  @apply v-panel;
+
+  border-left:
+    3px solid var(--gold);
 }
 
-/* Valorant-style sharp buttons */
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
 @utility v-btn {
-  @apply relative inline-flex items-center justify-center px-8 py-4 font-black uppercase tracking-[0.15em] transition-all duration-300 overflow-hidden active:scale-95;
+  @apply relative inline-flex items-center justify-center
+    px-8 py-4
+    font-black uppercase
+    tracking-[0.15em]
+    transition-all duration-300
+    overflow-hidden
+    active:scale-95;
+
   clip-path: polygon(
     12px 0,
     100% 0,
@@ -91,15 +194,38 @@ body {
     0 100%,
     0 12px
   );
+
   font-family: var(--font-valorant);
 }
 
 @utility v-btn-primary {
-  @apply v-btn bg-v-red text-white hover:brightness-110 hover:shadow-red;
+  @apply v-btn text-black;
+
+  background:
+    linear-gradient(
+      135deg,
+      var(--gold-bright),
+      var(--gold)
+    );
+
+  box-shadow:
+    0 10px 30px -12px rgba(214, 178, 94, 0.45);
 
   &::after {
     content: "";
-    @apply absolute inset-0 bg-white/20 -translate-x-full transition-transform duration-500 skew-x-12;
+
+    @apply absolute inset-0 -translate-x-full
+      transition-transform duration-500 skew-x-12;
+
+    background:
+      rgba(255, 255, 255, 0.22);
+  }
+
+  &:hover {
+    filter: brightness(1.08);
+
+    box-shadow:
+      0 12px 35px -10px rgba(214, 178, 94, 0.55);
   }
 
   &:hover::after {
@@ -108,52 +234,161 @@ body {
 }
 
 @utility v-btn-secondary {
-  @apply v-btn bg-white/5 border border-white/10 text-white hover:bg-white/10;
+  @apply v-btn text-v-white;
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  border:
+    1px solid rgba(214, 178, 94, 0.14);
+
+  &:hover {
+    background:
+      rgba(214, 178, 94, 0.07);
+
+    border-color:
+      rgba(214, 178, 94, 0.3);
+  }
 }
 
-/* Typography */
+/* =========================================================
+   TYPOGRAPHY
+   ========================================================= */
+
 h1,
 h2,
 h3 {
   font-family: var(--font-valorant);
+
   @apply font-black uppercase italic tracking-wider;
 }
+
+::selection {
+  background:
+    rgba(214, 178, 94, 0.28);
+
+  color:
+    var(--gold-bright);
+}
+
+/* =========================================================
+   ROLE COLORS
+   ========================================================= */
 
 .text-role-Duelista {
   color: var(--duelista);
 }
+
 .text-role-Iniciador {
   color: var(--iniciador);
 }
+
 .text-role-Controlador {
   color: var(--controlador);
 }
+
 .text-role-Centinela {
   color: var(--centinela);
 }
+
 .text-role-Flex {
   color: var(--valorant-light-gray);
 }
 
-/* Custom scrollbar */
+/* =========================================================
+   CARDS
+   ========================================================= */
+
+@utility v-card-animated {
+  @apply relative overflow-hidden rounded-sm transition-all duration-300;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.02),
+      rgba(255, 255, 255, 0.005)
+    ),
+    rgba(13, 13, 13, 0.88);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.07);
+
+  backdrop-filter:
+    blur(18px);
+
+  &::before {
+    content: "";
+
+    @apply absolute top-0 left-0
+      w-[2px] h-full
+      scale-y-0
+      transition-transform duration-300
+      origin-top;
+
+    background:
+      linear-gradient(
+        180deg,
+        var(--gold-bright),
+        var(--gold-dark)
+      );
+  }
+
+  &:hover {
+    background:
+      rgba(20, 20, 20, 0.95);
+
+    border-color:
+      rgba(214, 178, 94, 0.22);
+
+    box-shadow:
+      0 12px 35px -18px
+      rgba(214, 178, 94, 0.22);
+
+    &::before {
+      @apply scale-y-100;
+    }
+  }
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background:
+    var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--valorant-red);
-  border-radius: 10px;
+  background:
+    linear-gradient(
+      180deg,
+      var(--gold-bright),
+      var(--gold-dark)
+    );
+
+  border-radius:
+    10px;
 }
 
-/* Animations */
+::-webkit-scrollbar-thumb:hover {
+  background:
+    var(--gold-bright);
+}
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(100%);
   }
@@ -163,6 +398,7 @@ h3 {
   0% {
     top: 0%;
   }
+
   100% {
     top: 100%;
   }
@@ -172,57 +408,78 @@ h3 {
   0% {
     transform: skew(0deg);
   }
+
   20% {
     transform: skew(-2deg);
   }
+
   40% {
     transform: skew(3deg);
   }
+
   60% {
     transform: skew(-1deg);
   }
+
   80% {
     transform: skew(2deg);
   }
+
   100% {
     transform: skew(0deg);
   }
 }
 
+@keyframes gold-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 rgba(214, 178, 94, 0);
+  }
+
+  50% {
+    box-shadow:
+      0 0 24px rgba(214, 178, 94, 0.14);
+  }
+}
+
 .animate-scan {
-  animation: scan 4s linear infinite;
+  animation:
+    scan 4s linear infinite;
 }
 
 .animate-glitch {
-  animation: glitch-skew 4s infinite linear alternate-reverse;
+  animation:
+    glitch-skew 4s infinite linear alternate-reverse;
 }
 
-@utility v-card-animated {
-  @apply relative overflow-hidden bg-v-gray/40 backdrop-blur-xl border border-white/5 rounded-sm transition-all duration-500;
-  &::before {
-    content: "";
-    @apply absolute top-0 left-0 w-1 h-full bg-v-red scale-y-0 transition-transform duration-500 origin-top;
-  }
-  &:hover {
-    @apply bg-v-gray/60 border-white/10;
-    &::before {
-      @apply scale-y-100;
-    }
-  }
+.animate-gold-pulse {
+  animation:
+    gold-pulse 3s ease-in-out infinite;
 }
 
-/* Mobile Adjustments & Safe Areas */
+/* =========================================================
+   SAFE AREAS
+   ========================================================= */
+
 @utility v-safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom:
+    env(safe-area-inset-bottom);
 }
 
 @utility v-safe-area-pt {
-  padding-top: env(safe-area-inset-top);
+  padding-top:
+    env(safe-area-inset-top);
 }
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
 
 @media (max-width: 640px) {
   .v-btn {
     @apply px-6 py-3 text-[10px];
+
     clip-path: polygon(
       8px 0,
       100% 0,
@@ -236,26 +493,12 @@ h3 {
   h1 {
     @apply text-3xl;
   }
+
   h2 {
     @apply text-xl;
   }
+
   h3 {
     @apply text-lg;
   }
-}
-
-/* Redefine v-panel for better contrast */
-@utility v-panel {
-  @apply relative bg-v-navy/60 backdrop-blur-2xl border border-white/10 rounded-sm p-4 sm:p-6 transition-all duration-300;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
-}
-
-/* Custom Scrollbar improvements */
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--valorant-red);
-  box-shadow: 0 0 10px var(--valorant-red);
 }

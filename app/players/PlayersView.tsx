@@ -76,10 +76,10 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-4xl font-black italic uppercase text-v-white tracking-tighter">
-          Terminal de Scouting
+          Jugadores VCT
         </h1>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-v-red">
-          Base de datos global de agentes VCT
+          Rendimiento, valor de mercado y estadísticas
         </p>
       </div>
 
@@ -89,7 +89,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-v-white/20 group-focus-within:text-v-red transition-colors" />
           <input
             type="text"
-            placeholder="BUSCAR AGENTE O EQUIPO..."
+            placeholder="BUSCAR JUGADOR O EQUIPO..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-v-navy/50 border border-white/5 pl-10 pr-4 py-3 text-[10px] font-black uppercase italic tracking-widest focus:border-v-red focus:bg-v-red/5 outline-none transition-all placeholder:text-v-white/10"

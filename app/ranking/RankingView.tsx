@@ -294,7 +294,7 @@ export function RankingView({
                           {(
                             Number(player.release_clause || 0) / 1000000
                           ).toFixed(1)}
-                          M VP
+                          M €
                         </p>
                       </div>
                       <button
@@ -334,7 +334,7 @@ export function RankingView({
                   {(
                     Number(confirmPay.player.release_clause || 0) / 1000000
                   ).toFixed(1)}
-                  M VP
+                  M €
                 </span>{" "}
                 por{" "}
                 <span className="text-v-red font-black uppercase">

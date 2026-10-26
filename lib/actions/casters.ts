@@ -3,8 +3,11 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "./auth";
+import { V1_FEATURES, V1_PAUSED_FEATURE_MESSAGE } from "@/lib/features";
 
 export async function getCasters() {
+  if (!V1_FEATURES.casters) return [];
+
   const { supabaseAdmin } = await import("@/utils/supabase/admin");
   const { data, error } = await supabaseAdmin
     .from("casters")
@@ -20,6 +23,8 @@ export async function getCasters() {
 }
 
 export async function getActiveCasters(leagueId: string, profileId: string, gameweekId: number) {
+  if (!V1_FEATURES.casters) return [];
+
   const { supabaseAdmin } = await import("@/utils/supabase/admin");
   const { data, error } = await supabaseAdmin
     .from("active_casters")
@@ -39,6 +44,9 @@ export async function getActiveCasters(leagueId: string, profileId: string, game
 export async function hireCaster(leagueId: string, profileId: string, gameweekId: number, casterId: string) {
   const session = await getSession();
   if (!session || session.user.id !== profileId) throw new Error("Acceso no autorizado");
+  if (!V1_FEATURES.casters) {
+    return { success: false, error: V1_PAUSED_FEATURE_MESSAGE };
+  }
 
   const supabase = await createClient();
   try {
@@ -112,7 +120,7 @@ export async function hireCaster(leagueId: string, profileId: string, gameweekId
       price: caster.base_price
     });
 
-    const { createNotification } = await import("./notifications");
+    const { createNotification } = await import("@/lib/notifications/create");
     await createNotification({
         profile_id: profileId,
         league_id: leagueId,

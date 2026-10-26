@@ -153,7 +153,7 @@ export function PlayerCard({
 
             <div className="text-right shrink-0">
               <p className="text-[7px] font-black uppercase text-white/30 tracking-widest mb-0.5">Asignación</p>
-              <p className="text-lg font-black italic leading-none whitespace-nowrap">{(player.market_value / 1000000).toFixed(1)}M <span className="text-[9px]">VP</span></p>
+              <p className="text-lg font-black italic leading-none whitespace-nowrap">{(player.market_value / 1000000).toFixed(1)}M <span className="text-[9px]">€</span></p>
               {player.releaseClause && (
                  <p className="text-[10px] font-bold italic text-v-red mt-1 whitespace-nowrap">Reasig: {(player.releaseClause / 1000000).toFixed(1)}M</p>
               )}

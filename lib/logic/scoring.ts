@@ -1,45 +1,37 @@
-"use server";
-
 export interface PlayerStats {
   kills: number;
   deaths: number;
   assists: number;
   clutches?: number;
-  fb?: number; // First Bloods
-  fd?: number; // First Deaths
+  fb?: number;
+  fd?: number;
+  acs?: number | null;
+  mvp?: boolean;
 }
 
 /**
- * Calculates fantasy points following the project rules:
- * Kill: +2
- * Assist: +1
- * First Blood: +3
- * First Death: -2 (Penalty)
- * Clutch Round: +4
- * Death: -1.5 (Penalty)
- * Negative KDA: -5 (Bonus penalty if Kills + Assists < Deaths)
+ * Client/server mirror of the V1 database trigger.
+ * The database remains the authoritative calculator for stored performances.
  */
 export function calculateFantasyPoints(stats: PlayerStats): number {
-  let points = 0;
-  
-  // Sumas
-  const totalKills = stats.kills || 0;
-  const totalAssists = stats.assists || 0;
-  const totalDeaths = stats.deaths || 0;
+  const acs = stats.acs;
+  let acsBonus = 0;
 
-  points += totalKills * 2;
-  points += totalAssists * 1;
-  points += (stats.fb || 0) * 3;
-  points += (stats.clutches || 0) * 4;
-  
-  // Restas (Penalizaciones)
-  points -= totalDeaths * 1.5;
-  points -= (stats.fd || 0) * 2;
-
-  // Penalización por KDA Negativo (Eficiencia)
-  if (totalKills + totalAssists < totalDeaths) {
-    points -= 5;
+  if (acs !== null && acs !== undefined) {
+    if (acs >= 300) acsBonus = 5;
+    else if (acs >= 250) acsBonus = 3;
+    else if (acs >= 200) acsBonus = 1;
+    else if (acs < 150) acsBonus = -1;
   }
 
-  return Math.round(points);
+  return (
+    (stats.kills || 0) * 2
+    - (stats.deaths || 0)
+    + (stats.assists || 0)
+    + (stats.clutches || 0) * 3
+    + (stats.fb || 0) * 2
+    - (stats.fd || 0)
+    + acsBonus
+    + (stats.mvp ? 5 : 0)
+  );
 }

@@ -52,17 +52,19 @@ export async function getGlobalRank(userId: string) {
 //
 // Toda la lógica importante ocurre ahora dentro de:
 //
-// create_fantasy_league()
+// create_vct_2027_fantasy_league()
 //
 // PostgreSQL:
 // - crea la liga
 // - genera invite_code
 // - añade al creador
 // - asigna 50 M€
-// - reparte 5 jugadores totalmente aleatorios
+// - reparte 5 jugadores elegibles de VCT 2027
+// - respeta el máximo de 2 jugadores por rol (salvo Flex)
 // - los pone como titulares
 // - asigna cláusula inicial
 // - activa protección de 48 horas
+// - abre el primer mercado de 10 jugadores al instante
 //
 // ============================================================
 
@@ -99,7 +101,7 @@ export async function createLeague(
       data,
       error,
     } = await supabase.rpc(
-      "create_fantasy_league",
+      "create_vct_2027_fantasy_league",
       {
         p_name: cleanName,
       },
@@ -196,7 +198,7 @@ export async function joinLeague(
       data,
       error,
     } = await supabase.rpc(
-      "join_fantasy_league",
+      "join_vct_2027_fantasy_league",
       {
         p_invite_code:
           cleanCode,
@@ -326,7 +328,53 @@ export async function getUserLeagues(
     return [];
   }
 
-  return participations ?? [];
+  const memberships = participations ?? [];
+  const leagueIds = memberships.map((participation) => participation.league_id);
+
+  if (leagueIds.length === 0) return [];
+
+  const { data: leagueStandings, error: standingsError } = await supabase
+    .from("league_participants")
+    .select("league_id, profile_id, total_points")
+    .in("league_id", leagueIds);
+
+  if (standingsError) {
+    console.error("Error fetching league ranks:", standingsError);
+    return memberships.map((participation) => ({ ...participation, rank: null }));
+  }
+
+  const standingsByLeague = new Map<string, any[]>();
+  for (const participant of leagueStandings ?? []) {
+    const entries = standingsByLeague.get(participant.league_id) ?? [];
+    entries.push(participant);
+    standingsByLeague.set(participant.league_id, entries);
+  }
+
+  const rankByMembership = new Map<string, number>();
+  for (const [leagueId, entries] of standingsByLeague) {
+    entries.sort(
+      (a, b) =>
+        Number(b.total_points ?? 0) - Number(a.total_points ?? 0) ||
+        String(a.profile_id).localeCompare(String(b.profile_id)),
+    );
+
+    let currentRank = 0;
+    let previousPoints: number | null = null;
+    entries.forEach((participant, index) => {
+      const points = Number(participant.total_points ?? 0);
+      if (previousPoints === null || points !== previousPoints) {
+        currentRank = index + 1;
+        previousPoints = points;
+      }
+      rankByMembership.set(`${leagueId}:${participant.profile_id}`, currentRank);
+    });
+  }
+
+  return memberships.map((participation) => ({
+    ...participation,
+    rank:
+      rankByMembership.get(`${participation.league_id}:${userId}`) ?? null,
+  }));
 }
 
 // ============================================================
@@ -629,7 +677,9 @@ export async function getLeagueGameweekOverview(
    *
    * 1. jornada solicitada
    * 2. jornada activa
-   * 3. última jornada disponible
+   * 3. última jornada finalizada
+   * 4. próxima jornada (pretemporada)
+   * 5. última jornada disponible
    */
   let selectedGameweek =
     requestedGameweekId
@@ -641,10 +691,23 @@ export async function getLeagueGameweekOverview(
       : null;
 
   if (!selectedGameweek) {
+    const now = Date.now();
+    const nextGameweek = [...availableGameweeks]
+      .filter((gameweek) => new Date(gameweek.start_date).getTime() > now)
+      .sort(
+        (a, b) =>
+          new Date(a.start_date).getTime() -
+          new Date(b.start_date).getTime(),
+      )[0];
+
     selectedGameweek =
       availableGameweeks.find(
         (gw) => gw.is_active,
       ) ??
+      availableGameweeks.find(
+        (gw) => gw.is_final,
+      ) ??
+      nextGameweek ??
       availableGameweeks[0] ??
       null;
   }

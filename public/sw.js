@@ -1,5 +1,5 @@
 // Service Worker for PWA
-const CACHE_NAME = 'vct-fantasy-v1.2';
+const CACHE_NAME = 'vct-fantasy-v1.3';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
@@ -132,7 +132,14 @@ self.addEventListener('push', (event) => {
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = new URL(event.notification.data || '/dashboard', self.location.origin).href;
   event.waitUntil(
-    clients.openWindow(event.notification.data || '/dashboard')
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      const existing = windowClients.find((client) => client.url.startsWith(self.location.origin));
+      if (existing) {
+        return existing.focus().then((client) => client.navigate(targetUrl));
+      }
+      return clients.openWindow(targetUrl);
+    })
   );
 });

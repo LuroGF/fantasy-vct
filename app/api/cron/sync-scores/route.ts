@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { dispatchPendingPushNotifications } from "@/lib/notifications/push";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -52,10 +53,23 @@ export async function GET(request: Request) {
     }
 
     const {
+      data: rewardResult,
+      error: rewardError,
+    } = await (supabaseAdmin as any).rpc(
+      "settle_finished_gameweek_rewards",
+    );
+
+    if (rewardError) {
+      throw new Error(
+        `Gameweek rewards: ${rewardError.message}`,
+      );
+    }
+
+    const {
       data: marketResult,
       error: marketError,
     } = await (supabaseAdmin as any).rpc(
-      "run_daily_market_engine",
+      "run_vct_2027_daily_market_engine",
     );
 
     if (marketError) {
@@ -64,10 +78,30 @@ export async function GET(request: Request) {
       );
     }
 
+    const {
+      data: marketNotifications,
+      error: marketNotificationsError,
+    } = await (supabaseAdmin as any).rpc(
+      "enqueue_market_result_notifications",
+    );
+
+    if (marketNotificationsError) {
+      throw new Error(
+        `Market notifications: ${marketNotificationsError.message}`,
+      );
+    }
+
+    const pushResult =
+      await dispatchPendingPushNotifications(25);
+
     return NextResponse.json({
       success: true,
       gameweek: gameweekResult,
+      rewards: rewardResult,
       market: marketResult,
+      marketNotifications:
+        Number(marketNotifications) || 0,
+      push: pushResult,
     });
   } catch (error) {
     console.error(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { sileo } from "sileo";
 import { haptic } from "@/lib/utils/haptics";
@@ -109,7 +110,14 @@ export default function MarketView({
 
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagueId);
   const [leagueMenuOpen, setLeagueMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>("market");
+  const requestedTab = searchParams.get("tab");
+  const initialTab: Tab =
+    requestedTab === "rivals" ||
+    requestedTab === "sales" ||
+    requestedTab === "offers"
+      ? requestedTab
+      : "market";
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
   const [bidDialog, setBidDialog] = useState<any>(null);
@@ -122,6 +130,15 @@ export default function MarketView({
         (l) => (l.league_id || l.leagues?.id) === activeLeagueId,
       ),
     [activeLeagueId, initialLeagues],
+  );
+
+  const currentBudget = Number(data?.participant?.current_budget || 0);
+  const bidExposure = Number(data?.stats?.bidExposure || 0);
+  const availableBudget = Math.max(0, currentBudget - bidExposure);
+  const bidBeingEdited = Number(bidDialog?.auction?.my_bid?.amount || 0);
+  const availableForCurrentBid = Math.max(
+    0,
+    availableBudget + bidBeingEdited,
   );
 
   async function reload(leagueId = activeLeagueId) {
@@ -139,6 +156,28 @@ export default function MarketView({
     }
   }
 
+  useEffect(() => {
+    const auctions = data?.auctions || [];
+    const now = Date.now();
+    const futureEnds = auctions
+      .map((auction: any) => new Date(auction.ends_at).getTime())
+      .filter((endsAt: number) => Number.isFinite(endsAt) && endsAt > now);
+
+    // Al cerrar el mercado se consulta enseguida. Si el motor todavía está
+    // procesándolo y no hay tarjetas, se reintenta de forma moderada mientras
+    // el entrenador permanezca en esta pantalla.
+    const delay =
+      futureEnds.length > 0
+        ? Math.max(1_000, Math.min(...futureEnds) - now + 1_500)
+        : 30_000;
+
+    const timeout = window.setTimeout(() => {
+      void reload(activeLeagueId);
+    }, delay);
+
+    return () => window.clearTimeout(timeout);
+  }, [activeLeagueId, data?.auctions]);
+
   function changeLeague(leagueId: string) {
     haptic.light();
     setActiveLeagueId(leagueId);
@@ -148,6 +187,15 @@ export default function MarketView({
     params.set("league", leagueId);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     void reload(leagueId);
+  }
+
+  function changeTab(tab: Tab) {
+    setActiveTab(tab);
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "market") params.delete("tab");
+    else params.set("tab", tab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
   async function runAction(
@@ -178,6 +226,15 @@ export default function MarketView({
     } catch (error: any) {
       haptic.error();
 
+      // Una subasta puede haber caducado o haber sido sustituida mientras la
+      // página estaba abierta. Sincronizamos el mercado también al fallar para
+      // no dejar tarjetas obsoletas visibles después del rechazo del servidor.
+      try {
+        await reload();
+      } catch {
+        // El aviso original es más útil que un segundo error de refresco.
+      }
+
       sileo.error({
         title: "Error",
         description: error?.message || "No se pudo completar la operación.",
@@ -193,6 +250,14 @@ export default function MarketView({
     const amount = Number(bidDialog.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
       notifyError("Puja no válida", "Introduce un importe válido.");
+      return;
+    }
+
+    if (amount > availableForCurrentBid) {
+      notifyError(
+        "Saldo comprometido",
+        `Puedes destinar como máximo ${money(availableForCurrentBid)} a esta puja.`,
+      );
       return;
     }
 
@@ -281,7 +346,7 @@ export default function MarketView({
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="v-panel relative overflow-visible p-4">
+      <section className="v-panel relative z-30 overflow-visible p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="mb-1 text-[8px] font-black uppercase tracking-[0.22em] text-white/35">
@@ -299,7 +364,7 @@ export default function MarketView({
             </button>
 
             {leagueMenuOpen && (
-              <div className="absolute left-4 top-[62px] z-40 w-[min(320px,calc(100%-2rem))] overflow-hidden border border-white/10 bg-v-navy shadow-2xl">
+              <div className="absolute left-4 top-[62px] z-50 max-h-64 w-[min(320px,calc(100%-2rem))] overflow-y-auto border border-white/10 bg-v-navy shadow-2xl custom-scrollbar">
                 {initialLeagues.map((league) => {
                   const id = league.league_id || league.leagues?.id;
                   const name = league.leagues?.name || league.name;
@@ -324,13 +389,21 @@ export default function MarketView({
             )}
           </div>
 
-          <div className="grid shrink-0 grid-cols-3 gap-2 text-right">
+          <div className="grid shrink-0 grid-cols-2 gap-x-4 gap-y-2 text-right sm:grid-cols-4">
             <div>
               <p className="text-[7px] font-black uppercase text-white/30">
                 Saldo
               </p>
               <p className="text-sm font-black italic text-white">
                 {money(data?.participant?.current_budget)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black uppercase text-white/30">
+                Disponible
+              </p>
+              <p className="text-sm font-black italic text-v-red">
+                {money(availableBudget)}
               </p>
             </div>
             <div>
@@ -353,13 +426,13 @@ export default function MarketView({
         </div>
       </section>
 
-      <div className="v-panel p-1">
+      <div className="v-panel relative z-10 p-1">
         <div className="grid grid-cols-4 gap-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => changeTab(tab.id)}
               className={`px-2 py-3 text-[8px] font-black uppercase italic tracking-wide transition sm:text-[9px] ${
                 activeTab === tab.id
                   ? "bg-v-red text-white shadow-[0_0_18px_rgba(255,70,85,.22)]"
@@ -399,16 +472,27 @@ export default function MarketView({
                   className="v-panel-red relative overflow-hidden p-4"
                 >
                   <div className="flex gap-4">
-                    <PlayerImage player={player} />
+                    <Link
+                      href={`/players/${player.id}?league=${activeLeagueId}`}
+                      aria-label={`Ver perfil de ${player.nickname}`}
+                      className="shrink-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
+                    >
+                      <PlayerImage player={player} />
+                    </Link>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="truncate text-2xl font-black italic uppercase leading-none">
-                            {player?.nickname}
-                          </h3>
-                          <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-white/35">
-                            {player?.pro_teams?.tag || "FA"} · {player?.role}
-                          </p>
+                          <Link
+                            href={`/players/${player.id}?league=${activeLeagueId}`}
+                            className="group/player block min-w-0 pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
+                          >
+                            <h3 className="truncate text-2xl font-black italic uppercase leading-none transition-colors group-hover/player:text-v-red">
+                              {player?.nickname}
+                            </h3>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-white/35 transition-colors group-hover/player:text-white/60">
+                              {player?.pro_teams?.tag || "FA"} · {player?.role}
+                            </p>
+                          </Link>
                         </div>
                         <div className="text-right">
                           <p className="text-[7px] font-black uppercase text-white/30">
@@ -531,16 +615,27 @@ export default function MarketView({
 
                   return (
                     <article key={row.id} className="v-panel flex gap-3 p-3">
-                      <PlayerImage player={p} />
+                      <Link
+                        href={`/players/${p.id}?league=${activeLeagueId}`}
+                        aria-label={`Ver perfil de ${p.nickname}`}
+                        className="shrink-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
+                      >
+                        <PlayerImage player={p} />
+                      </Link>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <h3 className="truncate text-lg font-black italic uppercase">
-                              {p?.nickname}
-                            </h3>
-                            <p className="text-[8px] font-black uppercase text-white/35">
-                              {p?.pro_teams?.tag || "FA"} · {p?.role}
-                            </p>
+                            <Link
+                              href={`/players/${p.id}?league=${activeLeagueId}`}
+                              className="group/player block min-w-0 pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
+                            >
+                              <h3 className="truncate text-lg font-black italic uppercase transition-colors group-hover/player:text-v-red">
+                                {p?.nickname}
+                              </h3>
+                              <p className="text-[8px] font-black uppercase text-white/35 transition-colors group-hover/player:text-white/60">
+                                {p?.pro_teams?.tag || "FA"} · {p?.role}
+                              </p>
+                            </Link>
                           </div>
                           <div className="text-right">
                             <p className="text-[7px] uppercase text-white/30">
@@ -626,7 +721,7 @@ export default function MarketView({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="truncate text-xl font-black italic uppercase">
+                      <h3 className="truncate pr-1 text-xl font-black italic uppercase">
                         {listing.player?.nickname}
                       </h3>
 
@@ -828,7 +923,7 @@ export default function MarketView({
                         ? `Enviada a ${offer.to_username}`
                         : `Recibida de ${offer.from_username}`}
                     </p>
-                    <h3 className="truncate text-lg font-black italic uppercase">
+                    <h3 className="truncate pr-1 text-lg font-black italic uppercase">
                       {offer.player?.nickname || "Jugador"}
                     </h3>
                     <p className="text-sm font-black italic text-v-red">
@@ -864,13 +959,33 @@ export default function MarketView({
               Nadie podrá ver tu importe. Si modificas la puja, se actualizará
               su momento de envío.
             </p>
+            <div className="mt-4 grid grid-cols-2 gap-3 border-y border-white/5 py-3">
+              <div>
+                <p className="text-[7px] font-black uppercase text-white/25">
+                  Exposición actual
+                </p>
+                <p className="text-sm font-black italic text-white">
+                  {money(bidExposure)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[7px] font-black uppercase text-white/25">
+                  Máximo para esta puja
+                </p>
+                <p className="text-sm font-black italic text-v-red">
+                  {money(availableForCurrentBid)}
+                </p>
+              </div>
+            </div>
             <input
               type="number"
+              min={1}
+              max={availableForCurrentBid}
               value={bidDialog.amount}
               onChange={(e) =>
                 setBidDialog({ ...bidDialog, amount: e.target.value })
               }
-              className="mt-5 w-full border border-white/10 bg-v-navy/60 px-4 py-3 text-lg font-black italic outline-none focus:border-v-red"
+              className="mt-4 w-full border border-white/10 bg-v-navy/60 px-4 py-3 text-lg font-black italic outline-none focus:border-v-red"
             />
             <div className="mt-4 flex gap-2">
               <button

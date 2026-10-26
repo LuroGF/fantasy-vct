@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   getLeagueClassification,
   getLeagueGameweekOverview,
@@ -802,6 +803,7 @@ export default function LeagueDetails({
 
             <div className="max-h-[calc(92vh-150px)] overflow-y-auto p-4 sm:p-6">
               <RosterSection
+                leagueId={leagueId}
                 title="Titulares"
                 subtitle="Puntúan en la jornada"
                 players={selectedRoster.starters}
@@ -811,6 +813,7 @@ export default function LeagueDetails({
               {selectedRoster.bench.length > 0 && (
                 <div className="mt-7 border-t border-white/5 pt-6">
                   <RosterSection
+                    leagueId={leagueId}
                     title="Banquillo"
                     subtitle="No puntúan mientras sean suplentes"
                     players={selectedRoster.bench}
@@ -906,9 +909,11 @@ export default function LeagueDetails({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 {selectedGameweekManager.lineup.map((player) => (
-                  <div
+                  <Link
                     key={player.id}
-                    className="group flex min-w-0 items-center gap-4 overflow-hidden border border-white/5 bg-black/15 p-3"
+                    href={`/players/${player.id}?league=${leagueId}`}
+                    aria-label={`Ver perfil de ${player.nickname}`}
+                    className="group flex min-w-0 items-center gap-4 overflow-hidden border border-white/5 bg-black/15 p-3 transition-colors hover:border-v-red/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
                   >
                     <div className="h-16 w-16 shrink-0 overflow-hidden border border-white/10 bg-black/20">
                       <PlayerImage player={player} />
@@ -917,7 +922,7 @@ export default function LeagueDetails({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-black italic uppercase">
+                          <p className="truncate pr-1 text-sm font-black italic uppercase transition-colors group-hover:text-v-red">
                             {player.nickname}
                           </p>
 
@@ -932,7 +937,7 @@ export default function LeagueDetails({
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
 
@@ -965,11 +970,13 @@ export default function LeagueDetails({
 // ============================================================
 
 function RosterSection({
+  leagueId,
   title,
   subtitle,
   players,
   accent = false,
 }: {
+  leagueId: string;
   title: string;
   subtitle: string;
   players: RosterPlayer[];
@@ -1003,9 +1010,11 @@ function RosterSection({
 
       <div className="grid gap-3 sm:grid-cols-2">
         {players.map((player) => (
-          <div
+          <Link
             key={player.id}
-            className="group flex min-w-0 items-center gap-4 overflow-hidden border border-white/5 bg-black/15 p-3 transition-colors hover:border-v-red/30"
+            href={`/players/${player.id}?league=${leagueId}`}
+            aria-label={`Ver perfil de ${player.nickname}`}
+            className="group flex min-w-0 items-center gap-4 overflow-hidden border border-white/5 bg-black/15 p-3 transition-colors hover:border-v-red/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
           >
             <div className="h-16 w-16 shrink-0 overflow-hidden border border-white/10 bg-black/20">
               <PlayerImage player={player} />
@@ -1014,7 +1023,7 @@ function RosterSection({
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black italic uppercase text-v-white transition-colors group-hover:text-v-red">
+                  <p className="truncate pr-1 text-sm font-black italic uppercase text-v-white transition-colors group-hover:text-v-red">
                     {player.nickname}
                   </p>
 
@@ -1052,7 +1061,7 @@ function RosterSection({
                 </span>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </section>

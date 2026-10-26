@@ -25,9 +25,9 @@ export default function SupportPage() {
         </div>
         
         <div className="space-y-2">
-          <p className="text-xl font-black italic uppercase italic tracking-tighter">¿Problemas con el Terminal?</p>
+          <p className="text-xl font-black italic uppercase tracking-tighter">¿Necesitas ayuda?</p>
           <p className="text-xs text-v-white/40 leading-relaxed">
-            Nuestros analistas están revisando el flujo de datos permanentemente.
+            Escríbenos y revisaremos tu incidencia con la aplicación.
           </p>
         </div>
 
@@ -36,9 +36,6 @@ export default function SupportPage() {
           <a href="mailto:soporte@fantasy-vct.com" className="v-btn-primary block py-3 text-[10px]">
             ENVIAR REPORTE DE ERROR
           </a>
-          <button className="v-btn-secondary w-full py-3 text-[10px] opacity-40">
-            CÓDIGO DE ERROR: VCT-404-SYNC
-          </button>
         </div>
       </div>
     </div>

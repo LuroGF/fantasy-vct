@@ -4,10 +4,13 @@ import { getPowerUpTypes, getUserInventory } from "@/lib/actions/inventory";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { ShopView } from "./ShopView";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+import { V1_FEATURES } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopPage() {
+  if (!V1_FEATURES.shop) redirect("/more");
+
   const session = await getSession();
   if (!session) return redirect("/login");
 

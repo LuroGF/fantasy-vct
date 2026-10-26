@@ -2,18 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { getUnreadCount } from "@/lib/actions/notifications";
-import { getSession } from "@/lib/actions/auth";
 
 export function NotificationBadge() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     async function fetchCount() {
-      const session = await getSession();
-      if (session?.user?.id) {
-        const unread = await getUnreadCount(session.user.id);
-        setCount(unread);
-      }
+      const unread = await getUnreadCount();
+      setCount(unread);
     }
     fetchCount();
     

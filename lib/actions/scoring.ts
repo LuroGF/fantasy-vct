@@ -51,107 +51,24 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
       playerPointsMap.set(p.player_id, current + (p.fantasy_points || 0));
     });
 
-    // 4. Get Active User Rosters (STARTERS ONLY)
+    // 4. Get the frozen starters for this gameweek. Reading the current roster
+    // here would allow later transfers or substitutions to rewrite past scores.
     const { data: rosters, error: rosterError } = await supabaseAdmin
-      .from("user_rosters")
-      .select("league_id, profile_id, player_id, pro_players!inner(is_legend, role)")
-      .eq("slot_type", "starter")
-      .returns<{ league_id: string | null; profile_id: string | null; player_id: string | null; pro_players: { is_legend: boolean; role: string } }[]>();
+      .from("gameweek_lineups")
+      .select("league_id, profile_id, player_id")
+      .eq("gameweek_id", gameweekId)
+      .returns<{ league_id: string | null; profile_id: string | null; player_id: string | null }[]>();
 
     if (rosterError) throw rosterError;
 
-    // 5. Get Active Powerups (Captain)
-    const { data: activePowerUps } = await (supabaseAdmin
-      .from("active_powerups")
-      .select("profile_id, target_player_id, powerup_types!inner(code)")
-      .eq("gameweek_id", gameweekId)
-      .eq("powerup_types.code", "CAPTAIN") as any);
-
-    const captainMap = new Map<string, string>();
-    activePowerUps?.forEach((ap: any) => {
-      if (ap.profile_id && ap.target_player_id) {
-        captainMap.set(ap.profile_id, ap.target_player_id);
-      }
-    });
-
-    // 6. Get Active Casters for this Gameweek
-    const { data: activeCasters } = await supabaseAdmin
-      .from("active_casters")
-      .select("profile_id, casters(buff_code)")
-      .eq("gameweek_id", gameweekId);
-    
-    const casterMap = new Map<string, string[]>();
-    activeCasters?.forEach((ac: any) => {
-      if (ac.profile_id && ac.casters?.buff_code) {
-        const existing = casterMap.get(ac.profile_id) || [];
-        casterMap.set(ac.profile_id, [...existing, ac.casters.buff_code]);
-      }
-    });
-
-    // 7. Aggregate Score per Participant
+    // 5. Aggregate score per participant. V1 only counts starter performance;
+    // legends, casters, inventory and powerups remain paused and cannot alter it.
     const participantScores = new Map<string, { leagueId: string; profileId: string; points: number }>();
 
-    // Performance map for specific event buffs (like Ulises Clutches)
-    const playerPerfData = new Map<string, { clutches: number }>();
-    performances?.forEach((p: any) => {
-        if (!p.player_id) return;
-        const current = playerPerfData.get(p.player_id) || { clutches: 0 };
-        playerPerfData.set(p.player_id, {
-            clutches: current.clutches + (p.clutches || 0)
-        });
-    });
-
     for (const r of rosters || []) {
-      if (!r.league_id || !r.profile_id) continue;
+      if (!r.league_id || !r.profile_id || !r.player_id) continue;
       const key = `${r.league_id}-${r.profile_id}`;
-      let points = 0;
-
-      // Base Points (Normal or Legend)
-      if (r.pro_players.is_legend) {
-        let totalLegendPoints = 0;
-        for (const mId of matchIds) {
-            const { data: legendPoints } = await supabaseAdmin.rpc('calculate_legend_points', { 
-                match_id: mId, 
-                legend_id: r.player_id 
-            });
-            totalLegendPoints += Number(legendPoints || 0);
-        }
-        points = totalLegendPoints;
-      } else {
-        points = playerPointsMap.get(r.player_id!) || 0;
-      }
-      
-      const captainPlayerId = captainMap.get(r.profile_id);
-      if (captainPlayerId === r.player_id) points *= 2;
-
-      // --- APPLY CASTER BUFFS (MAY BE MULTIPLE) ---
-      const buffCodes = casterMap.get(r.profile_id);
-      if (buffCodes && buffCodes.length > 0) {
-        const playerRole = (r.pro_players as any).role?.trim().toUpperCase();
-        
-        buffCodes.forEach(buffCode => {
-          switch (buffCode) {
-            case 'ULISES_HYPE':
-              const perf = playerPerfData.get(r.player_id!);
-              if (perf && perf.clutches > 0) {
-                points += (perf.clutches * 10);
-              }
-              break;
-            case 'KAQUKA_TACTICS':
-              if (playerRole === 'INICIADOR') points *= 1.2;
-              break;
-            case 'URI_CONTROL':
-              if (playerRole === 'CENTINELA') points *= 1.2;
-              break;
-            case 'IKER_HEROIC':
-              if (playerRole === 'DUELISTA') points *= 1.2;
-              break;
-            case 'LUIGI_STATS':
-              if (playerRole === 'CONTROLADOR') points *= 1.2;
-              break;
-          }
-        });
-      }
+      const points = playerPointsMap.get(r.player_id) || 0;
 
       if (!participantScores.has(key)) {
         participantScores.set(key, { leagueId: r.league_id!, profileId: r.profile_id!, points: 0 });
@@ -159,7 +76,7 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
       participantScores.get(key)!.points += points;
     }
 
-    // 7. Upsert Scores
+    // 6. Upsert scores
     const upserts: ParticipantScoreInsert[] = Array.from(participantScores.values()).map((p) => ({
       league_id: p.leagueId,
       profile_id: p.profileId,
@@ -172,7 +89,7 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
         .from("participant_scores_history")
         .upsert(upserts as any, { onConflict: "league_id,profile_id,gameweek_id" });
 
-      // 8. Update totals and optionally reward
+      // 7. Update totals and optionally reward
       for (const p of upserts) {
         if (!p.league_id || !p.profile_id) continue;
         
@@ -184,20 +101,9 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
 
         const totalEarned = allScores?.reduce((sum: number, s: any) => sum + (s.points_earned || 0), 0) || 0;
         
-        // --- NEW: Subtract spent points from shop ---
-        const { data: transactions } = await supabaseAdmin
-          .from("market_transactions")
-          .select("price")
-          .eq("league_id", p.league_id)
-          .eq("profile_id", p.profile_id)
-          .eq("type", "buy_item");
-          
-        const totalSpent = transactions?.reduce((sum, t) => sum + Number(t.price || 0), 0) || 0;
-        const total = Math.max(0, totalEarned - totalSpent);
-        
         await supabaseAdmin
           .from("league_participants")
-          .update({ total_points: total } as any)
+          .update({ total_points: totalEarned } as any)
           .eq("league_id", p.league_id)
           .eq("profile_id", p.profile_id);
 
@@ -213,40 +119,19 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
           .update({ global_points: globalTotal } as any)
           .eq("id", p.profile_id);
 
-        // --- FIXED: ONLY REWARD IF FINALIZED AND NOT ALREADY REWARDED ---
-        if (finalize) {
-          const { data: scoreEntry } = await supabaseAdmin
-            .from('participant_scores_history')
-            .select('rewarded')
-            .eq('league_id', p.league_id)
-            .eq('profile_id', p.profile_id)
-            .eq('gameweek_id', gameweekId)
-            .single();
-
-          if (scoreEntry && !scoreEntry.rewarded) {
-            const reward = Math.floor(p.points_earned! * 50000);
-            const { data: currentP } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', p.league_id).eq('profile_id', p.profile_id).single();
-            if (currentP) {
-                await supabaseAdmin.from('league_participants')
-                    .update({ current_budget: Number(currentP.current_budget) + reward } as any)
-                    .eq('league_id', p.league_id)
-                    .eq('profile_id', p.profile_id);
-                
-                // Mark as rewarded
-                await supabaseAdmin
-                  .from('participant_scores_history')
-                  .update({ rewarded: true } as any)
-                  .eq('league_id', p.league_id!)
-                  .eq('profile_id', p.profile_id!)
-                  .eq('gameweek_id', gameweekId);
-            }
-          }
-        }
       }
     }
     
-    // 9. Update Ranks (Bonuses also moved to finalize inside updateGameweekRanks)
-    await updateGameweekRanks(gameweekId, finalize);
+    // 8. Update ranks. Money is settled atomically by the database ledger.
+    await updateGameweekRanks(gameweekId);
+
+    if (finalize) {
+      const { error: rewardError } = await (supabaseAdmin as any).rpc(
+        "settle_gameweek_rewards",
+        { p_gameweek_id: gameweekId },
+      );
+      if (rewardError) throw rewardError;
+    }
 
     return { success: true, processed: upserts.length };
   } catch (error) {
@@ -255,7 +140,7 @@ export async function calculateGameweekScores(gameweekId: number, finalize: bool
   }
 }
 
-async function updateGameweekRanks(gameweekId: number, finalize: boolean = false) {
+async function updateGameweekRanks(gameweekId: number) {
     // Fetch all scores for the gameweek
     const { data: scores } = await supabaseAdmin
         .from('participant_scores_history')
@@ -277,44 +162,24 @@ async function updateGameweekRanks(gameweekId: number, finalize: boolean = false
     // Calculate rank per league
     byLeague.forEach((participants, leagueId) => {
         participants.sort((a, b) => (b.points_earned || 0) - (a.points_earned || 0));
+        let previousPoints: number | null = null;
+        let previousRank = 0;
         participants.forEach((p, index) => {
+            const points = p.points_earned || 0;
+            const rank = previousPoints === points ? previousRank : index + 1;
             updates.push({
                 league_id: p.league_id,
                 profile_id: p.profile_id,
                 gameweek_id: gameweekId,
-                rank_in_league: index + 1
+                rank_in_league: rank
             });
+            previousPoints = points;
+            previousRank = rank;
         });
     });
 
     if (updates.length > 0) {
         await supabaseAdmin.from('participant_scores_history').upsert(updates as any, { onConflict: 'league_id,profile_id,gameweek_id'});
         
-        // --- ADD RANK BONUSES ONLY IF FINALIZED ---
-        if (finalize) {
-          for (const up of updates) {
-              let bonus = 0;
-              if (up.rank_in_league === 1) bonus = 3000000;
-              else if (up.rank_in_league === 2) bonus = 1500000;
-              else if (up.rank_in_league === 3) bonus = 750000;
-
-              if (bonus > 0) {
-                  // Check if ALREADY rewarded for this rank in this GW
-                  const { data: scoreEntry } = await supabaseAdmin.from('participant_scores_history').select('rewarded').eq('league_id', up.league_id!).eq('profile_id', up.profile_id!).eq('gameweek_id', gameweekId).single();
-                  
-                  if (scoreEntry && !scoreEntry.rewarded) {
-                      const { data: current } = await supabaseAdmin.from('league_participants').select('current_budget').eq('league_id', up.league_id!).eq('profile_id', up.profile_id!).single();
-                      if (current) {
-                          await supabaseAdmin.from('league_participants')
-                              .update({ current_budget: Number(current.current_budget) + bonus } as any)
-                              .eq('league_id', up.league_id!)
-                              .eq('profile_id', up.profile_id!);
-                          
-                          await supabaseAdmin.from('participant_scores_history').update({ rewarded: true } as any).eq('league_id', up.league_id!).eq('profile_id', up.profile_id!).eq('gameweek_id', gameweekId);
-                      }
-                  }
-              }
-          }
-        }
     }
 }

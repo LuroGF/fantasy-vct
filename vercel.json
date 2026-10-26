@@ -2,11 +2,32 @@
   "crons": [
     {
       "path": "/api/cron/sync-scores",
-      "schedule": "0 2 * * *"
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/notifications",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/admin/sync-vlr-matches",
+      "schedule": "15 4 * * *"
+    },
+    {
+      "path": "/api/admin/sync-vlr-stats",
+      "schedule": "15 5 * * *"
     }
   ],
   "functions": {
     "app/api/cron/sync-scores/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/notifications/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/admin/sync-vlr-matches/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/admin/sync-vlr-stats/route.ts": {
       "maxDuration": 60
     }
   }

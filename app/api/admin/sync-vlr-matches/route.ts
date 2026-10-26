@@ -17,7 +17,7 @@ const supabaseAdmin = createClient(
 async function ensureTeamVlrId(
   vlrId: string,
   teamName: string,
-): Promise<boolean> {
+): Promise<string | null> {
   // ¿Ya existe ese vlr_id?
   const { data: existingByVlr } = await supabaseAdmin
     .from("pro_teams")
@@ -26,7 +26,7 @@ async function ensureTeamVlrId(
     .maybeSingle();
 
   if (existingByVlr) {
-    return true;
+    return existingByVlr.id;
   }
 
   // Intentamos localizarlo por nombre.
@@ -35,7 +35,7 @@ async function ensureTeamVlrId(
     .select("id, name, vlr_id");
 
   if (error || !teams) {
-    return false;
+    return null;
   }
 
   const normalize = (value: string) =>
@@ -47,14 +47,14 @@ async function ensureTeamVlrId(
 
   // Queremos una coincidencia inequívoca.
   if (matches.length !== 1) {
-    return false;
+    return null;
   }
 
   const team = matches[0];
 
   // Si ya tiene otro ID VLR, no lo pisamos.
   if (team.vlr_id && String(team.vlr_id) !== vlrId) {
-    return false;
+    return null;
   }
 
   const { error: updateError } = await supabaseAdmin
@@ -64,10 +64,10 @@ async function ensureTeamVlrId(
     })
     .eq("id", team.id);
 
-  return !updateError;
+  return updateError ? null : team.id;
 }
 
-export async function POST(request: Request) {
+async function syncVlrMatches(request: Request) {
   const authorization = request.headers.get("authorization");
 
   const expectedSecret = process.env.CRON_SECRET;
@@ -91,10 +91,37 @@ export async function POST(request: Request) {
     let skipped = 0;
     let errors = 0;
 
+    const { data: gameweeks, error: gameweeksError } = await supabaseAdmin
+      .from("gameweeks")
+      .select("id, start_date, end_date")
+      .order("start_date", { ascending: true });
+
+    if (gameweeksError) {
+      throw new Error(`Could not load gameweeks: ${gameweeksError.message}`);
+    }
+
+    const { data: seasonTeams, error: seasonTeamsError } = await supabaseAdmin
+      .from("vct_season_teams")
+      .select("team_id")
+      .eq("season_year", 2027)
+      .eq("confirmation_status", "confirmed")
+      .eq("fantasy_eligible", true);
+
+    if (seasonTeamsError) {
+      throw new Error(
+        `Could not load eligible VCT 2027 teams: ${seasonTeamsError.message}`,
+      );
+    }
+
+    const eligibleTeamIds = new Set(
+      (seasonTeams || []).map((entry) => entry.team_id),
+    );
+
     const details: Array<{
       vlrId: string;
       status: "synced" | "skipped" | "error";
       reason?: string;
+      gameweekId?: number | null;
     }> = [];
 
     for (const match of matches) {
@@ -136,17 +163,29 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const teamAReady = await ensureTeamVlrId(teamA.id, teamA.name);
+        const teamAId = await ensureTeamVlrId(teamA.id, teamA.name);
 
-        const teamBReady = await ensureTeamVlrId(teamB.id, teamB.name);
+        const teamBId = await ensureTeamVlrId(teamB.id, teamB.name);
 
-        if (!teamAReady || !teamBReady) {
+        if (!teamAId || !teamBId) {
           skipped++;
 
           details.push({
             vlrId: match.vlrId,
             status: "skipped",
             reason: `Teams not included in Fantasy VCT: ${teamA.name} (${teamA.id}) vs ${teamB.name} (${teamB.id})`,
+          });
+
+          continue;
+        }
+
+        if (!eligibleTeamIds.has(teamAId) || !eligibleTeamIds.has(teamBId)) {
+          skipped++;
+
+          details.push({
+            vlrId: match.vlrId,
+            status: "skipped",
+            reason: `At least one team is not an eligible VCT 2027 partner: ${teamA.name} vs ${teamB.name}`,
           });
 
           continue;
@@ -219,6 +258,24 @@ export async function POST(request: Request) {
 
           matchDate = existingMatch.match_date;
         }
+
+        if (!matchDate) {
+          skipped++;
+          details.push({
+            vlrId: match.vlrId,
+            status: "skipped",
+            reason: "Match date is not available",
+          });
+          continue;
+        }
+
+        const matchTimestamp = new Date(matchDate).getTime();
+        const gameweek = (gameweeks || []).find((candidate) => {
+          const startsAt = new Date(candidate.start_date).getTime();
+          const endsAt = new Date(candidate.end_date).getTime();
+          return matchTimestamp >= startsAt && matchTimestamp <= endsAt;
+        });
+
         const { error } = await supabaseAdmin.rpc("upsert_vlr_match", {
           p_vlr_id: match.vlrId,
 
@@ -233,7 +290,7 @@ export async function POST(request: Request) {
 
           p_team_b_score: teamBScore,
 
-          p_gameweek_id: null,
+          p_gameweek_id: gameweek?.id ?? null,
         });
 
         if (error) {
@@ -253,6 +310,10 @@ export async function POST(request: Request) {
         details.push({
           vlrId: match.vlrId,
           status: "synced",
+          gameweekId: gameweek?.id ?? null,
+          ...(!gameweek
+            ? { reason: "Match date is outside the configured gameweek calendar" }
+            : {}),
         });
       } catch (error) {
         errors++;
@@ -297,4 +358,12 @@ export async function POST(request: Request) {
       },
     );
   }
+}
+
+export async function GET(request: Request) {
+  return syncVlrMatches(request);
+}
+
+export async function POST(request: Request) {
+  return syncVlrMatches(request);
 }

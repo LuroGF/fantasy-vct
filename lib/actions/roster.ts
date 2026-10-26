@@ -3,6 +3,77 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "./auth";
+
+export type LineupWindowStatus = {
+  state: "preseason" | "open" | "locked";
+  locked: boolean;
+  gameweek: {
+    id: number;
+    name: string;
+    start_date: string;
+    end_date: string;
+  } | null;
+};
+
+export async function getLineupWindowStatus(): Promise<LineupWindowStatus> {
+  const session = await getSession();
+  if (!session) throw new Error("Acceso no autorizado");
+
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+
+  const { data: activeGameweek, error: activeError } = await supabase
+    .from("gameweeks")
+    .select("id, name, start_date, end_date, is_locked")
+    .eq("is_active", true)
+    .order("start_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeError) throw activeError;
+
+  const currentGameweek = activeGameweek
+    ? activeGameweek
+    : (
+        await supabase
+          .from("gameweeks")
+          .select("id, name, start_date, end_date, is_locked")
+          .lte("start_date", now)
+          .gte("end_date", now)
+          .order("start_date", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ).data;
+
+  if (currentGameweek) {
+    const locked =
+      Boolean(currentGameweek.is_locked) ||
+      Date.now() >= new Date(currentGameweek.start_date).getTime();
+
+    return {
+      state: locked ? "locked" : "open",
+      locked,
+      gameweek: currentGameweek,
+    };
+  }
+
+  const { data: nextGameweek, error: nextError } = await supabase
+    .from("gameweeks")
+    .select("id, name, start_date, end_date")
+    .gt("start_date", now)
+    .order("start_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (nextError) throw nextError;
+
+  return {
+    state: "preseason",
+    locked: false,
+    gameweek: nextGameweek ?? null,
+  };
+}
+
 export async function setStarterStatus(
   leagueId: string,
   profileId: string,

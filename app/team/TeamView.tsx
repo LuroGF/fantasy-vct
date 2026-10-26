@@ -6,22 +6,25 @@ import { haptic } from "@/lib/utils/haptics";
 import { useRouter } from "next/navigation";
 // import { FeedbackBanner } from "@/components/FeedbackBanner";
 import { sileo } from "sileo";
+import type { LineupWindowStatus } from "@/lib/actions/roster";
 
 interface TeamViewProps {
   initialRoster: any[];
   initialLeagues: any[];
+  initialLeagueId: string;
+  lineupStatus: LineupWindowStatus;
   profileId: string;
 }
 
 export default function TeamView({
   initialRoster,
   initialLeagues,
+  initialLeagueId,
+  lineupStatus,
   profileId,
 }: TeamViewProps) {
   const [roster, setRoster] = useState(initialRoster);
-  const [activeLeagueId, setActiveLeagueId] = useState(
-    initialLeagues[0]?.leagues.id || "",
-  );
+  const [activeLeagueId, setActiveLeagueId] = useState(initialLeagueId);
   const [leagues, setLeagues] = useState(initialLeagues);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -57,7 +60,7 @@ export default function TeamView({
       duration: 9000,
     } as any);
   }
-  // Preserve the exact price in VP; rounding to tenths can violate the V1 range.
+  // Preserve the exact price; rounding to tenths can violate the V1 range.
   function priceInMillions(price: number) {
     return String(price / 1_000_000);
   }
@@ -102,6 +105,16 @@ export default function TeamView({
       ),
     [roster],
   );
+
+  const lineupDate = lineupStatus.gameweek
+    ? new Intl.DateTimeFormat("es-ES", {
+        timeZone: "Europe/Madrid",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(lineupStatus.gameweek.start_date))
+    : null;
 
   useEffect(() => {
     async function loadData() {
@@ -252,7 +265,7 @@ export default function TeamView({
       !Number.isSafeInteger(askingPrice) ||
       askingPrice <= 0
     ) {
-      setListingError("Introduce un precio válido en millones de VP.");
+      setListingError("Introduce un precio válido en millones de euros.");
       return;
     }
     if (askingPrice < minPrice || askingPrice > maxPrice) {
@@ -261,7 +274,7 @@ export default function TeamView({
           priceInMillions(minPrice) +
           " y " +
           priceInMillions(maxPrice) +
-          " M VP (100%–115%).",
+          " M € (100%–115%).",
       );
       return;
     }
@@ -351,12 +364,12 @@ export default function TeamView({
                 Presupuesto
               </p>
               <p className="text-2xl max-sm:text-xl font-black italic tracking-wider cursor-default text-white group-hover:scale-105 origin-left transition-transform">
-                {(activeParticipation.current_budget / 1000000).toFixed(1)}M VP
+                {(activeParticipation.current_budget / 1000000).toFixed(1)}M €
               </p>
             </div>
             <div className="bg-black/40 backdrop-blur-md p-4 rounded-sm border border-white/5 hover:border-white/20 transition-colors group">
               <p className="text-[8px] font-black uppercase text-white/40 mb-1 cursor-default group-hover:text-white/60">
-                Agentes
+                Jugadores
               </p>
               <p className="text-2xl font-black italic tracking-wider cursor-default text-white group-hover:scale-105 origin-left transition-transform">
                 {roster.length}
@@ -368,6 +381,47 @@ export default function TeamView({
       </div>
 
       {/* <FeedbackBanner status={status} /> */}
+
+      <div
+        className={`v-panel p-4 border-l-2 ${
+          lineupStatus.locked
+            ? "border-v-red bg-v-red/5"
+            : starters.length === 5
+              ? "border-green-500/60 bg-green-500/5"
+              : "border-amber-400/60 bg-amber-400/5"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white">
+              {lineupStatus.locked
+                ? "Quinteto bloqueado"
+                : lineupStatus.state === "preseason"
+                  ? "Pretemporada · Quinteto abierto"
+                  : "Quinteto abierto"}
+            </p>
+            <p className="mt-1 text-[10px] leading-relaxed text-white/45">
+              {lineupStatus.locked
+                ? `${lineupStatus.gameweek?.name || "La jornada"} ya ha comenzado. Esta alineación no puede modificarse.`
+                : lineupStatus.gameweek && lineupDate
+                  ? `${lineupStatus.gameweek.name} comienza el ${lineupDate}. Puedes ajustar los titulares hasta entonces.`
+                  : "Puedes preparar tu quinteto mientras se publica el calendario de 2027."}
+            </p>
+          </div>
+          <span
+            className={`shrink-0 text-sm font-black italic ${
+              starters.length === 5 ? "text-green-400" : "text-amber-300"
+            }`}
+          >
+            {starters.length}/5
+          </span>
+        </div>
+        {!lineupStatus.locked && starters.length !== 5 && (
+          <p className="mt-3 text-[9px] font-black uppercase tracking-wider text-amber-300">
+            Necesitas cinco titulares para puntuar y recibir premio de jornada.
+          </p>
+        )}
+      </div>
 
       {/* Titulares (5) */}
       <div className="space-y-4">
@@ -386,6 +440,7 @@ export default function TeamView({
                   handleSlotChange(r.player_id, r.pro_players.nickname, "bench")
                 }
                 actionLabel="A Suplentes"
+                actionDisabled={lineupStatus.locked}
                 onSecondAction={
                   myListings.some((listing) => listing.roster_id === r.id)
                     ? undefined
@@ -438,6 +493,7 @@ export default function TeamView({
                   )
                 }
                 actionLabel="Ascender a Titular"
+                actionDisabled={lineupStatus.locked}
                 onSecondAction={
                   myListings.some((listing) => listing.roster_id === r.id)
                     ? undefined
@@ -480,7 +536,7 @@ export default function TeamView({
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-v-white/60">
-                  Precio de Venta (M VP)
+                  Precio de venta (M €)
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -542,13 +598,13 @@ export default function TeamView({
                     {(
                       Number(listingDialog.player.market_value) / 1000000
                     ).toString()}
-                    M VP -{" "}
+                    M € -{" "}
                     {(
                       Math.floor(
                         Number(listingDialog.player.market_value) * 1.15,
                       ) / 1000000
                     ).toString()}
-                    M VP
+                    M €
                   </span>
                 </div>
               </div>

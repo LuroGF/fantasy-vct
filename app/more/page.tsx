@@ -3,6 +3,7 @@ import { signOut } from "@/lib/actions/auth";
 
 const options = [
   { label: "Perfil", href: "/more/profile" },
+  { label: "Rendimiento", href: "/stats" },
   { label: "Comunidad", href: "/more/community" },
   { label: "Notificaciones", href: "/more/notifications" },
   { label: "Invitar amigos", href: "/more/invite" },
@@ -26,7 +27,7 @@ export default function MorePage() {
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-4xl leading-none">Más</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Ajustes de Terminal</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Perfil y preferencias</p>
         </div>
       </div>
 
@@ -62,7 +63,7 @@ export default function MorePage() {
       </div>
 
       <div className="text-center space-y-2 py-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-white/20">{"Draftant // 2026"}</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-white/20">{"VCT Fantasy // 2027"}</p>
         <div className="flex justify-center gap-4">
           <div className="w-1 h-1 bg-v-red/20" />
           <div className="w-1 h-1 bg-v-red/50" />

@@ -1,60 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-
-type Role = "Duelista" | "Centinela" | "Iniciador" | "Controlador";
 
 export default function RulesPage() {
-  const [selectedRole, setSelectedRole] = useState<Role>("Duelista");
+  const scoringRules = [
+    { label: "Por cada kill", points: "+2 pts" },
+    { label: "Por cada muerte", points: "-1 pt" },
+    { label: "Por cada asistencia", points: "+1 pt" },
+    { label: "Por cada clutch", points: "+3 pts" },
+    { label: "Por cada Primera Sangre (FB)", points: "+2 pts" },
+    { label: "Por cada Primera Muerte (FD)", points: "-1 pt" },
+    { label: "ACS 300 o más", points: "+5 pts" },
+    { label: "ACS entre 250 y 299", points: "+3 pts" },
+    { label: "ACS entre 200 y 249", points: "+1 pt" },
+    { label: "ACS entre 150 y 199", points: "0 pts" },
+    { label: "ACS inferior a 150", points: "-1 pt" },
+    { label: "MVP del partido", points: "+5 pts" },
+  ];
 
-  // Reglas por rol (las del switch)
-  const roleRules: Record<Role, { label: string; points: string }[]> = {
-    Duelista: [
-      { label: "Por cada kill", points: "+1 pt" },
-      { label: "Por cada asistencia", points: "+0.5 pts" },
-      { label: "Por cada Primera Sangre (FB)", points: "+5 pts" },
-      { label: "Por cada Primera Muerte (FD)", points: "-3 pts" },
-      { label: "Por cada muerte", points: "-1 pt" },
-      { label: "Si kills ≥ 45", points: "+10 pts extra" },
-      { label: "Si es MVP", points: "+5 pts" },
-    ],
-    Centinela: [
-      { label: "Por cada kill", points: "+2 pts" },
-      { label: "Por cada asistencia", points: "+0.5 pts" },
-      { label: "Por cada Primera Sangre (FB)", points: "+6 pts" },
-      { label: "Por cada Primera Muerte (FD)", points: "-4 pts" },
-      { label: "Por cada muerte", points: "-1 pt" },
-      { label: "Si es MVP", points: "+5 pts" },
-    ],
-    Iniciador: [
-      { label: "Por cada kill", points: "+1.5 pts" },
-      { label: "Por cada asistencia", points: "+2 pts" },
-      { label: "Por cada Primera Sangre (FB)", points: "+3 pts" },
-      { label: "Por cada Primera Muerte (FD)", points: "-2 pts" },
-      { label: "Por cada muerte", points: "-1 pt" },
-      { label: "Si asistencias ≥ 20", points: "+10 pts" },
-      { label: "Si asistencias < 20", points: "-5 pts" },
-      { label: "Si es MVP", points: "+5 pts" },
-    ],
-    Controlador: [
-      { label: "Por cada kill", points: "+1.5 pts" },
-      { label: "Por cada asistencia", points: "+2 pts" },
-      { label: "Por cada Primera Sangre (FB)", points: "+3 pts" },
-      { label: "Por cada Primera Muerte (FD)", points: "-2 pts" },
-      { label: "Por cada muerte", points: "-1 pt" },
-      { label: "Si asistencias ≥ 20", points: "+10 pts" },
-      { label: "Si asistencias < 20", points: "-5 pts" },
-      { label: "Si es MVP", points: "+5 pts" },
-    ],
-  };
-
-  const roles: Role[] = useMemo(
-    () => ["Duelista", "Centinela", "Iniciador", "Controlador"],
-    [],
-  );
-
-  const rulesForSelectedRole = roleRules[selectedRole];
+  const gameweekRewards = [
+    { label: "1.º puesto", amount: "2.000.000 €" },
+    { label: "2.º puesto", amount: "1.250.000 €" },
+    { label: "3.º puesto", amount: "750.000 €" },
+    { label: "4.º puesto en adelante", amount: "500.000 €" },
+  ];
 
   return (
     <div
@@ -91,40 +60,18 @@ export default function RulesPage() {
       <div className="v-panel p-6 space-y-6">
         <div className="space-y-4">
           <h2 className="text-2xl italic tracking-tighter uppercase border-b border-v-red w-fit">
-            Protocolo de Puntuación
+            Puntuación
           </h2>
           <p className="text-xs text-v-white/60 leading-relaxed italic">
-            El sistema calcula automáticamente el rendimiento de combate de cada
-            agente basándose en los datos oficiales de VLR.gg.
+            El sistema calcula automáticamente el rendimiento de todos los
+            jugadores con la misma fórmula, sin modificadores por rol.
+            MVP y clutches solo se contabilizan cuando la fuente ofrece esos
+            datos de forma fiable.
           </p>
         </div>
 
-        {/* Botones por rol */}
-        <div className="flex flex-wrap gap-2">
-          {roles.map((role) => {
-            const active = role === selectedRole;
-            return (
-              <button
-                key={role}
-                type="button"
-                onClick={() => setSelectedRole(role)}
-                className={[
-                  "px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
-                  "border-l-2",
-                  active
-                    ? "bg-v-red/20 border-v-red text-v-white"
-                    : "bg-v-navy/40 border-v-white/10 text-v-white/60 hover:text-v-white hover:border-v-red",
-                ].join(" ")}
-              >
-                {role}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Listado dinámico según rol */}
         <div className="grid gap-2">
-          {rulesForSelectedRole.map((rule) => (
+          {scoringRules.map((rule) => (
             <div
               key={rule.label}
               className="bg-v-navy/50 p-3 flex justify-between items-center border-l-2 border-v-white/10 hover:border-v-red transition-all"
@@ -141,11 +88,51 @@ export default function RulesPage() {
 
         <div className="v-panel border-white/5 bg-v-white/5 p-4 mt-8">
           <p className="text-[10px] font-black uppercase tracking-widest text-v-red mb-2">
-            Aviso de Operación
+            Actualización de puntos
           </p>
           <p className="text-[10px] text-v-white/40 leading-relaxed italic">
             Los puntos se actualizan cada 30 minutos mientras los partidos están
             en vivo. Los resultados finales se confirman al terminar la serie.
+          </p>
+        </div>
+      </div>
+
+      <div className="v-panel p-6 space-y-6">
+        <div className="space-y-3">
+          <h2 className="text-2xl italic tracking-tighter uppercase border-b border-v-red w-fit">
+            Recompensas
+          </h2>
+          <p className="text-xs text-v-white/60 leading-relaxed italic">
+            Los puntos determinan la clasificación y no se convierten directamente
+            en dinero. Para cobrar una jornada debes haber presentado cinco
+            titulares válidos antes del cierre.
+          </p>
+        </div>
+
+        <div className="grid gap-2">
+          {gameweekRewards.map((reward) => (
+            <div
+              key={reward.label}
+              className="bg-v-navy/50 p-3 flex justify-between items-center border-l-2 border-v-white/10"
+            >
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                {reward.label}
+              </span>
+              <span className="text-sm font-black italic text-v-red">
+                {reward.amount}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="border border-white/5 bg-v-white/5 p-4 space-y-2">
+          <p className="text-[10px] font-black uppercase tracking-widest text-v-red">
+            Actividad diaria
+          </p>
+          <p className="text-[10px] text-v-white/40 leading-relaxed italic">
+            Puedes reclamar 500.000 € una vez al día desde la campana. No se
+            acumula si un día no entras. En caso de empate, se reparten las bolsas
+            de las posiciones afectadas.
           </p>
         </div>
       </div>

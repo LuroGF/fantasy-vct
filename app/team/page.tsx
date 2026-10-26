@@ -1,24 +1,43 @@
 import { getSession } from "@/lib/actions/auth";
 import { getUserLeagues } from "@/lib/actions/leagues";
-import { getUserFullRoster } from "@/lib/actions/roster";
+import {
+  getLineupWindowStatus,
+  getUserFullRoster,
+} from "@/lib/actions/roster";
 import { redirect } from "next/navigation";
 import TeamView from "./TeamView";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 
 export const dynamic = "force-dynamic";
 
-export default async function TeamPage() {
+type SearchParams = Promise<{ league?: string }>;
+
+export default async function TeamPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const session = await getSession();
   if (!session) return redirect("/login");
 
   const leagues = await getUserLeagues(session.user.id);
+  const params = await searchParams;
+  const requestedLeagueId = params?.league;
+  const requestedLeague = leagues.find(
+    (league: any) =>
+      (league.league_id || league.leagues?.id) === requestedLeagueId,
+  );
 
-  const activeLeagueItem = leagues[0];
-  const activeLeagueId = activeLeagueItem?.league_id;
+  const activeLeagueItem = requestedLeague || leagues[0];
+  const activeLeagueId =
+    activeLeagueItem?.league_id || (activeLeagueItem as any)?.leagues?.id;
 
-  const roster = activeLeagueId
-    ? await getUserFullRoster(activeLeagueId, session.user.id)
-    : [];
+  const [roster, lineupStatus] = await Promise.all([
+    activeLeagueId
+      ? getUserFullRoster(activeLeagueId, session.user.id)
+      : Promise.resolve([]),
+    getLineupWindowStatus(),
+  ]);
 
   return (
     <ClientRefreshWrapper>
@@ -43,6 +62,8 @@ export default async function TeamPage() {
         <TeamView
           initialRoster={roster}
           initialLeagues={leagues as any[]}
+          initialLeagueId={activeLeagueId || ""}
+          lineupStatus={lineupStatus}
           profileId={session.user.id}
         />
       </div>

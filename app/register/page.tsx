@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import { signUp } from "@/lib/actions/auth";
-import Image from "next/image";
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +41,7 @@ export default function RegisterPage() {
           </h1>
         </div>
         <p className="text-v-white/50 text-[10px] font-black uppercase tracking-[0.3em]">
-          Nueva Identidad de Operativo VCF
+          Únete al Fantasy VCT
         </p>
       </div>
 
@@ -141,50 +140,11 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <div className="relative py-2">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-white/5"></span>
-          </div>
-          <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest text-v-white/20">
-            <span className="bg-[#0b0f12] px-4 text-white">
-              Métodos Alternativos
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <button
-            type="button"
-            className="v-btn-secondary cursor-pointer py-3 text-[10px] font-black tracking-widest bg-red-600"
-          >
-            <Image
-              src="/logos/RiotLogo.png"
-              alt="Logo Riot"
-              width={20}
-              height={20}
-            />
-            <span className="pl-4 black text-white">Registrarse con Riot</span>
-          </button>
-          <button
-            type="button"
-            className="v-btn-secondary cursor-pointer py-3 text-[10px] font-black tracking-widest bg-white"
-          >
-            <Image
-              src="/logos/GoogleLogo.png"
-              alt="Logo Google"
-              width={20}
-              height={20}
-            />
-            <span className="pl-4 black text-black">
-              Registrarse con Google
-            </span>
-          </button>
-        </div>
       </div>
 
       {/* Footer Link */}
       <p className="text-center text-xs text-v-white/40 font-medium tracking-tight">
-        ¿Ya tienes autorización de acceso?{" "}
+        ¿Ya tienes una cuenta?{" "}
         <Link
           href="/login"
           className="text-v-red font-black cursor-pointer uppercase hover:underline ml-1"
