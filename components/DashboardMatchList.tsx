@@ -20,12 +20,12 @@ export async function DashboardMatchList() {
         vlr_id,
         match_date,
         status,
-        team_a_id,
-        team_b_id,
+        team_a,
+        team_b,
         team_a_score,
         team_b_score,
-        team_a:pro_teams!matches_team_a_fkey (name, tag, logo_url),
-        team_b:pro_teams!matches_team_b_fkey (name, tag, logo_url)
+        pro_teams_team_a:team_a (name, tag, logo_url),
+        pro_teams_team_b:team_b (name, tag, logo_url)
       `)
       .in("status", ["upcoming", "live"])
       .order("match_date", { ascending: true }),
@@ -53,10 +53,10 @@ export async function DashboardMatchList() {
   const visibleMatches = (matches ?? [])
     .filter((match) => {
       if (
-        !match.team_a_id ||
-        !match.team_b_id ||
-        !eligibleTeamIds.has(match.team_a_id) ||
-        !eligibleTeamIds.has(match.team_b_id)
+        !match.team_a ||
+        !match.team_b ||
+        !eligibleTeamIds.has(match.team_a) ||
+        !eligibleTeamIds.has(match.team_b)
       ) {
         return false;
       }
@@ -99,8 +99,8 @@ export async function DashboardMatchList() {
 
       <div className="grid gap-3">
         {visibleMatches.map((match) => {
-          const teamA = relation(match.team_a);
-          const teamB = relation(match.team_b);
+          const teamA = relation(match.pro_teams_team_a);
+          const teamB = relation(match.pro_teams_team_b);
           const isLive = match.status === "live";
           const date = match.match_date ? new Date(match.match_date) : null;
           const validDate = date && !Number.isNaN(date.getTime()) ? date : null;
