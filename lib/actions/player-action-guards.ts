@@ -27,17 +27,17 @@ export async function validatePlayerActionAvailability({
     .maybeSingle();
 
   if (auctionError) {
-    throw new Error("No se pudo validar el estado de subasta del agente.");
+    throw new Error("No se pudo validar el estado de subasta del jugador.");
   }
 
   if (activeAuction) {
-    throw new Error(`No puedes ${actionLabel}: el agente está en una subasta activa.`);
+    throw new Error(`No puedes ${actionLabel}: el jugador está en una subasta activa.`);
   }
 
   // Comprobar si es leyenda (no se pueden poner en subasta, vender ni tradear regularmente)
   const { data: playerInfo } = await supabase.from('pro_players').select('is_legend').eq('id', playerId).single();
   if (playerInfo?.is_legend) {
-      throw new Error(`No puedes ${actionLabel}: los agentes de Leyenda son intransferibles y no pueden participar en el mercado ordinario.`);
+      throw new Error(`No puedes ${actionLabel}: los jugadores de Leyenda son intransferibles y no pueden participar en el mercado ordinario.`);
   }
 
   const { data: pendingTrade, error: tradeError } = await supabase
@@ -49,7 +49,7 @@ export async function validatePlayerActionAvailability({
     .maybeSingle();
 
   if (tradeError) {
-    throw new Error("No se pudo validar el estado de intercambio del agente.");
+    throw new Error("No se pudo validar el estado de intercambio del jugador.");
   }
 
   if (pendingTrade) {
@@ -61,7 +61,7 @@ export async function validatePlayerActionAvailability({
       return;
     }
 
-    throw new Error(`No puedes ${actionLabel}: el agente tiene un intercambio pendiente.`);
+    throw new Error(`No puedes ${actionLabel}: el jugador tiene un intercambio pendiente.`);
   }
 }
 
@@ -81,6 +81,6 @@ export async function validateRosterRoleLimits(supabase: SupabaseClient, leagueI
   const roleCount = validRoster.filter(p => (p.pro_players as any)?.role === newPlayerRole).length;
 
   if (roleCount >= 2) {
-    throw new Error(`Límite excedido: Solo puedes tener un máximo de 2 agentes con el rol ${newPlayerRole}.`);
+    throw new Error(`Límite excedido: solo puedes tener un máximo de 2 jugadores con el rol ${newPlayerRole}.`);
   }
 }

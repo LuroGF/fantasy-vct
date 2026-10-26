@@ -89,7 +89,7 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
           {/* Title Selector */}
           <section className="space-y-4">
             <label className="text-[10px] font-black uppercase text-v-white/40 tracking-[0.2em] flex items-center gap-2">
-              <Type className="w-3 h-3" /> Título de Agente
+              <Type className="w-3 h-3" /> Título del entrenador
             </label>
             <select
               value={formData.title}

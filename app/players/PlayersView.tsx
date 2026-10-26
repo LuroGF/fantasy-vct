@@ -161,7 +161,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
               <Search className="w-8 h-8 text-v-red/20" />
             </div>
             <p className="text-[10px] font-black uppercase italic text-v-white/20">
-              No se encontraron agentes en la base de datos
+              No se encontraron jugadores en la base de datos
             </p>
           </div>
         )}

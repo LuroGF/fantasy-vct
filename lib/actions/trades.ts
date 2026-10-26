@@ -22,7 +22,7 @@ export async function createTradeOffer(
   const supabase = await createClient();
   try {
     if (!senderPlayerId && !receiverPlayerId) {
-      throw new Error("El intercambio debe involucrar al menos un agente.");
+      throw new Error("El intercambio debe involucrar al menos un jugador.");
     }
 
     if (senderPlayerId) {
@@ -103,7 +103,7 @@ export async function acceptTradeOffer(offerId: string, userId: string) {
             
         if (!isStillOwnedBySender || isStillOwnedBySender === 0) {
             await supabaseAdmin.from('trade_offers').update({ status: 'canceled' }).eq('id', offerId);
-            throw new Error("El trade ha sido cancelado porque el emisor ya no posee al agente ofrecido.");
+            throw new Error("El intercambio ha sido cancelado porque el emisor ya no posee al jugador ofrecido.");
         }
     }
 
@@ -117,7 +117,7 @@ export async function acceptTradeOffer(offerId: string, userId: string) {
             
         if (!isStillOwnedByReceiver || isStillOwnedByReceiver === 0) {
             await supabaseAdmin.from('trade_offers').update({ status: 'canceled' }).eq('id', offerId);
-            throw new Error("El trade ha sido cancelado porque ya no posees al agente solicitado.");
+            throw new Error("El intercambio ha sido cancelado porque ya no posees al jugador solicitado.");
         }
     }
 

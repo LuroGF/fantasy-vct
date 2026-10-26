@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 
 export default function Home() {
   return (
@@ -12,10 +11,15 @@ export default function Home() {
           muted
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
+          poster="/hero-bg.png"
+          aria-hidden="true"
         >
-          <source src="/videos/aimers.mp4" type="video/mp4" />
-          {/* opcional fallback */}
+          <source
+            src="/videos/aimers.mp4"
+            type="video/mp4"
+            media="(min-width: 640px) and (prefers-reduced-motion: no-preference)"
+          />
         </video>
 
         {/* Overlay para contraste */}

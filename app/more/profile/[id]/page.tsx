@@ -66,7 +66,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
           </Link>
           <div>
             <h1 className="text-4xl leading-none italic uppercase">Expediente</h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Agente del Sistema</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Entrenador</p>
           </div>
         </div>
         

@@ -36,7 +36,7 @@ return (
           <div className="w-1.5 h-8 bg-v-red" />
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-v-white font-oswald">
-              VCF FANTASY
+              VCT FANTASY
             </p>
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-v-white/40">
               Navegación

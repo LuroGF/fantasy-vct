@@ -72,7 +72,7 @@ export default async function ProfilePage() {
             </Link>
             <div>
               <h1 className="text-4xl leading-none italic uppercase">Perfil</h1>
-              <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Agente del Sistema</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Entrenador</p>
             </div>
           </div>
         <EditProfileButton profile={profile} teams={teams} />
@@ -110,7 +110,7 @@ export default async function ProfilePage() {
                 </div>
                 <div className="flex-1 min-w-0 pr-12 lg:pr-16">
                   <h2 className="text-3xl font-black uppercase italic tracking-tighter truncate leading-none">
-                    {profile?.username || "Agente"}
+                    {profile?.username || "Entrenador"}
                   </h2>
                   <div className="flex items-center gap-2 mt-2">
                     <span 

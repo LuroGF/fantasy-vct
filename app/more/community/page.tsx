@@ -44,7 +44,7 @@ export default function CommunityPage() {
         </Link>
         <div>
           <h1 className="text-4xl leading-none italic uppercase">Comunidad</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Agentes del Sistema</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Entrenadores</p>
         </div>
       </div>
 
@@ -52,7 +52,7 @@ export default function CommunityPage() {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-v-white/20 group-focus-within:text-v-red transition-colors" />
         <input
           type="text"
-          placeholder="BUSCAR AGENTE..."
+          placeholder="BUSCAR ENTRENADOR..."
           className="w-full bg-v-gray/40 border border-white/10 p-4 pl-12 text-sm font-black uppercase tracking-widest focus:outline-none focus:border-v-red/50 transition-all placeholder:text-v-white/10"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -100,7 +100,7 @@ export default function CommunityPage() {
           ))
         ) : (
           <div className="p-20 text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-white/20">No se encontraron agentes</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-white/20">No se encontraron entrenadores</p>
           </div>
         )}
       </div>
