@@ -347,7 +347,7 @@ export default function MarketView({
   return (
     <div className="flex flex-col gap-5">
       <section className="v-panel relative z-30 overflow-visible p-4">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="mb-1 text-[8px] font-black uppercase tracking-[0.22em] text-white/35">
               Liga activa
@@ -389,7 +389,7 @@ export default function MarketView({
             )}
           </div>
 
-          <div className="grid shrink-0 grid-cols-2 gap-x-4 gap-y-2 text-right sm:grid-cols-4">
+          <div className="grid w-full shrink-0 grid-cols-4 gap-x-3 gap-y-2 text-right sm:w-auto sm:gap-x-4">
             <div>
               <p className="text-[7px] font-black uppercase text-white/30">
                 Saldo

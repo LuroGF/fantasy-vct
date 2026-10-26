@@ -156,8 +156,8 @@ export default async function SchedulePage() {
               key={match.id}
               className="v-panel p-4 flex items-center justify-between group hover:border-v-red transition-all"
             >
-              <div className="flex-1 text-sm font-black uppercase italic tracking-tighter flex items-center gap-3">
-                <span className="flex-1">{match.team_a?.tag || match.team_a?.name}</span>
+              <div className="flex min-w-0 flex-1 items-center gap-2 text-sm font-black uppercase italic tracking-tighter sm:gap-3">
+                <span className="min-w-0 flex-1 truncate">{match.team_a?.tag || match.team_a?.name}</span>
                 {(isLive || isFinished) && (
                   <span className={`text-xl ${isLive ? 'text-v-red' : 'text-white'}`}>
                     {match.team_a_score}
@@ -165,7 +165,7 @@ export default async function SchedulePage() {
                 )}
               </div>
 
-              <div className="flex flex-col items-center px-6 border-x border-white/5 min-w-[120px]">
+              <div className="flex min-w-[92px] flex-col items-center border-x border-white/5 px-3 sm:min-w-[120px] sm:px-6">
                 {isLive ? (
                   <span className="text-xs font-black text-v-red animate-pulse">
                     EN VIVO
@@ -191,13 +191,13 @@ export default async function SchedulePage() {
                 </span>
               </div>
 
-              <div className="flex-1 text-sm font-black uppercase italic tracking-tighter text-right flex items-center justify-end gap-3">
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2 text-right text-sm font-black uppercase italic tracking-tighter sm:gap-3">
                 {(isLive || isFinished) && (
                   <span className={`text-xl ${isLive ? 'text-v-red' : 'text-white'}`}>
                     {match.team_b_score}
                   </span>
                 )}
-                <span className="flex-1">{match.team_b?.tag || match.team_b?.name}</span>
+                <span className="min-w-0 flex-1 truncate">{match.team_b?.tag || match.team_b?.name}</span>
               </div>
             </div>
           );

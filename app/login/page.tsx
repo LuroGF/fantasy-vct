@@ -31,8 +31,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full ">
-      <div className="relative min-h-screen w-full px-5 sm:px-6 py-10 sm:py-12 lg:grid lg:place-items-center">
+    <div className="relative min-h-screen w-full overflow-hidden bg-v-navy">
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        <video
+          className="h-full w-full scale-105 object-cover blur-md"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+        >
+          <source src="/videos/aimers.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-linear-to-b from-v-navy/55 via-v-navy/85 to-v-navy" />
+      </div>
+
+      <div className="relative z-10 min-h-screen w-full px-5 sm:px-6 py-10 sm:py-12 lg:grid lg:place-items-center">
         <div className="w-full max-w-md lg:max-w-lg">
           <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
             <div className="space-y-4">
