@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   dismissLeagueReport,
@@ -198,6 +199,12 @@ export default function LeagueDetails({
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setData([]);
+      setLeaderId(null);
+      setReports([]);
+      setSelectedManager(null);
+      setSelectedGameweekManager(null);
+      setViewMode("general");
 
       try {
         const result = await getLeagueClassification(leagueId);
@@ -915,9 +922,9 @@ export default function LeagueDetails({
       {/* MODAL GENERAL */}
       {/* ====================================================== */}
 
-      {selectedManager && (
+      {selectedManager && createPortal(
         <div
-          className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-black/75 p-0 backdrop-blur-sm sm:p-4 sm:py-6"
+          className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-black/75 p-0 backdrop-blur-sm sm:p-4 sm:py-6"
           onMouseDown={(event) => {
             if (event.currentTarget === event.target) {
               setSelectedManager(null);
@@ -967,7 +974,8 @@ export default function LeagueDetails({
                   </div>
                 </div>
 
-                {selectedManager.profile_id !== currentUserId && (
+                {selectedManager.profile_id !== currentUserId &&
+                  (leaderId === currentUserId || selectedManager.profile_id !== leaderId) && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {leaderId === currentUserId ? (
                       <button
@@ -1110,16 +1118,17 @@ export default function LeagueDetails({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* ====================================================== */}
       {/* MODAL JORNADA */}
       {/* ====================================================== */}
 
-      {selectedGameweekManager && (
+      {selectedGameweekManager && createPortal(
         <div
-          className="fixed inset-0 z-[75] flex items-start justify-center overflow-y-auto bg-black/75 p-0 backdrop-blur-sm sm:p-4 sm:py-6"
+          className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-black/75 p-0 backdrop-blur-sm sm:p-4 sm:py-6"
           onMouseDown={(event) => {
             if (event.currentTarget === event.target) {
               setSelectedGameweekManager(null);
@@ -1230,11 +1239,12 @@ export default function LeagueDetails({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {reportTarget && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-black/85 p-4 backdrop-blur-sm">
+      {reportTarget && createPortal(
+        <div className="fixed inset-0 z-[130] flex items-center justify-center overflow-y-auto bg-black/85 p-4 backdrop-blur-sm">
           <div className="v-panel w-full max-w-md space-y-5 p-5 sm:p-6">
             <div>
               <p className="text-[8px] font-black uppercase tracking-[0.25em] text-v-red">Reporte al líder</p>
@@ -1288,7 +1298,8 @@ export default function LeagueDetails({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* LOADING GENERAL */}
