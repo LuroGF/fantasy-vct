@@ -275,6 +275,104 @@ export async function joinLeague(
 }
 
 // ============================================================
+// LEAGUE MEMBERSHIP AND MODERATION
+// ============================================================
+
+function leagueManagementError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : error && typeof error === "object" && "message" in error
+        ? String(error.message)
+        : String(error);
+
+  if (message.includes("active gameweek")) {
+    return "No se pueden cambiar participantes mientras haya una jornada en curso.";
+  }
+  if (message.includes("already have a pending report")) {
+    return "Ya tienes un reporte pendiente sobre este entrenador.";
+  }
+  if (message.includes("Only the league leader")) {
+    return "Solo el líder de la liga puede realizar esta acción.";
+  }
+
+  return message;
+}
+
+export async function leaveLeague(leagueId: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Acceso no autorizado" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("leave_fantasy_league", {
+    p_league_id: leagueId,
+  });
+
+  if (error) return { success: false, error: leagueManagementError(error) };
+
+  revalidatePath("/");
+  revalidatePath("/leagues");
+  revalidatePath("/team");
+  revalidatePath("/market");
+  return { success: true, data };
+}
+
+export async function kickLeagueMember(leagueId: string, profileId: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Acceso no autorizado" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("kick_fantasy_league_member", {
+    p_league_id: leagueId,
+    p_profile_id: profileId,
+  });
+
+  if (error) return { success: false, error: leagueManagementError(error) };
+
+  revalidatePath("/leagues");
+  revalidatePath("/market");
+  return { success: true, data };
+}
+
+export async function reportLeagueMember(
+  leagueId: string,
+  profileId: string,
+  reason: "inactivity" | "unsportsmanlike",
+  details?: string,
+) {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Acceso no autorizado" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("report_fantasy_league_member", {
+    p_league_id: leagueId,
+    p_profile_id: profileId,
+    p_reason: reason,
+    p_details: details?.trim() || null,
+  });
+
+  if (error) return { success: false, error: leagueManagementError(error) };
+
+  revalidatePath("/leagues");
+  return { success: true, data };
+}
+
+export async function dismissLeagueReport(reportId: string) {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Acceso no autorizado" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("dismiss_fantasy_league_report", {
+    p_report_id: reportId,
+  });
+
+  if (error) return { success: false, error: leagueManagementError(error) };
+
+  revalidatePath("/leagues");
+  return { success: true, data };
+}
+
+// ============================================================
 // GET USER LEAGUES
 // ============================================================
 
@@ -434,6 +532,16 @@ export async function getLeagueClassification(
     throw new Error(
       "No perteneces a esta liga",
     );
+  }
+
+  const { data: league, error: leagueError } = await supabase
+    .from("leagues")
+    .select("id, creator_id")
+    .eq("id", leagueId)
+    .single();
+
+  if (leagueError || !league) {
+    throw new Error("No se pudo cargar la liga");
   }
 
   // ==========================================================
@@ -600,8 +708,49 @@ export async function getLeagueClassification(
       }),
     );
 
+  let reports: any[] = [];
+  if (league.creator_id === session.user.id) {
+    const { data: reportRows, error: reportsError } = await supabase
+      .from("league_reports")
+      .select("id, reporter_id, target_profile_id, reason, details, status, created_at")
+      .eq("league_id", leagueId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (reportsError) {
+      throw reportsError;
+    }
+
+    const profileIds = Array.from(
+      new Set(
+        (reportRows ?? []).flatMap((report) => [
+          report.reporter_id,
+          report.target_profile_id,
+        ]),
+      ),
+    );
+    const { data: reportProfiles } = profileIds.length
+      ? await supabase.from("profiles").select("id, username").in("id", profileIds)
+      : { data: [] as Array<{ id: string; username: string | null }> };
+    const profileNames = new Map(
+      (reportProfiles ?? []).map((profile) => [profile.id, profile.username]),
+    );
+
+    reports = (reportRows ?? []).map((report) => ({
+      ...report,
+      reporter_name: profileNames.get(report.reporter_id) || "Entrenador",
+      target_name: profileNames.get(report.target_profile_id) || "Entrenador",
+    }));
+  }
+
   return {
     standings,
+
+    currentUserId: session.user.id,
+
+    leaderId: league.creator_id,
+
+    reports,
 
     // Lo dejamos temporalmente para no romper
     // componentes antiguos que aún hagan:

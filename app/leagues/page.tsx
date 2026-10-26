@@ -5,6 +5,7 @@ import {
   createLeague,
   joinLeague,
   getUserLeagues,
+  leaveLeague,
 } from "@/lib/actions/leagues";
 import { getSession } from "@/lib/actions/auth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +14,7 @@ import { haptic } from "@/lib/utils/haptics";
 import LeagueDetails from "@/components/LeagueDetails";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 import { sileo } from "sileo";
+import { Crown, MoreHorizontal } from "lucide-react";
 
 export default function LeaguesPage() {
   const [leagues, setLeagues] = useState<any[]>([]);
@@ -23,6 +25,7 @@ export default function LeaguesPage() {
   const [newLeagueName, setNewLeagueName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
+  const [leagueMenuId, setLeagueMenuId] = useState<string | null>(null);
   const router = useRouter();
 
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -137,6 +140,38 @@ export default function LeaguesPage() {
           });
         }
 
+        setLoading(false);
+      },
+    });
+  }
+
+  function requestLeaveLeague(league: any) {
+    const isLeader = league.leagues.creator_id === userId;
+    setLeagueMenuId(null);
+    setConfirmDialog({
+      show: true,
+      title: "Abandonar liga",
+      message: isLeader
+        ? `Si hay más participantes, el liderazgo de ${league.leagues.name} pasará al entrenador más antiguo. Si estás solo, la liga se eliminará.`
+        : `Dejarás de participar en ${league.leagues.name} y tus jugadores volverán a quedar disponibles.`,
+      onConfirm: async () => {
+        setLoading(true);
+        const result = await leaveLeague(league.leagues.id);
+        if (result.success) {
+          haptic.success();
+          sileo.success({
+            title: "Has abandonado la liga",
+            description: "Tu participación se ha eliminado correctamente.",
+          });
+          setSelectedLeagueId(null);
+          await loadLeagues();
+        } else {
+          haptic.error();
+          sileo.error({
+            title: "No se pudo abandonar la liga",
+            description: result.error || "Inténtalo de nuevo.",
+          });
+        }
         setLoading(false);
       },
     });
@@ -302,7 +337,7 @@ export default function LeaguesPage() {
                     <div
                       key={ul.leagues.id}
                       onClick={() => setSelectedLeagueId(ul.leagues.id)}
-                      className="v-panel relative overflow-hidden group hover:border-v-red transition-all cursor-pointer active:scale-[0.98] select-none flex flex-col gap-4"
+                      className="v-panel relative overflow-visible group hover:border-v-red transition-all cursor-pointer active:scale-[0.98] select-none flex flex-col gap-4"
                     >
                       <div className="absolute top-0 right-0 w-48 h-full bg-linear-to-l from-v-red/5 to-transparent pointer-events-none" />
                       <div className="absolute -right-2 -bottom-4 text-7xl font-black text-white/5 italic select-none group-hover:text-v-red/5 transition-colors uppercase leading-none pointer-events-none">
@@ -321,14 +356,48 @@ export default function LeaguesPage() {
                             {ul.leagues.name}
                           </h3>
                         </div>
-                        <div className="shrink-0 flex flex-col items-end">
+                        <div className="shrink-0 flex items-start gap-2">
                           <div className="bg-v-red/10 border border-v-red/20 px-2 py-0.5">
                             <span className="text-[7px] font-black text-v-red uppercase tracking-widest italic">
                               Rank #{ul.rank ?? "--"}
                             </span>
                           </div>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setLeagueMenuId((current) =>
+                                current === ul.leagues.id ? null : ul.leagues.id,
+                              );
+                            }}
+                            className="flex h-8 w-8 items-center justify-center border border-white/10 bg-v-navy text-v-white/45 transition-colors hover:border-v-red hover:text-v-red"
+                            aria-label={`Opciones de ${ul.leagues.name}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
+
+                      {ul.leagues.creator_id === userId && (
+                        <div className="relative z-10 flex w-fit items-center gap-1.5 text-[7px] font-black uppercase tracking-[0.18em] text-v-red">
+                          <Crown className="h-3 w-3" /> Líder
+                        </div>
+                      )}
+
+                      {leagueMenuId === ul.leagues.id && (
+                        <div
+                          className="absolute right-4 top-14 z-30 min-w-52 border border-white/10 bg-v-navy p-2 shadow-2xl"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => requestLeaveLeague(ul)}
+                            className="w-full px-3 py-3 text-left text-[9px] font-black uppercase tracking-wider text-v-red transition-colors hover:bg-v-red/10"
+                          >
+                            Abandonar liga
+                          </button>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 relative z-10 group-hover:border-v-red/10 transition-colors">
                         <div>

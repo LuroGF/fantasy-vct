@@ -5,7 +5,7 @@ import { getUserFriends } from "@/lib/actions/friends";
 import { getAllTeams } from "@/lib/actions/profile";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Trophy, Users, Star, UserCheck, ShieldCheck } from "lucide-react";
+import { Trophy, Users, Star, UserCheck } from "lucide-react";
 import { EditProfileButton } from "@/components/EditProfileButton";
 
 export default async function ProfilePage() {
@@ -129,7 +129,9 @@ export default async function ProfilePage() {
                       className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest border transition-colors duration-500"
                       style={{ color: bannerColor, borderColor: `${bannerColor}40`, backgroundColor: `${bannerColor}10` }}
                     >
-                      {profile?.title || "Manager Novato"}
+                      {profile?.title === "Manager Novato"
+                        ? "Entrenador novato"
+                        : profile?.title || "Entrenador novato"}
                     </span>
                     <span className="px-2 py-0.5 bg-v-white/5 text-v-white/40 text-[8px] font-black uppercase tracking-widest border border-white/5">
                        #{globalRank} GLOBAL
@@ -166,8 +168,8 @@ export default async function ProfilePage() {
                   <div className="w-4 h-4 flex items-center justify-center mb-2">
                     <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: bannerColor }} />
                   </div>
-                  <p className="text-2xl font-black italic leading-none text-v-white/80">ESTADO</p>
-                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">VERIFICADO</p>
+                  <p className="text-2xl font-black italic leading-none text-v-white/80">ACTIVA</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">CUENTA</p>
                 </div>
               </div>
             </div>
@@ -229,10 +231,9 @@ export default async function ProfilePage() {
                       <p className="text-[11px] font-black uppercase tracking-wide text-v-white/80 group-hover:text-v-white truncate transition-colors">
                         {friend.username}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
-                        <span className="text-[8px] font-black text-v-white/20 uppercase">Online</span>
-                      </div>
+                      <span className="mt-0.5 block text-[8px] font-black text-v-white/20 uppercase">
+                        Amigo
+                      </span>
                     </div>
                   </Link>
                 ))

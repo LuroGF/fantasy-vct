@@ -128,7 +128,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
                   className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest border transition-all duration-500"
                   style={{ color: bannerColor, borderColor: `${bannerColor}40`, backgroundColor: `${bannerColor}10` }}
                 >
-                  {profile.title || "Manager Novato"}
+                  {profile.title === "Manager Novato"
+                    ? "Entrenador novato"
+                    : profile.title || "Entrenador novato"}
                 </span>
                 <span className="px-2 py-0.5 bg-v-white/5 text-v-white/40 text-[8px] font-black uppercase tracking-widest border border-white/5">
                   #{globalRank} GLOBAL
@@ -166,8 +168,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
               <div className="w-4 h-4 flex items-center justify-center mb-2">
                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: bannerColor }} />
               </div>
-              <p className="text-2xl font-black italic leading-none text-v-white/80">ESTADO</p>
-              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">VERIFICADO</p>
+              <p className="text-2xl font-black italic leading-none text-v-white/80">ACTIVA</p>
+              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">CUENTA</p>
             </div>
           </div>
         </div>

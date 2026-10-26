@@ -20,7 +20,7 @@ const PRESET_COLORS = [
 ];
 
 const PRESET_TITLES = [
-  "Manager Novato",
+  "Entrenador novato",
   "Estratega",
   "Caza-Cláusulas",
   "Ojeador Maestro",
@@ -35,7 +35,10 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
     bio: profile.bio || "",
     banner_color: profile.banner_color || "#ff4655",
     fav_team_id: profile.fav_team_id || "",
-    title: profile.title || "Manager Novato",
+    title:
+      profile.title === "Manager Novato"
+        ? "Entrenador novato"
+        : profile.title || "Entrenador novato",
   });
 
   async function handleSubmit(e: React.FormEvent) {
