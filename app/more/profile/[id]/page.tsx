@@ -16,11 +16,23 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
   const supabase = await createClient();
 
   // Fetch target profile
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from("profiles")
-    .select("*, pro_teams(name, tag, logo_url)")
+    .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle();
+
+  const { data: favoriteTeam } = profileData?.fav_team_id
+    ? await supabase
+        .from("pro_teams")
+        .select("name, tag, logo_url")
+        .eq("id", profileData.fav_team_id)
+        .maybeSingle()
+    : { data: null };
+
+  const profile = profileData
+    ? { ...profileData, pro_teams: favoriteTeam }
+    : null;
 
   if (!profile) notFound();
 
