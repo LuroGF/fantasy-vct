@@ -80,17 +80,9 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-4">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
-                      Contraseña
-                    </label>
-                    <Link
-                      href="/forgot-password"
-                      className="text-[10px] font-black uppercase tracking-wider text-v-red hover:underline"
-                    >
-                      He olvidado mi contraseña
-                    </Link>
-                  </div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
+                    Contraseña
+                  </label>
                   <input
                     name="password"
                     type="password"
@@ -98,6 +90,14 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     className="w-full h-14 bg-v-navy/50 border border-white/40 px-5 text-sm font-medium focus:border-v-red outline-none transition-all placeholder:text-v-white/10"
                   />
+                  <div className="pt-1 text-right">
+                    <Link
+                      href="/forgot-password"
+                      className="text-[10px] font-black uppercase tracking-wider text-v-red hover:underline"
+                    >
+                      He olvidado mi contraseña
+                    </Link>
+                  </div>
                 </div>
 
                 <button

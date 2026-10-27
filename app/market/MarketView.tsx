@@ -486,7 +486,7 @@ export default function MarketView({
                             href={`/players/${player.id}?league=${activeLeagueId}`}
                             className="group/player block min-w-0 pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
                           >
-                            <h3 className="truncate text-2xl font-black italic uppercase leading-none transition-colors group-hover/player:text-v-red">
+                            <h3 className="truncate pr-2 text-2xl font-black italic uppercase leading-none transition-colors group-hover/player:text-v-red">
                               {player?.nickname}
                             </h3>
                             <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-white/35 transition-colors group-hover/player:text-white/60">
@@ -629,7 +629,7 @@ export default function MarketView({
                               href={`/players/${p.id}?league=${activeLeagueId}`}
                               className="group/player block min-w-0 pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
                             >
-                              <h3 className="truncate text-lg font-black italic uppercase transition-colors group-hover/player:text-v-red">
+                              <h3 className="truncate pr-2 text-lg font-black italic uppercase transition-colors group-hover/player:text-v-red">
                                 {p?.nickname}
                               </h3>
                               <p className="text-[8px] font-black uppercase text-white/35 transition-colors group-hover/player:text-white/60">
@@ -721,7 +721,7 @@ export default function MarketView({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="truncate pr-1 text-xl font-black italic uppercase">
+                      <h3 className="truncate pr-2 text-xl font-black italic uppercase">
                         {listing.player?.nickname}
                       </h3>
 
@@ -923,7 +923,7 @@ export default function MarketView({
                         ? `Enviada a ${offer.to_username}`
                         : `Recibida de ${offer.from_username}`}
                     </p>
-                    <h3 className="truncate pr-1 text-lg font-black italic uppercase">
+                    <h3 className="truncate pr-2 text-lg font-black italic uppercase">
                       {offer.player?.nickname || "Jugador"}
                     </h3>
                     <p className="text-sm font-black italic text-v-red">

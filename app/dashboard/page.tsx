@@ -9,6 +9,7 @@ import {
   DashboardMatchListSkeleton,
 } from "@/components/DashboardMatchList";
 import { RecentActivity } from "@/components/RecentActivity";
+import { DashboardLeagueSwitcher } from "@/components/DashboardLeagueSwitcher";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { createClient } from "@/utils/supabase/server";
 
@@ -146,26 +147,15 @@ export default async function DashboardPage({
         </header>
 
         {userLeagues.length > 1 && (
-          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Seleccionar liga">
-            {userLeagues.map((participation: any) => {
+          <DashboardLeagueSwitcher
+            leagues={userLeagues.flatMap((participation: any) => {
               const league = leagueData(participation);
-              if (!league) return null;
-              const active = participation.league_id === selectedParticipation?.league_id;
-              return (
-                <Link
-                  key={participation.league_id}
-                  href={`/dashboard?league=${participation.league_id}`}
-                  className={`shrink-0 border px-4 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
-                    active
-                      ? "border-v-red bg-v-red/10 text-v-white"
-                      : "border-white/10 text-v-white/40 hover:border-v-red/40 hover:text-v-white"
-                  }`}
-                >
-                  {league.name}
-                </Link>
-              );
+              return league
+                ? [{ id: participation.league_id, name: league.name }]
+                : [];
             })}
-          </nav>
+            activeLeagueId={selectedParticipation?.league_id || null}
+          />
         )}
 
         {!selectedParticipation || !selectedLeague ? (

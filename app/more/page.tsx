@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/lib/actions/auth";
+import { NotificationBadge } from "@/components/NotificationBadge";
 
 const options = [
   { label: "Perfil", href: "/more/profile" },
@@ -41,8 +42,13 @@ export default function MorePage() {
             <span className="text-sm font-black uppercase tracking-widest text-v-white/80">
               {item.label}
             </span>
-            <span className="text-v-white/20 group-hover:text-v-red transition-colors text-xl">
-              {"//"}
+            <span className="flex items-center gap-3">
+              {item.href === "/more/notifications" && (
+                <NotificationBadge variant="row" />
+              )}
+              <span className="text-v-white/20 group-hover:text-v-red transition-colors text-xl">
+                {"//"}
+              </span>
             </span>
           </Link>
         ))}
