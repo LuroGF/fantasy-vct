@@ -65,7 +65,7 @@ export default function RootLayout({
         <LayoutShell>{children}</LayoutShell>
         {/* <Toaster richColors closeButton theme="dark" /> */}
         <Toaster
-          position="top-right"
+          position="bottom-center"
           theme="dark"
           options={{
             fill: "#0f172a",

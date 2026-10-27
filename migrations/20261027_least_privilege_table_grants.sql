@@ -3,6 +3,15 @@
 
 begin;
 
+-- The profile UI already uses these optional customization fields, but the
+-- live database predates profile_customization.sql. Create only the missing
+-- columns before applying column-level grants.
+alter table public.profiles
+  add column if not exists bio text,
+  add column if not exists banner_color text default '#ff4655',
+  add column if not exists fav_team_id uuid references public.pro_teams(id) on delete set null,
+  add column if not exists title text default 'Entrenador novato';
+
 alter default privileges for role postgres in schema public
   revoke all on tables from public, anon, authenticated;
 alter default privileges for role postgres in schema public

@@ -36,6 +36,21 @@ select jsonb_pretty(
         group by grantee, table_name
       ) g
     ), '[]'::jsonb),
+    'anon_authenticated_column_grants', coalesce((
+      select jsonb_agg(to_jsonb(c) order by c.table_name, c.grantee, c.column_name)
+      from (
+        select
+          grantee,
+          table_name,
+          column_name,
+          string_agg(distinct privilege_type, ', ' order by privilege_type) as privileges
+        from information_schema.column_privileges
+        where table_schema = 'public'
+          and grantee in ('anon', 'authenticated')
+          and privilege_type <> 'SELECT'
+        group by grantee, table_name, column_name
+      ) c
+    ), '[]'::jsonb),
     'public_views', coalesce((
       select jsonb_agg(to_jsonb(v) order by v.view_name)
       from (

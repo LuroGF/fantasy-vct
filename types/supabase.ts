@@ -260,6 +260,10 @@ export interface Database {
           id: string
           username: string | null
           avatar_url: string | null
+          bio: string | null
+          banner_color: string | null
+          fav_team_id: string | null
+          title: string | null
           global_points: number | null
           created_at: string | null
         }
@@ -267,6 +271,10 @@ export interface Database {
           id: string
           username?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          banner_color?: string | null
+          fav_team_id?: string | null
+          title?: string | null
           global_points?: number | null
           created_at?: string | null
         }
@@ -274,6 +282,10 @@ export interface Database {
           id?: string
           username?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          banner_color?: string | null
+          fav_team_id?: string | null
+          title?: string | null
           global_points?: number | null
           created_at?: string | null
         }
