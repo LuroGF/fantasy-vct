@@ -1,6 +1,6 @@
 {
-  "name": "Draftant",
-  "short_name": "Draftant",
+  "name": "VFantasy",
+  "short_name": "VFantasy",
   "description": "Compite con tus amigos en la mejor liga fantasy de Valorant",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -44,13 +44,6 @@
       "short_name": "Mercado",
       "description": "Fichar nuevos jugadores",
       "url": "/market",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Tienda",
-      "short_name": "Tienda",
-      "description": "Comprar mejoras y consumibles",
-      "url": "/shop",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {

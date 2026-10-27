@@ -1,13 +1,10 @@
 // Service Worker for PWA
-const CACHE_NAME = 'vct-fantasy-v1.3';
+const CACHE_NAME = 'vct-fantasy-v1.4';
 const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/team',
-  '/market',
-  '/ranking',
   '/manifest.json',
   '/offline',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 // Install event - cache static assets
@@ -49,10 +46,28 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
+  const requestUrl = new URL(event.request.url);
+
+  // Never handle cross-origin requests apart from the explicitly supported
+  // public image/font strategy below.
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+
+  // Authenticated pages must never be persisted in Cache Storage. Otherwise
+  // a shared device could show the previous account's dashboard while offline.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/offline'))
+    );
+    return;
+  }
+
   const url = event.request.url;
 
   // Skip API calls (except Supabase storage for images)
-  if (url.includes('/api/') || (url.includes('/_next/') && !url.includes('static'))) {
+  if (
+    (isSameOrigin && requestUrl.pathname.startsWith('/api/')) ||
+    (isSameOrigin && requestUrl.pathname.startsWith('/_next/') && !requestUrl.pathname.startsWith('/_next/static/'))
+  ) {
     return;
   }
 
@@ -74,7 +89,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy: Network First, fallback to cache
+  // Other same-origin static resources use Network First. HTML navigations
+  // were already excluded above and are therefore never written here.
+  if (!isSameOrigin) return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -92,11 +110,6 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
-          }
-          
-          // If navigation request and not in cache, show offline page
-          if (event.request.mode === 'navigate') {
-            return caches.match('/offline');
           }
           
           return null;
@@ -132,7 +145,15 @@ self.addEventListener('push', (event) => {
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data || '/dashboard', self.location.origin).href;
+  let targetUrl = new URL('/dashboard', self.location.origin).href;
+  try {
+    const requestedUrl = new URL(event.notification.data || '/dashboard', self.location.origin);
+    if (requestedUrl.origin === self.location.origin) {
+      targetUrl = requestedUrl.href;
+    }
+  } catch {
+    // Invalid notification targets fall back to the authenticated dashboard.
+  }
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       const existing = windowClients.find((client) => client.url.startsWith(self.location.origin));
