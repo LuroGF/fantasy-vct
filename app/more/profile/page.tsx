@@ -1,11 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { getSession } from "@/lib/actions/auth";
 import { getGlobalRank } from "@/lib/actions/leagues";
-import { getUserFriends } from "@/lib/actions/friends";
 import { getAllTeams } from "@/lib/actions/profile";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Trophy, Users, Star, UserCheck } from "lucide-react";
+import { Trophy, Users, Star } from "lucide-react";
 import { EditProfileButton } from "@/components/EditProfileButton";
 
 export default async function ProfilePage() {
@@ -21,51 +20,47 @@ export default async function ProfilePage() {
     .eq("id", session.user.id)
     .maybeSingle();
 
-  const { data: favoriteTeam } = profileData?.fav_team_id
-    ? await supabase
-        .from("pro_teams")
-        .select("name, tag, logo_url")
-        .eq("id", profileData.fav_team_id)
-        .maybeSingle()
-    : { data: null };
+  const [
+    { data: favoriteTeam },
+    teams,
+    { data: participations },
+    globalRank,
+    { data: bestRankData },
+    { data: recentScores },
+  ] = await Promise.all([
+    profileData?.fav_team_id
+      ? supabase
+          .from("pro_teams")
+          .select("name, tag, logo_url")
+          .eq("id", profileData.fav_team_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    getAllTeams(),
+    supabase
+      .from("league_participants")
+      .select("total_points, league_id, leagues(name)")
+      .eq("profile_id", session.user.id)
+      .order("total_points", { ascending: false }),
+    getGlobalRank(session.user.id),
+    supabase
+      .from("participant_scores_history")
+      .select("rank_in_league, gameweek_id")
+      .eq("profile_id", session.user.id)
+      .eq("rank_in_league", 1)
+      .limit(1),
+    supabase
+      .from("participant_scores_history")
+      .select("points_earned, rank_in_league, gameweek_id, league_id, leagues(name)")
+      .eq("profile_id", session.user.id)
+      .order("gameweek_id", { ascending: false })
+      .limit(5),
+  ]);
 
   const profile = profileData
     ? { ...profileData, pro_teams: favoriteTeam }
     : null;
 
-  // Fetch all teams for the customizer
-  const teams = await getAllTeams();
-
-  // Fetch leagues the user is in
-  const { data: participations } = await supabase
-    .from("league_participants")
-    .select("total_points, league_id, leagues(name)")
-    .eq("profile_id", session.user.id)
-    .order("total_points", { ascending: false });
-
-  // Global rank
-  const globalRank = await getGlobalRank(session.user.id);
-
-  // Friends
-  const friends = await getUserFriends(session.user.id);
-
-  // Best league rank
-  const { data: bestRankData } = await supabase
-    .from("participant_scores_history")
-    .select("rank_in_league, gameweek_id")
-    .eq("profile_id", session.user.id)
-    .eq("rank_in_league", 1)
-    .limit(1);
-
   const wins = bestRankData?.length || 0;
-
-  // Recent score history
-  const { data: recentScores } = await supabase
-    .from("participant_scores_history")
-    .select("points_earned, rank_in_league, gameweek_id, league_id, leagues(name)")
-    .eq("profile_id", session.user.id)
-    .order("gameweek_id", { ascending: false })
-    .limit(5);
 
   const totalLeagues = participations?.length || 0;
   const totalGlobalPoints = profile?.global_points || 0;
@@ -90,8 +85,8 @@ export default async function ProfilePage() {
         <EditProfileButton profile={profile} teams={teams} />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="space-y-6">
+        <div className="space-y-6">
           {/* Profile Card */}
           <div className="v-panel p-0 overflow-hidden relative group">
             {/* Dynamic Banner Color */}
@@ -208,46 +203,6 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        <div className="space-y-6">
-          {/* Friends Menu */}
-          <div className="v-panel p-5 space-y-4 h-full">
-            <div className="flex items-center justify-between">
-              <p className="text-[9px] font-black uppercase text-v-red tracking-widest">Mis Amigos</p>
-              <UserCheck className="w-3 h-3 text-v-red" />
-            </div>
-            
-            <div className="space-y-3">
-              {friends.length > 0 ? (
-                friends.map((friend: any) => (
-                  <Link 
-                    key={friend.id} 
-                    href={`/more/profile/${friend.id}`}
-                    className="flex items-center gap-3 p-2 hover:bg-v-white/5 border border-transparent hover:border-white/5 transition-all group"
-                  >
-                    <div className="w-8 h-8 bg-v-gray flex items-center justify-center text-[10px] font-black italic text-v-white/40 border border-white/10">
-                      {friend.username?.substring(0, 1).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-black uppercase tracking-wide text-v-white/80 group-hover:text-v-white truncate transition-colors">
-                        {friend.username}
-                      </p>
-                      <span className="mt-0.5 block text-[8px] font-black text-v-white/20 uppercase">
-                        Amigo
-                      </span>
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="py-10 text-center space-y-3 border-2 border-dashed border-white/5">
-                  <p className="text-[9px] font-black uppercase text-v-white/20">No tienes amigos añadidos</p>
-                  <Link href="/more/community" className="inline-block text-[8px] font-black uppercase text-v-red border border-v-red/30 px-3 py-1 bg-v-red/5 hover:bg-v-red/10 transition-colors">
-                    Buscar Amigos
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

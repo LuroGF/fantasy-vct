@@ -22,13 +22,40 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
     .eq("id", id)
     .maybeSingle();
 
-  const { data: favoriteTeam } = profileData?.fav_team_id
-    ? await supabase
-        .from("pro_teams")
-        .select("name, tag, logo_url")
-        .eq("id", profileData.fav_team_id)
-        .maybeSingle()
-    : { data: null };
+  const [
+    { data: favoriteTeam },
+    { data: participations },
+    globalRank,
+    { data: bestRankData },
+    { data: recentScores },
+    friendStatus,
+  ] = await Promise.all([
+    profileData?.fav_team_id
+      ? supabase
+          .from("pro_teams")
+          .select("name, tag, logo_url")
+          .eq("id", profileData.fav_team_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("league_participants")
+      .select("total_points, league_id, leagues(name)")
+      .eq("profile_id", id)
+      .order("total_points", { ascending: false }),
+    getGlobalRank(id),
+    supabase
+      .from("participant_scores_history")
+      .select("rank_in_league")
+      .eq("profile_id", id)
+      .eq("rank_in_league", 1),
+    supabase
+      .from("participant_scores_history")
+      .select("points_earned, rank_in_league, gameweek_id, league_id, leagues(name)")
+      .eq("profile_id", id)
+      .order("gameweek_id", { ascending: false })
+      .limit(5),
+    getFriendStatus(id),
+  ]);
 
   const profile = profileData
     ? { ...profileData, pro_teams: favoriteTeam }
@@ -36,34 +63,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
 
   if (!profile) notFound();
 
-  // Fetch leagues the user is in
-  const { data: participations } = await supabase
-    .from("league_participants")
-    .select("total_points, league_id, leagues(name)")
-    .eq("profile_id", id)
-    .order("total_points", { ascending: false });
-
-  // Global rank
-  const globalRank = await getGlobalRank(id);
-
-  // Best league rank
-  const { data: bestRankData } = await supabase
-    .from("participant_scores_history")
-    .select("rank_in_league")
-    .eq("profile_id", id)
-    .eq("rank_in_league", 1);
-
   const wins = bestRankData?.length || 0;
-
-  // Recent score history
-  const { data: recentScores } = await supabase
-    .from("participant_scores_history")
-    .select("points_earned, rank_in_league, gameweek_id, league_id, leagues(name)")
-    .eq("profile_id", id)
-    .order("gameweek_id", { ascending: false })
-    .limit(5);
-
-  const friendStatus = await getFriendStatus(id);
 
   const initials = (profile.username || "?").slice(0, 2).toUpperCase();
   const bannerColor = profile.banner_color || "#ff4655";

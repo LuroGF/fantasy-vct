@@ -15,8 +15,10 @@ export default async function NotificationsPage() {
   const session = await getSession();
   if (!session) return redirect("/login");
 
-  const notifications = await getUserNotifications();
-  const preferences = await getNotificationPreferences();
+  const [notifications, preferences] = await Promise.all([
+    getUserNotifications(),
+    getNotificationPreferences(),
+  ]);
   const unreadNotifications = notifications.filter((n) => !n.is_read);
 
   async function handleMarkAllAsRead() {
