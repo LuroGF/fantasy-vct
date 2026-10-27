@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { validatePlayerActionAvailability } from "./player-action-guards";
 import { getSession } from "./auth";
 import { createNotification } from "@/lib/notifications/create";
+import { isMoneyAmount, isUuid } from "@/lib/security/validation";
 
 export async function createTradeOffer(
   leagueId: string, 
@@ -17,6 +18,17 @@ export async function createTradeOffer(
   const session = await getSession();
   if (!session || session.user.id !== senderId) {
     throw new Error("No autorizado");
+  }
+
+  if (
+    !isUuid(leagueId) ||
+    !isUuid(senderId) ||
+    !isUuid(receiverId) ||
+    (senderPlayerId !== null && !isUuid(senderPlayerId)) ||
+    (receiverPlayerId !== null && !isUuid(receiverPlayerId)) ||
+    !isMoneyAmount(cashOffer, { allowNegative: true })
+  ) {
+    return { success: false, error: "Los datos de la oferta no son válidos." };
   }
 
   const supabase = await createClient();
@@ -242,6 +254,10 @@ export async function cancelTradeOffer(offerId: string, userId: string) {
 }
 
 export async function getTrades(leagueId: string, userId: string) {
+    const session = await getSession();
+    if (!session || session.user.id !== userId || !isUuid(leagueId) || !isUuid(userId)) {
+        return [];
+    }
     const { supabaseAdmin } = await import("@/utils/supabase/admin");
     const { data: offers, error } = await supabaseAdmin
         .from('trade_offers')
@@ -258,7 +274,7 @@ export async function getTrades(leagueId: string, userId: string) {
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error("DEBUG TRADES ERROR:", error);
+        console.error("[TRADES] Could not load offers:", error.message);
         return [];
     }
     return offers || [];

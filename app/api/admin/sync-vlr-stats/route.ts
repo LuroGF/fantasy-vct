@@ -444,8 +444,7 @@ async function syncVlrStats(request: Request) {
     return NextResponse.json(
       {
         success: false,
-
-        error: error instanceof Error ? error.message : "Unknown sync error",
+        error: "No se ha podido completar la sincronización de estadísticas.",
       },
       {
         status: 500,

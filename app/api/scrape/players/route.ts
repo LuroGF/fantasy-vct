@@ -162,8 +162,10 @@ export async function GET(request: Request) {
     });
 
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Scraper Error:", error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "No se han podido sincronizar los jugadores." },
+      { status: 500 },
+    );
   }
 }

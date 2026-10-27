@@ -112,10 +112,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unknown cron error",
+        error: "No se ha podido completar la sincronización.",
       },
       {
         status: 500,

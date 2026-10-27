@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "./auth";
 import { createNotification } from "@/lib/notifications/create";
 import { getMarketEligiblePlayerIds } from "@/lib/player-eligibility";
+import { isMoneyAmount, isUuid } from "@/lib/security/validation";
 
 export type MarketPlayer = {
   id: string;
@@ -272,6 +273,9 @@ export async function getMarketDashboard(leagueId: string, profileId: string) {
 
 export async function placeBid(auctionId: string, profileId: string, bidAmount: number) {
   await requireUser(profileId);
+  if (!isUuid(auctionId) || !isUuid(profileId) || !isMoneyAmount(bidAmount) || bidAmount <= 0) {
+    return { success: false, error: "La puja no es válida." };
+  }
   const supabase = await createClient();
 
   const { data: auction } = await supabase
@@ -300,6 +304,9 @@ export async function placeBid(auctionId: string, profileId: string, bidAmount: 
 
 export async function withdrawBid(auctionId: string, profileId: string) {
   await requireUser(profileId);
+  if (!isUuid(auctionId) || !isUuid(profileId)) {
+    return { success: false, error: "La puja no es válida." };
+  }
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("cancel_market_bid", {
@@ -317,6 +324,9 @@ export async function listPlayerForSale(
   profileId: string,
 ) {
   await requireUser(profileId);
+  if (!isUuid(rosterId) || !isUuid(profileId) || !isMoneyAmount(askingPrice) || askingPrice <= 0) {
+    return { success: false, error: "El precio de venta no es válido." };
+  }
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("list_player_for_sale", {
@@ -332,6 +342,9 @@ export async function listPlayerForSale(
 
 export async function withdrawPlayerListing(listingId: string, profileId: string) {
   await requireUser(profileId);
+  if (!isUuid(listingId) || !isUuid(profileId)) {
+    return { success: false, error: "La venta no es válida." };
+  }
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("withdraw_player_listing", {
@@ -350,6 +363,9 @@ export async function updatePlayerListingPrice(
   profileId: string,
 ) {
   await requireUser(profileId);
+  if (!isUuid(listingId) || !isUuid(profileId) || !isMoneyAmount(askingPrice) || askingPrice <= 0) {
+    return { success: false, error: "El precio de venta no es válido." };
+  }
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("update_player_listing_price", {
@@ -371,6 +387,9 @@ export async function makeManagerOffer(
   profileId: string,
 ) {
   await requireUser(profileId);
+  if (!isUuid(listingId) || !isUuid(profileId) || !isMoneyAmount(amount) || amount <= 0) {
+    return { success: false, error: "La oferta no es válida." };
+  }
   const supabase = await createClient();
 
   const { data: listing } = await supabase
@@ -413,6 +432,9 @@ export async function updateManagerOffer(
   profileId: string,
 ) {
   await requireUser(profileId);
+  if (!isUuid(offerId) || !isUuid(profileId) || !isMoneyAmount(amount) || amount <= 0) {
+    return { success: false, error: "La oferta no es válida." };
+  }
   const supabase = await createClient();
 
   const { data: offer } = await supabase
@@ -452,6 +474,7 @@ export async function updateManagerOffer(
 
 export async function acceptManagerOffer(offerId: string, profileId: string) {
   await requireUser(profileId);
+  if (!isUuid(offerId) || !isUuid(profileId)) return { success: false, error: "La oferta no es válida." };
   const supabase = await createClient();
   const { data: offer } = await supabase
     .from("manager_offers")
@@ -481,6 +504,7 @@ export async function acceptManagerOffer(offerId: string, profileId: string) {
 
 export async function rejectManagerOffer(offerId: string, profileId: string) {
   await requireUser(profileId);
+  if (!isUuid(offerId) || !isUuid(profileId)) return { success: false, error: "La oferta no es válida." };
   const supabase = await createClient();
   const { data: offer } = await supabase
     .from("manager_offers")
@@ -509,6 +533,7 @@ export async function rejectManagerOffer(offerId: string, profileId: string) {
 
 export async function acceptLeagueOffer(offerId: string, profileId: string) {
   await requireUser(profileId);
+  if (!isUuid(offerId) || !isUuid(profileId)) return { success: false, error: "La oferta no es válida." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("accept_league_offer", { p_offer_id: offerId });
   if (error) return { success: false, error: error.message };
@@ -519,6 +544,7 @@ export async function acceptLeagueOffer(offerId: string, profileId: string) {
 
 export async function rejectLeagueOffer(offerId: string, profileId: string) {
   await requireUser(profileId);
+  if (!isUuid(offerId) || !isUuid(profileId)) return { success: false, error: "La oferta no es válida." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("reject_league_offer", { p_offer_id: offerId });
   if (error) return { success: false, error: error.message };
@@ -528,6 +554,7 @@ export async function rejectLeagueOffer(offerId: string, profileId: string) {
 
 export async function payReleaseClause(rosterId: string, profileId: string) {
   await requireUser(profileId);
+  if (!isUuid(rosterId) || !isUuid(profileId)) return { success: false, error: "El jugador no es válido." };
   const supabase = await createClient();
 
   const { data: roster } = await supabase

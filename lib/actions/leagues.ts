@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "./auth";
+import { cleanPlainText, isUuid } from "@/lib/security/validation";
 
 // ============================================================
 // GLOBAL RANK
@@ -302,6 +303,7 @@ function leagueManagementError(error: unknown) {
 export async function leaveLeague(leagueId: string) {
   const session = await getSession();
   if (!session) return { success: false, error: "Acceso no autorizado" };
+  if (!isUuid(leagueId)) return { success: false, error: "La liga no es válida." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("leave_fantasy_league", {
@@ -320,6 +322,7 @@ export async function leaveLeague(leagueId: string) {
 export async function kickLeagueMember(leagueId: string, profileId: string) {
   const session = await getSession();
   if (!session) return { success: false, error: "Acceso no autorizado" };
+  if (!isUuid(leagueId) || !isUuid(profileId)) return { success: false, error: "El participante no es válido." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("kick_fantasy_league_member", {
@@ -343,12 +346,20 @@ export async function reportLeagueMember(
   const session = await getSession();
   if (!session) return { success: false, error: "Acceso no autorizado" };
 
+  if (!isUuid(leagueId) || !isUuid(profileId)) {
+    return { success: false, error: "El participante no es válido." };
+  }
+  if (reason !== "inactivity" && reason !== "unsportsmanlike") {
+    return { success: false, error: "El motivo del reporte no es válido." };
+  }
+  const safeDetails = details === undefined ? null : cleanPlainText(details, 500);
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("report_fantasy_league_member", {
     p_league_id: leagueId,
     p_profile_id: profileId,
     p_reason: reason,
-    p_details: details?.trim() || null,
+    p_details: safeDetails || null,
   });
 
   if (error) return { success: false, error: leagueManagementError(error) };
@@ -360,6 +371,7 @@ export async function reportLeagueMember(
 export async function dismissLeagueReport(reportId: string) {
   const session = await getSession();
   if (!session) return { success: false, error: "Acceso no autorizado" };
+  if (!isUuid(reportId)) return { success: false, error: "El reporte no es válido." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("dismiss_fantasy_league_report", {

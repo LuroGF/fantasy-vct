@@ -4,11 +4,14 @@ import { createClient } from "@/utils/supabase/server";
 import { getSession } from "./auth";
 import { createNotification } from "@/lib/notifications/create";
 import { revalidatePath } from "next/cache";
+import { isUuid } from "@/lib/security/validation";
 
 export async function sendFriendRequest(targetId: string) {
   const session = await getSession();
   if (!session) return { success: false, error: "No autorizado" };
   const senderId = session.user.id;
+
+  if (!isUuid(targetId)) return { success: false, error: "Usuario no válido" };
 
   if (senderId === targetId) return { success: false, error: "No puedes enviarte una solicitud a ti mismo" };
 
@@ -37,7 +40,7 @@ export async function sendFriendRequest(targetId: string) {
       status: 'pending'
     });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: "No se ha podido enviar la solicitud" };
 
   // Notify the target
   const { data: senderProfile } = await supabase.from("profiles").select("username").eq("id", senderId).single();
@@ -61,6 +64,8 @@ export async function acceptFriendRequest(senderId: string) {
   if (!session) return { success: false, error: "No autorizado" };
   const userId = session.user.id;
 
+  if (!isUuid(senderId)) return { success: false, error: "Solicitud no válida" };
+
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -69,7 +74,7 @@ export async function acceptFriendRequest(senderId: string) {
     .eq("user_id", senderId)
     .eq("friend_id", userId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: "No se ha podido aceptar la solicitud" };
 
   // Notify the sender
   const { data: userProfile } = await supabase.from("profiles").select("username").eq("id", userId).single();
@@ -92,6 +97,7 @@ export async function getFriendStatus(targetId: string) {
   const session = await getSession();
   if (!session) return null;
   const userId = session.user.id;
+  if (!isUuid(targetId)) return null;
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -104,6 +110,7 @@ export async function getFriendStatus(targetId: string) {
 }
 
 export async function getUserFriends(userId: string) {
+  if (!isUuid(userId)) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("friends")

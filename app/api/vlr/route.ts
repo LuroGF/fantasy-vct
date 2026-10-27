@@ -88,10 +88,7 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unknown VLR error",
+        error: "No se han podido sincronizar los partidos.",
       },
       {
         status: 500,

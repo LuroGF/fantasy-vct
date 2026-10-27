@@ -18,8 +18,15 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
-  title: "VFantasy",
-  description: "Compite con tus amigos en la mejor liga fantasy de Valorant",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://fantasy-vct-ten.vercel.app",
+  ),
+  title: {
+    default: "VFantasy",
+    template: "%s | VFantasy",
+  },
+  description:
+    "Crea tu plantilla con jugadores del VCT, compite en ligas privadas y demuestra quién es el mejor entrenador de Valorant.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
