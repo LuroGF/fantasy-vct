@@ -6,14 +6,17 @@ import { signUp } from "@/lib/actions/auth";
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setLoading(true);
     setError(null);
+    setMessage(null);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
 
     if (!formData.get("legalAccepted")) {
       setError("Debes aceptar las condiciones de uso y el aviso legal");
@@ -27,6 +30,15 @@ export default function RegisterPage() {
       setError(result.error);
       setLoading(false);
       return;
+    }
+
+    if (result?.requiresEmailConfirmation) {
+      setMessage(
+        result.message ||
+          "Cuenta creada. Revisa tu correo para confirmar la cuenta.",
+      );
+      form.reset();
+      setLoading(false);
     }
   }
 
@@ -111,6 +123,15 @@ export default function RegisterPage() {
           {error && (
             <div className="text-[10px] font-black uppercase text-v-red animate-pulse">
               {">>>"} ERROR: {error}
+            </div>
+          )}
+
+          {message && (
+            <div
+              role="status"
+              className="border border-emerald-400/30 bg-emerald-400/10 p-4 text-xs font-bold leading-relaxed text-emerald-300"
+            >
+              {message}
             </div>
           )}
 

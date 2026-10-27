@@ -2,6 +2,29 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+
+function validEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function getRequestOrigin() {
+  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  if (configuredOrigin) return configuredOrigin;
+
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders.get("x-forwarded-host");
+  const host = (forwardedHost || requestHeaders.get("host") || "")
+    .split(",")[0]
+    .trim();
+  const forwardedProtocol = requestHeaders.get("x-forwarded-proto");
+  const protocol = (forwardedProtocol || (host.startsWith("localhost") ? "http" : "https"))
+    .split(",")[0]
+    .trim();
+
+  if (!host) throw new Error("No se ha podido determinar la URL de la aplicación.");
+  return `${protocol}://${host}`;
+}
 
 // ============================================================
 // SIGN UP
@@ -34,10 +57,7 @@ export async function signUp(formData: FormData) {
     };
   }
 
-  const emailRegex =
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailRegex.test(email)) {
+  if (!validEmail(email)) {
     return {
       error:
         "El formato del email no es válido",
@@ -102,6 +122,81 @@ export async function signUp(formData: FormData) {
       message:
         "Cuenta creada. Revisa tu correo para confirmar la cuenta antes de iniciar sesión.",
     };
+  }
+
+  redirect("/dashboard");
+}
+
+// ============================================================
+// PASSWORD RECOVERY
+// ============================================================
+
+export async function requestPasswordReset(formData: FormData) {
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
+
+  if (!validEmail(email)) {
+    return { success: false, error: "Introduce un correo electrónico válido." };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    const origin = await getRequestOrigin();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/callback?next=/reset-password`,
+    });
+
+    if (error) {
+      console.error("[AUTH] Password reset request failed:", error.message);
+    }
+
+    // Do not reveal whether an account exists for this address.
+    return {
+      success: true,
+      message:
+        "Si existe una cuenta con ese correo, recibirás un enlace para cambiar la contraseña.",
+    };
+  } catch (error) {
+    console.error("[AUTH] Password reset request failed:", error);
+    return {
+      success: false,
+      error: "No se ha podido solicitar el cambio de contraseña. Inténtalo de nuevo.",
+    };
+  }
+}
+
+export async function updatePassword(formData: FormData) {
+  const password = String(formData.get("password") || "");
+  const confirmation = String(formData.get("confirmation") || "");
+
+  if (password.length < 8) {
+    return {
+      success: false,
+      error: "La contraseña debe tener al menos 8 caracteres.",
+    };
+  }
+
+  if (password !== confirmation) {
+    return { success: false, error: "Las contraseñas no coinciden." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "El enlace ha caducado. Solicita uno nuevo.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { success: false, error: error.message };
   }
 
   redirect("/dashboard");

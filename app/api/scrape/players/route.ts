@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const maxDuration = 60;
+
 // URL con estadísticas de EMEA (últimos 180 días para pillar a todos)
 const VLR_STATS_URL = "https://www.vlr.gg/stats/?event_group_id=all&event_id=all&region=eu&country=all&min_rounds=100&min_rating=0&agent_id=all&timespan=180d";
 
@@ -44,7 +48,11 @@ interface ScrapedPlayer {
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const secret = process.env.CRON_SECRET;
+
+  // Administrative routes must fail closed. A missing deployment secret must
+  // never turn this Service Role-backed scraper into a public write endpoint.
+  if (!secret || authHeader !== `Bearer ${secret}`) {
     return new Response('Unauthorized', { status: 401 });
   }
 
