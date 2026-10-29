@@ -138,10 +138,10 @@ export async function createLeague(
       error,
     );
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Error al crear la liga";
+    const rawMessage = error instanceof Error ? error.message : "";
+    const message = rawMessage.includes("Not enough eligible VCT 2027 players")
+      ? "No hay suficientes jugadores disponibles para crear la liga ahora mismo."
+      : "No se ha podido crear la liga. Inténtalo de nuevo.";
 
     return {
       success: false,
@@ -230,7 +230,7 @@ export async function joinLeague(
         ? error.message
         : "Error al unirse a la liga";
 
-    let message = rawMessage;
+    let message = "No se ha podido entrar en la liga. Revisa el código e inténtalo de nuevo.";
 
     if (
       rawMessage.includes(
@@ -297,7 +297,7 @@ function leagueManagementError(error: unknown) {
     return "Solo el líder de la liga puede realizar esta acción.";
   }
 
-  return message;
+  return "No se ha podido completar la acción en la liga. Inténtalo de nuevo.";
 }
 
 export async function leaveLeague(leagueId: string) {

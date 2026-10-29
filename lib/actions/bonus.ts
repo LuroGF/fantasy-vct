@@ -73,7 +73,7 @@ export async function claimDailyBonus() {
     console.error("Error claiming daily bonus:", error);
     return {
       success: false,
-      error: error.message || "No se ha podido reclamar la recompensa.",
+      error: "No se ha podido reclamar la recompensa. Inténtalo de nuevo.",
     };
   }
 

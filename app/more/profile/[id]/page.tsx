@@ -142,7 +142,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
           {profile.bio && (
             <div className="bg-v-black/20 p-4 border-l-2 relative z-10" style={{ borderColor: `${bannerColor}40` }}>
               <p className="text-sm text-v-white/70 italic leading-relaxed">
-                "{profile.bio}"
+                {`“${profile.bio}”`}
               </p>
             </div>
           )}

@@ -7,7 +7,6 @@ import { haptic } from '@/lib/utils/haptics';
 
 export default function PWAInstaller() {
   const [showBanner, setShowBanner] = useState(false);
-  const [platform, setPlatform] = useState<'android' | 'ios' | 'other' | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
@@ -26,10 +25,6 @@ export default function PWAInstaller() {
     // Check platform
     const ua = window.navigator.userAgent.toLowerCase();
     const isIos = /iphone|ipad|ipod/.test(ua);
-    const isAndroid = /android/.test(ua);
-    
-    if (isIos) setPlatform('ios');
-    else if (isAndroid) setPlatform('android');
 
     // Handle Android install prompt
     const handleBeforeInstallPrompt = (e: any) => {
@@ -62,14 +57,18 @@ export default function PWAInstaller() {
 
   const handleInstall = async () => {
     haptic.medium();
-    if (platform === 'android' && deferredPrompt) {
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIos = /iphone|ipad|ipod/.test(ua);
+    const isAndroid = /android/.test(ua);
+
+    if (isAndroid && deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
         localStorage.setItem('pwa-installed', 'true');
         setShowBanner(false);
       }
-    } else if (platform === 'ios') {
+    } else if (isIos) {
       // Show iOS specific instructions in an alert or modal
       alert('Para instalar: Toca el icono de "Compartir" y selecciona "Añadir a pantalla de inicio"');
     }

@@ -9,7 +9,7 @@ const options = [
   { label: "Notificaciones", href: "/more/notifications" },
   { label: "Invitar amigos", href: "/more/invite" },
   { label: "Reglas y puntuacion", href: "/more/rules" },
-  { label: "Soporte", href: "/more/support" },
+  { label: "Ayuda y FAQ", href: "/more/support" },
 ];
 
 export default function MorePage() {

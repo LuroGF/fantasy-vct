@@ -120,7 +120,10 @@ export async function markNotificationAsRead(notificationId: string) {
     .eq("id", notificationId)
     .eq("profile_id", session.user.id);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error("Error marking notification as read:", error);
+    return { success: false, error: "No se ha podido actualizar la notificación." };
+  }
   revalidatePath("/more/notifications");
   return { success: true };
 }
@@ -134,7 +137,10 @@ export async function deleteReadNotification(notificationId: string) {
     .eq("profile_id", session.user.id)
     .eq("is_read", true);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error("Error deleting notification:", error);
+    return { success: false, error: "No se ha podido eliminar la notificación." };
+  }
   revalidatePath("/more/notifications");
   return { success: true };
 }
@@ -148,7 +154,10 @@ export async function markAllAsRead() {
     .eq("profile_id", session.user.id)
     .eq("is_read", false);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error("Error marking all notifications as read:", error);
+    return { success: false, error: "No se han podido actualizar las notificaciones." };
+  }
   revalidatePath("/more/notifications");
   return { success: true };
 }
@@ -203,7 +212,10 @@ export async function updateNotificationPreferences(input: {
       { onConflict: "profile_id" },
     );
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error("Error updating notification preferences:", error);
+    return { success: false, error: "No se han podido guardar las preferencias." };
+  }
   revalidatePath("/more/notifications");
   return { success: true };
 }

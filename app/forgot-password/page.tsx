@@ -1,21 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { requestPasswordReset } from "@/lib/actions/auth";
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    searchParams.get("error") === "invalid_or_expired_link"
+      ? "El enlace no es válido o ha caducado. Solicita uno nuevo."
+      : null,
+  );
   const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("error") === "invalid_or_expired_link") {
-      setError("El enlace no es válido o ha caducado. Solicita uno nuevo.");
-    }
-  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,5 +65,13 @@ export default function ForgotPasswordPage() {
         Volver a iniciar sesión
       </Link>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-v-navy" />}>
+      <ForgotPasswordForm />
+    </Suspense>
   );
 }

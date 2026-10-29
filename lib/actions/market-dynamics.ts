@@ -37,7 +37,7 @@ export async function updateMarketValues() {
 
       let avgPoints = 0;
       let trendMultiplier = 1.0;
-      let matchCount = perfs?.length || 0;
+      const matchCount = perfs?.length || 0;
 
       if (perfs && perfs.length > 0) {
         const points = perfs.map(p => p.fantasy_points || 0);

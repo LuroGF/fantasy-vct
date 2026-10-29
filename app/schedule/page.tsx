@@ -135,7 +135,7 @@ export default async function SchedulePage() {
         <div>
           <h1 className="text-4xl leading-none italic uppercase">Calendario</h1>
           <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">
-            {selectedGw.name} // VCT 2027
+            {selectedGw.name} {"//"} VCT 2027
           </p>
         </div>
         <StatusBadge

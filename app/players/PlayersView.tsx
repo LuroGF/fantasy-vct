@@ -39,10 +39,6 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
     });
   }, [initialPlayers, searchTerm, activeRole, sortBy]);
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [searchTerm, activeRole, sortBy, initialPlayers]);
-
   const visiblePlayers = useMemo(() => {
     return filteredPlayers.slice(0, visibleCount);
   }, [filteredPlayers, visibleCount]);
@@ -91,14 +87,20 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
             type="text"
             placeholder="BUSCAR JUGADOR O EQUIPO..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setVisibleCount(PAGE_SIZE);
+            }}
             className="w-full bg-v-navy/50 border border-white/5 pl-10 pr-4 py-3 text-[10px] font-black uppercase italic tracking-widest focus:border-v-red focus:bg-v-red/5 outline-none transition-all placeholder:text-v-white/10"
           />
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <button
-            onClick={() => setActiveRole(null)}
+            onClick={() => {
+              setActiveRole(null);
+              setVisibleCount(PAGE_SIZE);
+            }}
             className={`shrink-0 px-4 py-2 text-[8px] lg:text-[12px] font-black uppercase border transition-all ${
               !activeRole ? "border-v-red bg-v-red/10 text-v-red" : "border-white/10 text-v-white/40"
             }`}
@@ -109,7 +111,10 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
           {roles.map((role) => (
             <button
               key={role}
-              onClick={() => setActiveRole(role === activeRole ? null : role)}
+              onClick={() => {
+                setActiveRole(role === activeRole ? null : role);
+                setVisibleCount(PAGE_SIZE);
+              }}
               className={`shrink-0 px-4 py-2 text-[8px] lg:text-[12px] font-black uppercase border transition-all ${
                 role === activeRole ? "border-v-red bg-v-red/10 text-v-red" : "border-white/10 text-v-white/40"
               }`}
@@ -121,7 +126,10 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
 
         <div className="flex bg-v-navy/80 p-1 border border-white/5 gap-1">
           <button
-            onClick={() => setSortBy("points")}
+            onClick={() => {
+              setSortBy("points");
+              setVisibleCount(PAGE_SIZE);
+            }}
             className={`flex-1 py-2 flex items-center justify-center gap-2 text-[8px] lg:text-[12px] font-black uppercase italic transition-all ${
               sortBy === "points" ? "bg-v-white text-v-navy" : "text-v-white/40 hover:text-v-white"
             }`}
@@ -130,7 +138,10 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
           </button>
 
           <button
-            onClick={() => setSortBy("acs")}
+            onClick={() => {
+              setSortBy("acs");
+              setVisibleCount(PAGE_SIZE);
+            }}
             className={`flex-1 py-2 flex items-center justify-center gap-2 text-[8px] lg:text-[12px] font-black uppercase italic transition-all ${
               sortBy === "acs" ? "bg-v-white text-v-navy" : "text-v-white/40 hover:text-v-white"
             }`}
@@ -139,7 +150,10 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
           </button>
 
           <button
-            onClick={() => setSortBy("value")}
+            onClick={() => {
+              setSortBy("value");
+              setVisibleCount(PAGE_SIZE);
+            }}
             className={`flex-1 py-2 flex items-center justify-center text-[8px] lg:text-[12px] font-black uppercase italic transition-all ${
               sortBy === "value" ? "bg-v-white text-v-navy" : "text-v-white/40 hover:text-v-white"
             }`}

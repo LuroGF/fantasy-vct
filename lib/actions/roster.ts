@@ -127,7 +127,7 @@ export async function setStarterStatus(
 
     return {
       success: false,
-      error: error?.message || "No se pudo actualizar la alineación.",
+      error: "No se pudo actualizar la alineación. Inténtalo de nuevo.",
     };
   }
 }

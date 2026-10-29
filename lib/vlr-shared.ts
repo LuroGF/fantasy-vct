@@ -49,7 +49,7 @@ export function getTeamTag(name: string | undefined | null) {
 }
 
 export function normalizeTeamName(name: string) {
-  let clean = name.toUpperCase()
+  const clean = name.toUpperCase()
     .replace(/^TEAM\s+/i, "")
     .replace(/\s+ESPORTS$/i, "")
     .replace(/\s+CLUB$/i, "")

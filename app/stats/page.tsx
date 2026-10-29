@@ -87,7 +87,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
       ) / overview.standings.length
     : 0;
 
-  const now = Date.now();
+  const now = new Date().getTime();
   const startedGameweeks = overview.gameweeks.filter(
     (gameweek: any) => new Date(gameweek.start_date).getTime() <= now,
   );

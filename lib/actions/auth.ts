@@ -108,8 +108,16 @@ export async function signUp(formData: FormData) {
     });
 
   if (error) {
+    console.error("[AUTH] Sign-up failed:", error.message);
+    const normalizedMessage = error.message.toLowerCase();
     return {
-      error: error.message,
+      error:
+        normalizedMessage.includes("already registered") ||
+        normalizedMessage.includes("already exists")
+          ? "Ya existe una cuenta con ese correo."
+          : normalizedMessage.includes("rate limit")
+            ? "Se han realizado demasiados intentos. Espera unos minutos."
+            : "No se ha podido crear la cuenta. Inténtalo de nuevo.",
     };
   }
 
@@ -196,7 +204,11 @@ export async function updatePassword(formData: FormData) {
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {
-    return { success: false, error: error.message };
+    console.error("[AUTH] Password update failed:", error.message);
+    return {
+      success: false,
+      error: "No se ha podido actualizar la contraseña. Solicita un enlace nuevo e inténtalo otra vez.",
+    };
   }
 
   redirect("/dashboard");
@@ -270,7 +282,7 @@ export async function signIn(
     }
 
     return {
-      error: error.message,
+      error: "No se ha podido iniciar sesión. Inténtalo de nuevo.",
     };
   }
 

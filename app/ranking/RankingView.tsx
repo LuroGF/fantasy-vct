@@ -281,7 +281,7 @@ export function RankingView({
                           ) : null;
                         })()}
                         <span className="text-[9px] text-v-white/40 font-bold uppercase tracking-widest leading-none">
-                          {player.role} // {player.pro_teams?.tag || "FA"}
+                          {player.role} {"//"} {player.pro_teams?.tag || "FA"}
                         </span>
                       </div>
                     </div>

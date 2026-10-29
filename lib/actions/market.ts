@@ -68,6 +68,32 @@ async function getPlayerName(supabase: any, playerId: string) {
   return data?.nickname || "tu jugador";
 }
 
+function marketActionError(error: unknown, fallback: string) {
+  console.error("Market action failed:", error);
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String(error.message).toLowerCase()
+      : "";
+
+  if (message.includes("insufficient") || message.includes("not enough budget")) {
+    return "No tienes saldo suficiente para completar la operación.";
+  }
+  if (message.includes("auction") && (message.includes("not open") || message.includes("not found"))) {
+    return "La puja ya no está disponible.";
+  }
+  if (message.includes("protected") || message.includes("protection")) {
+    return "Este jugador todavía está protegido frente a cláusulas.";
+  }
+  if (message.includes("roster") && (message.includes("full") || message.includes("limit"))) {
+    return "Tu plantilla ha alcanzado el límite permitido.";
+  }
+  if (message.includes("offer") && (message.includes("expired") || message.includes("not found"))) {
+    return "La oferta ya no está disponible.";
+  }
+
+  return fallback;
+}
+
 export async function getMarketDashboard(leagueId: string, profileId: string) {
   await requireUser(profileId);
   const supabase = await createClient();
@@ -148,7 +174,7 @@ export async function getMarketDashboard(leagueId: string, profileId: string) {
 
   if (firstError) {
     console.error("Error loading market dashboard:", firstError);
-    throw new Error(firstError.message);
+    throw new Error("No se ha podido cargar el mercado.");
   }
 
   const auctions = auctionsRes.data || [];
@@ -174,7 +200,10 @@ export async function getMarketDashboard(leagueId: string, profileId: string) {
       .select("id, nickname, role, market_value, photo_url, team_id, is_legend, pro_teams(id, tag, name, logo_url)")
       .in("id", playerIds);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Error loading market players:", error);
+      throw new Error("No se ha podido cargar el mercado.");
+    }
     players = data || [];
   }
 
@@ -297,7 +326,7 @@ export async function placeBid(auctionId: string, profileId: string, bidAmount: 
     p_amount: bidAmount,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido realizar la puja.") };
   revalidatePath("/market");
   return { success: true };
 }
@@ -313,7 +342,7 @@ export async function withdrawBid(auctionId: string, profileId: string) {
     p_auction_id: auctionId,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido retirar la puja.") };
   revalidatePath("/market");
   return { success: true };
 }
@@ -334,7 +363,7 @@ export async function listPlayerForSale(
     p_asking_price: askingPrice,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido poner el jugador a la venta.") };
   revalidatePath("/market");
   revalidatePath("/team");
   return { success: true };
@@ -351,7 +380,7 @@ export async function withdrawPlayerListing(listingId: string, profileId: string
     p_listing_id: listingId,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido retirar la venta.") };
   revalidatePath("/market");
   return { success: true };
 }
@@ -373,7 +402,7 @@ export async function updatePlayerListingPrice(
     p_asking_price: askingPrice,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido actualizar el precio.") };
 
   revalidatePath("/market");
   revalidatePath("/team");
@@ -403,7 +432,7 @@ export async function makeManagerOffer(
     p_amount: amount,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido enviar la oferta.") };
 
   if (listing?.owner_profile_id && listing.owner_profile_id !== profileId) {
     const [managerName, playerName] = await Promise.all([
@@ -449,7 +478,7 @@ export async function updateManagerOffer(
     p_amount: amount,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido actualizar la oferta.") };
 
   if (offer?.to_profile_id) {
     const [managerName, playerName] = await Promise.all([
@@ -483,7 +512,7 @@ export async function acceptManagerOffer(offerId: string, profileId: string) {
     .eq("to_profile_id", profileId)
     .maybeSingle();
   const { error } = await supabase.rpc("accept_manager_offer", { p_offer_id: offerId });
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido aceptar la oferta.") };
   if (offer?.from_profile_id) {
     const playerName = await getPlayerName(supabase, offer.player_id);
     await createNotification({
@@ -513,7 +542,7 @@ export async function rejectManagerOffer(offerId: string, profileId: string) {
     .eq("to_profile_id", profileId)
     .maybeSingle();
   const { error } = await supabase.rpc("reject_manager_offer", { p_offer_id: offerId });
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido rechazar la oferta.") };
   if (offer?.from_profile_id) {
     const playerName = await getPlayerName(supabase, offer.player_id);
     await createNotification({
@@ -536,7 +565,7 @@ export async function acceptLeagueOffer(offerId: string, profileId: string) {
   if (!isUuid(offerId) || !isUuid(profileId)) return { success: false, error: "La oferta no es válida." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("accept_league_offer", { p_offer_id: offerId });
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido aceptar la oferta de la liga.") };
   revalidatePath("/market");
   revalidatePath("/team");
   return { success: true };
@@ -547,7 +576,7 @@ export async function rejectLeagueOffer(offerId: string, profileId: string) {
   if (!isUuid(offerId) || !isUuid(profileId)) return { success: false, error: "La oferta no es válida." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("reject_league_offer", { p_offer_id: offerId });
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido rechazar la oferta de la liga.") };
   revalidatePath("/market");
   return { success: true };
 }
@@ -567,7 +596,7 @@ export async function payReleaseClause(rosterId: string, profileId: string) {
     p_roster_id: rosterId,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: marketActionError(error, "No se ha podido pagar la cláusula.") };
   if (roster?.profile_id && roster.profile_id !== profileId) {
     const [buyerName, playerName] = await Promise.all([
       getProfileName(supabase, profileId),

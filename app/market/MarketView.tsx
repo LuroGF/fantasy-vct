@@ -65,12 +65,18 @@ function PlayerImage({ player }: { player: any }) {
 }
 
 function Countdown({ endsAt }: { endsAt: string }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
+    const initialId = window.setTimeout(() => setNow(Date.now()), 0);
+    const intervalId = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => {
+      window.clearTimeout(initialId);
+      window.clearInterval(intervalId);
+    };
   }, []);
+
+  if (now === 0) return <>—</>;
 
   const diff = Math.max(0, new Date(endsAt).getTime() - now);
   const hours = Math.floor(diff / 3_600_000);
@@ -80,12 +86,18 @@ function Countdown({ endsAt }: { endsAt: string }) {
 }
 
 function ListingCountdown({ expiresAt }: { expiresAt: string }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
+    const initialId = window.setTimeout(() => setNow(Date.now()), 0);
+    const intervalId = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => {
+      window.clearTimeout(initialId);
+      window.clearInterval(intervalId);
+    };
   }, []);
+
+  if (now === 0) return <>—</>;
 
   const diff = Math.max(0, new Date(expiresAt).getTime() - now);
 
