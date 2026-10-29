@@ -5,6 +5,7 @@ import { PlayerStatsGraph } from "@/components/PlayerStatsGraph";
 import { MatchHistoryList } from "@/components/MatchHistoryList";
 import { getTeamLogo } from "@/lib/vlr-shared";
 import Link from "next/link";
+import Image from "next/image";
 import {
   CalendarDays,
   ChevronLeft,
@@ -115,9 +116,11 @@ export default async function PlayerPage(props: {
       <section className="v-panel relative overflow-hidden p-0">
         <div className="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-v-red/10 blur-3xl" />
         {teamLogo ? (
-          <img
+          <Image
             src={teamLogo}
             alt=""
+            width={144}
+            height={144}
             className="pointer-events-none absolute right-6 top-1/2 h-36 w-36 -translate-y-1/2 object-contain opacity-[0.035] grayscale"
           />
         ) : null}
@@ -138,10 +141,12 @@ export default async function PlayerPage(props: {
               }`}
             >
               {player.photo_url ? (
-                <img
+                <Image
                   src={player.photo_url}
                   alt={player.nickname}
-                  className="h-full w-full object-cover object-top"
+                  fill
+                  sizes="96px"
+                  className="object-cover object-top"
                 />
               ) : (
                 <span className="text-2xl font-black italic text-white/15">
@@ -150,10 +155,12 @@ export default async function PlayerPage(props: {
               )}
               {teamLogo ? (
                 <div className="absolute -bottom-px -right-px h-7 w-7 border border-white/20 bg-v-navy p-1">
-                  <img
+                  <Image
                     src={teamLogo}
                     alt={player.pro_teams?.name || ""}
-                    className="h-full w-full object-contain"
+                    fill
+                    sizes="28px"
+                    className="object-contain p-1"
                   />
                 </div>
               ) : null}

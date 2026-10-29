@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Image from "next/image";
 import {
   dismissLeagueReport,
   getLeagueClassification,
@@ -127,10 +128,11 @@ function PlayerImage({
 }) {
   if (player.photo_url) {
     return (
-      <img
+      <Image
         src={player.photo_url}
         alt={player.nickname}
-        loading="lazy"
+        width={64}
+        height={64}
         className={`h-full w-full object-cover ${className}`}
       />
     );
@@ -631,10 +633,11 @@ export default function LeagueDetails({
 
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-v-navy text-[10px] font-black uppercase">
                         {manager.profiles?.avatar_url ? (
-                          <img
+                          <Image
                             src={manager.profiles.avatar_url}
                             alt={username}
-                            loading="lazy"
+                            width={36}
+                            height={36}
                             className="h-full w-full object-cover"
                           />
                         ) : (
@@ -793,9 +796,11 @@ export default function LeagueDetails({
 
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-v-navy text-[10px] font-black uppercase">
                             {manager.profiles?.avatar_url ? (
-                              <img
+                              <Image
                                 src={manager.profiles.avatar_url}
                                 alt={username}
+                                width={36}
+                                height={36}
                                 className="h-full w-full object-cover"
                               />
                             ) : (
@@ -1380,10 +1385,11 @@ function RosterSection({
 
                   <div className="mt-1 flex min-w-0 items-center gap-1.5">
                     {player.pro_teams?.logo_url ? (
-                      <img
+                      <Image
                         src={player.pro_teams.logo_url}
                         alt={player.pro_teams?.tag || ""}
-                        loading="lazy"
+                        width={14}
+                        height={14}
                         className="h-3.5 w-3.5 shrink-0 object-contain opacity-70"
                       />
                     ) : null}

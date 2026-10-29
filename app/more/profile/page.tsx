@@ -4,6 +4,7 @@ import { getGlobalRank } from "@/lib/actions/leagues";
 import { getAllTeams } from "@/lib/actions/profile";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Trophy, Users, Star } from "lucide-react";
 import { EditProfileButton } from "@/components/EditProfileButton";
 
@@ -101,8 +102,8 @@ export default async function ProfilePage() {
                {/* Favorite Team Badge */}
               {profile?.pro_teams && (
                 <div className="absolute top-8 right-6 flex flex-col items-center gap-1">
-                  <div className="w-16 h-16 bg-v-black/40 backdrop-blur-md p-3 border border-white/5 flex items-center justify-center">
-                    <img src={profile.pro_teams.logo_url} className="w-full h-full object-contain" alt="" />
+                  <div className="relative w-16 h-16 bg-v-black/40 backdrop-blur-md p-3 border border-white/5 flex items-center justify-center">
+                    <Image src={profile.pro_teams.logo_url} fill sizes="64px" className="object-contain p-3" alt="" />
                   </div>
                   <span className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.3em] font-oswald">SOY FAN</span>
                 </div>

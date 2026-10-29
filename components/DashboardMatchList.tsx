@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import { createClient } from "@/utils/supabase/server";
 
@@ -111,7 +112,7 @@ export async function DashboardMatchList() {
                 <div className="flex min-w-0 items-center gap-3 px-3 sm:px-4">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-white/5 bg-white/5 p-1">
                     {teamA?.logo_url ? (
-                      <img src={teamA.logo_url} alt="" className="h-full w-full object-contain" />
+                      <Image src={teamA.logo_url} alt="" width={36} height={36} className="h-full w-full object-contain" />
                     ) : (
                       <span className="text-[9px] font-black text-v-white/30">{teamA?.tag ?? "TBD"}</span>
                     )}
@@ -153,7 +154,7 @@ export async function DashboardMatchList() {
                   </span>
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-white/5 bg-white/5 p-1">
                     {teamB?.logo_url ? (
-                      <img src={teamB.logo_url} alt="" className="h-full w-full object-contain" />
+                      <Image src={teamB.logo_url} alt="" width={36} height={36} className="h-full w-full object-contain" />
                     ) : (
                       <span className="text-[9px] font-black text-v-white/30">{teamB?.tag ?? "TBD"}</span>
                     )}

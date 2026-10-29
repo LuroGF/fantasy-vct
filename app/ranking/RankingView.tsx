@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { getLeagueClassification } from "@/lib/actions/leagues";
 import { getTeamLogo } from "@/lib/vlr-shared";
 import { sileo } from "sileo";
+import Image from "next/image";
 
 interface RankingViewProps {
   initialStandings: any[];
@@ -272,9 +273,11 @@ export function RankingView({
                         {(() => {
                           const logo = getTeamLogo(player.pro_teams?.tag);
                           return logo ? (
-                            <img
+                            <Image
                               src={logo}
                               alt={player.pro_teams?.tag || ""}
+                              width={16}
+                              height={16}
                               className="w-4 h-4 object-contain"
                             />
                           ) : null;

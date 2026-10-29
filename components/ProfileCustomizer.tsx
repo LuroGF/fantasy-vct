@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { updateProfile } from "@/lib/actions/profile";
 import { X, Save, Palette, Type, Users } from "lucide-react";
 
@@ -129,7 +130,7 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
                     formData.fav_team_id === team.id ? "border-v-red bg-v-red/10" : "border-white/5 bg-v-white/5"
                   }`}
                 >
-                  {team.logo_url && <img src={team.logo_url} className="w-5 h-5 object-contain" alt="" />}
+                  {team.logo_url && <Image src={team.logo_url} width={20} height={20} className="w-5 h-5 object-contain" alt="" />}
                   <span className="text-[10px] font-black uppercase tracking-widest truncate">{team.tag}</span>
                 </button>
               ))}

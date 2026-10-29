@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 interface MatchHistoryListProps {
   matches: any[];
   playerTeamId?: string | null;
@@ -45,9 +47,11 @@ export function MatchHistoryList({
                 </p>
                 <div className="mt-1 flex items-center gap-2">
                   {opponent?.logo_url ? (
-                    <img
+                    <Image
                       src={opponent.logo_url}
                       alt=""
+                      width={24}
+                      height={24}
                       className="h-6 w-6 object-contain"
                     />
                   ) : null}

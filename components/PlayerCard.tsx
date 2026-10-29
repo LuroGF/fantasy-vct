@@ -1,5 +1,6 @@
 import { getTeamLogo } from "@/lib/vlr-shared";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface PlayerCardProps {
   player: {
@@ -72,10 +73,11 @@ export function PlayerCard({
       {/* Background Decor */}
       <div className="absolute top-0 right-0 group-hover:opacity-10 transition-opacity" style={{ opacity: 0.015 }}>
          {teamLogo ? (
-           <img
+           <Image
              src={teamLogo}
              alt=""
-             loading="lazy"
+             width={192}
+             height={192}
              className="w-48 h-48 object-contain grayscale brightness-200"
            />
          ) : (
@@ -95,35 +97,23 @@ export function PlayerCard({
               >
                 <div className="flex items-center gap-3">
                   <div className="relative shrink-0">
-                    <div className="w-12 h-12 bg-v-navy border border-white/10 overflow-hidden flex items-center justify-center">
+                    <div className="relative w-12 h-12 bg-v-navy border border-white/10 overflow-hidden flex items-center justify-center">
                       {player.photo_url ? (
-                        <img src={player.photo_url} alt={player.nickname} loading="lazy" className="w-full h-full object-cover" />
+                        <Image src={player.photo_url} alt={player.nickname} fill sizes="48px" className="object-cover" />
                       ) : (
-                        /* Fallback to local image or initials */
-                        <img 
-                           src={`/players/${player.nickname.toLowerCase()}.png`} 
-                           alt={player.nickname} 
-                           className="w-full h-full object-cover"
-                           onError={(e) => {
-                             e.currentTarget.style.display = 'none';
-                             const parent = e.currentTarget.parentElement;
-                             if (parent) {
-                               const span = document.createElement('span');
-                               span.className = "text-xl font-black italic opacity-20";
-                               span.innerText = player.nickname.substring(0, 2).toUpperCase();
-                               parent.appendChild(span);
-                             }
-                           }}
-                        />
+                        <span className="text-xl font-black italic opacity-20">
+                          {player.nickname.substring(0, 2).toUpperCase()}
+                        </span>
                       )}
                     </div>
                     {/* Team Patch overlay */}
                     {teamLogo ? (
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-v-navy border border-white/20 p-0.5 rounded-sm">
-                        <img
+                        <Image
                           src={teamLogo}
                           alt={player.pro_teams?.name || ""}
-                          loading="lazy"
+                          fill
+                          sizes="20px"
                           className="w-full h-full object-contain"
                         />
                       </div>

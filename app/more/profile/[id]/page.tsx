@@ -4,6 +4,7 @@ import { getSession } from "@/lib/actions/auth";
 import { getFriendStatus } from "@/lib/actions/friends";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Trophy, Users, Star, ArrowLeft } from "lucide-react";
 import { FriendButton } from "@/components/FriendButton";
 
@@ -105,8 +106,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
            {/* Favorite Team Badge */}
            {profile.pro_teams && (
             <div className="absolute top-8 right-6 flex flex-col items-center gap-1">
-              <div className="w-16 h-16 bg-v-black/40 backdrop-blur-md p-3 border border-white/5 flex items-center justify-center">
-                <img src={profile.pro_teams.logo_url} className="w-full h-full object-contain" alt="" />
+              <div className="relative w-16 h-16 bg-v-black/40 backdrop-blur-md p-3 border border-white/5 flex items-center justify-center">
+                <Image src={profile.pro_teams.logo_url} fill sizes="64px" className="object-contain p-3" alt="" />
               </div>
               <span className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.3em] font-oswald">FAN DE {profile.pro_teams.tag}</span>
             </div>

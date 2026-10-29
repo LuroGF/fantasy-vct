@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { sileo } from "sileo";
 import { haptic } from "@/lib/utils/haptics";
@@ -43,10 +44,12 @@ function PlayerImage({ player }: { player: any }) {
   return (
     <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-white/5">
       {player?.photo_url ? (
-        <img
+        <Image
           src={player.photo_url}
           alt={player.nickname || "Jugador"}
-          className="h-full w-full object-cover object-top"
+          fill
+          sizes="64px"
+          className="object-cover object-top"
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-xl font-black italic text-white/15">
