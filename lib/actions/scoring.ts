@@ -160,7 +160,7 @@ async function updateGameweekRanks(gameweekId: number) {
     const updates: ParticipantScoreInsert[] = [];
 
     // Calculate rank per league
-    byLeague.forEach((participants, leagueId) => {
+    byLeague.forEach((participants) => {
         participants.sort((a, b) => (b.points_earned || 0) - (a.points_earned || 0));
         let previousPoints: number | null = null;
         let previousRank = 0;

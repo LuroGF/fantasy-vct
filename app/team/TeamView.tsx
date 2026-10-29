@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { PlayerCard } from "@/components/PlayerCard";
 import { haptic } from "@/lib/utils/haptics";
-import { useRouter } from "next/navigation";
 // import { FeedbackBanner } from "@/components/FeedbackBanner";
 import { sileo } from "sileo";
 import type { LineupWindowStatus } from "@/lib/actions/roster";
@@ -25,8 +24,7 @@ export default function TeamView({
 }: TeamViewProps) {
   const [roster, setRoster] = useState(initialRoster);
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagueId);
-  const [leagues, setLeagues] = useState(initialLeagues);
-  const router = useRouter();
+  const [leagues] = useState(initialLeagues);
   const [loading, setLoading] = useState(false);
   const [auctions, setAuctions] = useState<any[]>([]);
   const [myListings, setMyListings] = useState<any[]>([]);

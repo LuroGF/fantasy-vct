@@ -1,5 +1,5 @@
 
-import { CheckCircle2, Circle, Target, Zap, Swords } from "lucide-react";
+import { Circle, Target, Zap, Swords } from "lucide-react";
 
 interface Challenge {
   id: number;

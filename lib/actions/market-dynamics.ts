@@ -97,7 +97,7 @@ export async function updateMarketValues() {
                new_value: newValue, 
                gameweek_id: activeGw?.id 
            });
-        } catch (e) {
+        } catch {
            // History table may not exist yet, ignoring
         }
       }

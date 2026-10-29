@@ -6,20 +6,16 @@ import { signIn } from "@/lib/actions/auth";
 import { sileo } from "sileo";
 
 export default function LoginPage() {
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     const formData = new FormData(e.currentTarget);
     const result = await signIn(formData);
 
     if (result?.error) {
-      setError(result.error);
-
       sileo.error({
         title: "Acceso denegado",
         description: result.error,

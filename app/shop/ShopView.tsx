@@ -42,7 +42,7 @@ export function ShopView({
       try {
         const data = await getUserInventory(activeLeagueId, userId);
         setInventory(data || []);
-      } catch (error) {
+      } catch {
         sileo.error({
           title: "Error al cargar inventario",
           description: "No se pudo actualizar tu inventario",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { sileo } from "sileo";
@@ -31,13 +31,6 @@ type Props = {
 
 const money = (value: number | string | null | undefined) =>
   `${(Number(value || 0) / 1_000_000).toFixed(1)}M €`;
-
-const notifySuccess = (title: string, description?: string) =>
-  sileo.success({
-    title,
-    description,
-    duration: 7000,
-  } as any);
 
 const notifyError = (title: string, description?: string) =>
   sileo.error({
@@ -154,7 +147,7 @@ export default function MarketView({
     availableBudget + bidBeingEdited,
   );
 
-  async function reload(leagueId = activeLeagueId) {
+  const reload = useCallback(async (leagueId = activeLeagueId) => {
     setLoading(true);
     try {
       const next = await getMarketDashboard(leagueId, profileId);
@@ -167,7 +160,7 @@ export default function MarketView({
     } finally {
       setLoading(false);
     }
-  }
+  }, [activeLeagueId, profileId]);
 
   useEffect(() => {
     const auctions = data?.auctions || [];
@@ -189,7 +182,7 @@ export default function MarketView({
     }, delay);
 
     return () => window.clearTimeout(timeout);
-  }, [activeLeagueId, data?.auctions]);
+  }, [activeLeagueId, data?.auctions, reload]);
 
   function changeLeague(leagueId: string) {
     haptic.light();
@@ -303,8 +296,6 @@ export default function MarketView({
 
     const listingId = offerDialog.listing.id;
     const existingOffer = offerDialog.offer || null;
-    const playerName = offerDialog.player?.nickname || "el jugador";
-
     setOfferDialog(null);
 
     if (existingOffer) {

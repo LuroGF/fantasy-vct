@@ -10,7 +10,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
  * 3. Match in progress or imminent
  * 4. Special rule: if prev GW ended Sunday, delay lock until 5h before next match
  */
-export async function getMarketLockStatus(supabase: SupabaseClient, leagueId?: string) {
+export async function getMarketLockStatus(supabase: SupabaseClient) {
     const now = new Date();
     
     // Utility to get a Date object representing the time in Madrid as if it were UTC
@@ -146,7 +146,6 @@ export async function autoCreateMissingGameweeks(supabase: SupabaseClient) {
         .limit(1)
         .maybeSingle();
 
-    const now = new Date();
     let startDate: Date;
     let nextNum = 1;
 

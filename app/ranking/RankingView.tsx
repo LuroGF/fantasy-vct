@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { payReleaseClause } from "@/lib/actions/market";
 import { haptic } from "@/lib/utils/haptics";
 import { useRouter } from "next/navigation";
@@ -31,16 +31,15 @@ export function RankingView({
   const [loading, setLoading] = useState(false);
   const [confirmPay, setConfirmPay] = useState<{ player: any } | null>(null);
   const router = useRouter();
+  const hasMounted = useRef(false);
 
   useEffect(() => {
-    async function loadClassification() {
-      if (
-        activeLeagueId === initialLeagueId &&
-        standings === initialStandings
-      ) {
-        return;
-      }
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
 
+    async function loadClassification() {
       setLoading(true);
       try {
         const { standings: newStandings, activeLocks: newLocks } =

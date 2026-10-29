@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
@@ -204,6 +204,8 @@ export default function LeagueDetails({
       setReports([]);
       setSelectedManager(null);
       setSelectedGameweekManager(null);
+      setGameweekData(null);
+      setSelectedGameweekId(null);
       setViewMode("general");
 
       try {
@@ -232,7 +234,7 @@ export default function LeagueDetails({
   // CARGAR JORNADA
   // ============================================================
 
-  async function loadGameweekOverview(gameweekId?: number | null) {
+  const loadGameweekOverview = useCallback(async (gameweekId?: number | null) => {
     setGameweekLoading(true);
 
     try {
@@ -255,7 +257,7 @@ export default function LeagueDetails({
     } finally {
       setGameweekLoading(false);
     }
-  }
+  }, [leagueId]);
 
   useEffect(() => {
     if (viewMode !== "gameweeks") {
@@ -270,7 +272,7 @@ export default function LeagueDetails({
     if (!gameweekData) {
       void loadGameweekOverview(null);
     }
-  }, [viewMode, leagueId, gameweekData]);
+  }, [viewMode, gameweekData, loadGameweekOverview]);
 
   // ============================================================
   // BLOQUEAR SCROLL EN MODALES
