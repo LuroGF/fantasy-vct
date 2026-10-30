@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 import { getVlrMatches, getVlrMatchDetails } from "@/lib/vlr";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  },
-);
+import { supabaseAdmin } from "@/utils/supabase/admin";
+import {
+  finishVctSyncRun,
+  startVctSyncRun,
+  syncErrorMessage,
+} from "@/lib/operations/sync-runs";
 
 async function ensureTeamVlrId(
   vlrId: string,
@@ -83,6 +77,8 @@ async function syncVlrMatches(request: Request) {
       },
     );
   }
+
+  const runId = await startVctSyncRun("matches");
 
   try {
     const matches = await getVlrMatches();
@@ -336,6 +332,30 @@ async function syncVlrMatches(request: Request) {
         gameweekEngineError,
       );
     }
+
+    const runErrors = details
+      .filter((detail) => detail.status === "error" && detail.reason)
+      .map((detail) => `${detail.vlrId}: ${detail.reason}`);
+
+    if (gameweekEngineError) {
+      runErrors.push(`Gameweek engine: ${gameweekEngineError.message}`);
+    }
+
+    await finishVctSyncRun(
+      runId,
+      runErrors.length > 0 ? "warning" : "success",
+      {
+        received: matches.length,
+        synced,
+        skipped,
+        errors: runErrors.length,
+        without_gameweek: details.filter(
+          (detail) => detail.status === "synced" && detail.gameweekId == null,
+        ).length,
+      },
+      runErrors,
+    );
+
     return NextResponse.json({
       success: true,
       received: matches.length,
@@ -346,6 +366,8 @@ async function syncVlrMatches(request: Request) {
     });
   } catch (error) {
     console.error("VLR sync failed:", error);
+
+    await finishVctSyncRun(runId, "failed", {}, [syncErrorMessage(error)]);
 
     return NextResponse.json(
       {

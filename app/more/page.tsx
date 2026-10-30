@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { signOut } from "@/lib/actions/auth";
 import { NotificationBadge } from "@/components/NotificationBadge";
+import { isCurrentUserAdmin } from "@/lib/admin/access";
 
-const options = [
+const baseOptions = [
   { label: "Perfil", href: "/more/profile" },
   { label: "Rendimiento", href: "/stats" },
   { label: "Comunidad", href: "/more/community" },
@@ -12,7 +13,12 @@ const options = [
   { label: "Ayuda y FAQ", href: "/more/support" },
 ];
 
-export default function MorePage() {
+export default async function MorePage() {
+  const isAdmin = await isCurrentUserAdmin();
+  const options = isAdmin
+    ? [...baseOptions, { label: "Operaciones VLR", href: "/more/operations" }]
+    : baseOptions;
+
   return (
     // <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl py-4 flex flex-col gap-6 animate-in fade-in duration-700">
     <div

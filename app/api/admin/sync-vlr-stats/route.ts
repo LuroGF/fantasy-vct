@@ -1,22 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 import {
   getVlrMatchDetails,
   getVlrTeamRoster,
   type VlrTeamRosterPlayer,
 } from "@/lib/vlr";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  },
-);
+import { supabaseAdmin } from "@/utils/supabase/admin";
+import {
+  finishVctSyncRun,
+  startVctSyncRun,
+  syncErrorMessage,
+} from "@/lib/operations/sync-runs";
 
 function normalizeName(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -45,6 +39,8 @@ async function syncVlrStats(request: Request) {
       },
     );
   }
+
+  const runId = await startVctSyncRun("stats");
 
   try {
     /*
@@ -421,6 +417,21 @@ async function syncVlrStats(request: Request) {
       errors.push(`Gameweek engine: ${gameweekEngineError.message}`);
     }
 
+    await finishVctSyncRun(
+      runId,
+      errors.length > 0 ? "warning" : "success",
+      {
+        matches_processed: matchesProcessed,
+        performances_synced: performancesSynced,
+        player_ids_linked: playerIdsLinked,
+        players_resolved_by_fallback: playersResolvedByFallback,
+        players_skipped: playersSkipped,
+        maps_skipped: mapsSkipped,
+        errors: errors.length,
+      },
+      errors,
+    );
+
     return NextResponse.json({
       success: true,
 
@@ -440,6 +451,8 @@ async function syncVlrStats(request: Request) {
     });
   } catch (error) {
     console.error("VLR stats sync failed:", error);
+
+    await finishVctSyncRun(runId, "failed", {}, [syncErrorMessage(error)]);
 
     return NextResponse.json(
       {
