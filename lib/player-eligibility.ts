@@ -1,4 +1,41 @@
-const MARKET_ROSTER_STATUSES = ["active", "substitute", "benched"] as const;
+export const MARKET_ROSTER_STATUSES = [
+  "active",
+  "substitute",
+  "benched",
+] as const;
+
+type ConfiguredSeason = {
+  year: number;
+  status: string;
+};
+
+type SeasonalPlayer = {
+  player_id: string;
+  team_id: string | null;
+};
+
+export function selectConfiguredSeason(
+  seasons: readonly ConfiguredSeason[],
+): ConfiguredSeason | undefined {
+  return [...seasons].sort((a, b) => {
+    const statusPriority = (status: string) => (status === "active" ? 1 : 0);
+    return statusPriority(b.status) - statusPriority(a.status) || b.year - a.year;
+  })[0];
+}
+
+export function filterEligibleSeasonPlayerIds(
+  players: readonly SeasonalPlayer[],
+  eligibleTeamIds: ReadonlySet<string>,
+): Set<string> {
+  return new Set(
+    players
+      .filter(
+        (player) =>
+          player.team_id !== null && eligibleTeamIds.has(player.team_id),
+      )
+      .map((player) => player.player_id),
+  );
+}
 
 /**
  * Returns the players that may be acquired in the Fantasy market.
@@ -27,11 +64,7 @@ export async function getMarketEligiblePlayerIds(
     .order("year", { ascending: false })
     .limit(10);
 
-  const configuredSeason = (configuredSeasons || [])
-    .sort((a: any, b: any) => {
-      const statusPriority = (status: string) => (status === "active" ? 1 : 0);
-      return statusPriority(b.status) - statusPriority(a.status) || b.year - a.year;
-    })[0];
+  const configuredSeason = selectConfiguredSeason(configuredSeasons || []);
 
   // Compatibility fallback for installations created before the season model.
   if (seasonError || !configuredSeason) {
@@ -98,9 +131,8 @@ export async function getMarketEligiblePlayerIds(
     (eligibleTeams || []).map((team: any) => team.team_id),
   );
 
-  return new Set<string>(
-    (seasonalPlayers || [])
-      .filter((player: any) => eligibleTeamIds.has(player.team_id))
-      .map((player: any) => player.player_id),
+  return filterEligibleSeasonPlayerIds(
+    seasonalPlayers || [],
+    eligibleTeamIds,
   );
 }
