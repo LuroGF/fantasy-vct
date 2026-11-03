@@ -446,7 +446,7 @@ export async function makeManagerOffer(
       message: `${managerName} ha ofrecido ${amount.toLocaleString("es-ES")} € por ${playerName}.`,
       type: "manager_offer_received",
       category: "market",
-      action_url: `/market?league=${listing.league_id}`,
+      action_url: `/market?league=${listing.league_id}&tab=sales`,
       dedupe_key: `manager-offer:${listingId}:${profileId}`,
     });
   }
@@ -492,7 +492,7 @@ export async function updateManagerOffer(
       message: `${managerName} ha actualizado su oferta a ${amount.toLocaleString("es-ES")} €.`,
       type: "manager_offer_updated",
       category: "market",
-      action_url: `/market?league=${offer.league_id}`,
+      action_url: `/market?league=${offer.league_id}&tab=sales`,
       dedupe_key: `manager-offer-update:${offerId}:${amount}`,
     });
   }
@@ -552,7 +552,7 @@ export async function rejectManagerOffer(offerId: string, profileId: string) {
       message: `El propietario de ${playerName} ha rechazado tu oferta.`,
       type: "manager_offer_rejected",
       category: "market",
-      action_url: `/market?league=${offer.league_id}`,
+      action_url: `/market?league=${offer.league_id}&tab=offers`,
       dedupe_key: `manager-offer-rejected:${offerId}`,
     });
   }

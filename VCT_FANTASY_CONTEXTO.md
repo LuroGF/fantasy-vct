@@ -111,6 +111,8 @@ El 24/10/2026 el usuario completó el primer tramo de la prueba end-to-end crean
 
 Luro3 creó correctamente `LURO3 LIGA` con 50 millones de presupuesto inicial. La captura mostró aún `Créditos`, `VP` y un `Rank #--` ficticio. Se unificó la moneda visible a `Presupuesto`/euros en Ligas, Equipo, fichas de jugador, ranking y actividad reciente; los mensajes de venta también hablan de euros. `getUserLeagues` obtiene en una sola consulta los participantes de las ligas del usuario y calcula la posición real, respetando empates; una liga con un único participante muestra `Rank #1`. `npm run build` pasó; solo continúa el aviso no bloqueante de Next.js sobre `middleware`/`proxy`.
 
+El 03/11/2026 se validó de forma natural y reversible el flujo de avisos de ofertas entre managers en Liga Test VCT: aparecieron tanto la oferta recibida como el rechazo, sin aceptar el traspaso ni cambiar el propietario de brawk. Los enlaces contextuales quedan así: oferta recibida o actualizada abre `Mercado > Mis ventas`; oferta rechazada abre `Mercado > Ofertas`; oferta aceptada abre `Mi equipo`, conservando siempre la liga. `migrations/20261103_manager_offer_notification_deep_links.sql` actualiza también los avisos históricos.
+
 ## Cómo retomar
 
 Leer este archivo y el código actual antes de trabajar. Las decisiones nuevas del usuario prevalecen. No editar `sources/` ni archivos sincronizados de este espejo. Mantener este documento actualizado con resultados comprobados y pendientes.
