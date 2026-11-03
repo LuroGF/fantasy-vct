@@ -80,6 +80,13 @@ async function syncVlrMatches(request: Request) {
 
   const runId = await startVctSyncRun("matches");
 
+  if (!runId) {
+    return NextResponse.json(
+      { success: true, status: "skipped", reason: "already_running" },
+      { status: 202 },
+    );
+  }
+
   try {
     const matches = await getVlrMatches();
 

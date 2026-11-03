@@ -12,17 +12,14 @@ function safeErrors(errors: string[]) {
 export async function startVctSyncRun(syncType: VctSyncType) {
   try {
     const { data, error } = await supabaseAdmin
-      .from("vct_sync_runs")
-      .insert({ sync_type: syncType, status: "running" })
-      .select("id")
-      .single();
+      .rpc("try_start_vct_sync_run", { p_sync_type: syncType });
 
     if (error) {
       console.error("Could not start VLR sync run log:", error);
       return null;
     }
 
-    return data.id as string;
+    return data ? String(data) : null;
   } catch (error) {
     console.error("Could not start VLR sync run log:", error);
     return null;
@@ -38,15 +35,12 @@ export async function finishVctSyncRun(
   if (!runId) return;
 
   try {
-    const { error } = await supabaseAdmin
-      .from("vct_sync_runs")
-      .update({
-        status,
-        finished_at: new Date().toISOString(),
-        summary,
-        errors: safeErrors(errors),
-      })
-      .eq("id", runId);
+    const { error } = await supabaseAdmin.rpc("finish_vct_sync_run", {
+      p_run_id: runId,
+      p_status: status,
+      p_summary: summary,
+      p_errors: safeErrors(errors),
+    });
 
     if (error) console.error("Could not finish VLR sync run log:", error);
   } catch (error) {

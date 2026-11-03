@@ -47,7 +47,16 @@ export async function runVlrSync(kind: SyncKind) {
       return { success: false, error: "La sincronización no se ha podido completar." };
     }
 
+    const result = (await response.json()) as { status?: string };
+
     revalidatePath("/more/operations");
+    if (result.status === "skipped") {
+      return {
+        success: true,
+        message: "Ya hay una sincronización de este tipo en curso.",
+      };
+    }
+
     return {
       success: true,
       message:

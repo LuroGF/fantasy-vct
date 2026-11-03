@@ -42,6 +42,13 @@ async function syncVlrStats(request: Request) {
 
   const runId = await startVctSyncRun("stats");
 
+  if (!runId) {
+    return NextResponse.json(
+      { success: true, status: "skipped", reason: "already_running" },
+      { status: 202 },
+    );
+  }
+
   try {
     /*
      * Por ahora sincronizamos partidos VLR

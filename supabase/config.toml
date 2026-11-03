@@ -1,0 +1,2 @@
+[functions.vlr-sync]
+verify_jwt = false

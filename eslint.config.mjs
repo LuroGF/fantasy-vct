@@ -19,5 +19,6 @@ export default defineConfig([
     "next-env.d.ts",
     "public/sw.js",
     "scripts/**",
+    "supabase/functions/**",
   ]),
 ]);
