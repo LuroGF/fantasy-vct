@@ -1,12 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signIn } from "@/lib/actions/auth";
 import { sileo } from "sileo";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const deletionToastShown = useRef(false);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("accountDeleted") !== "1" || deletionToastShown.current) return;
+
+    deletionToastShown.current = true;
+    sileo.success({
+      title: "Cuenta eliminada",
+      description: "Tu cuenta y sus datos asociados se han eliminado correctamente.",
+      duration: 5000,
+    });
+
+    url.searchParams.delete("accountDeleted");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

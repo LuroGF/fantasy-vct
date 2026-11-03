@@ -321,6 +321,35 @@ export async function signOut() {
 // DELETE ACCOUNT
 // ============================================================
 
+export async function verifyAccountDeletionPassword(formData: FormData) {
+  const supabase = await createClient();
+  const password = String(formData.get("password") || "");
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user?.email) {
+    return { success: false, error: "La sesión ya no es válida." };
+  }
+
+  if (!password) {
+    return { success: false, error: "Introduce tu contraseña actual." };
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password,
+  });
+
+  if (error) {
+    return { success: false, error: "La contraseña no es correcta." };
+  }
+
+  return { success: true };
+}
+
 export async function deleteAccount(formData: FormData) {
   const supabase = await createClient();
   const password = String(formData.get("password") || "");
@@ -372,7 +401,7 @@ export async function deleteAccount(formData: FormData) {
   }
 
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/login?accountDeleted=1");
 }
 
 // ============================================================
