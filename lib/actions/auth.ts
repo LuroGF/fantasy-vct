@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { supabaseAdmin } from "@/utils/supabase/admin";
 
 function validEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -32,6 +33,13 @@ async function getRequestOrigin() {
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
+
+  if (formData.get("legalAccepted") !== "true") {
+    return {
+      error:
+        "Debes aceptar los términos, confirmar la política de privacidad y declarar que tienes al menos 16 años.",
+    };
+  }
 
   const email = (
     formData.get("email") as string
@@ -306,6 +314,64 @@ export async function signOut() {
 
   await supabase.auth.signOut();
 
+  redirect("/login");
+}
+
+// ============================================================
+// DELETE ACCOUNT
+// ============================================================
+
+export async function deleteAccount(formData: FormData) {
+  const supabase = await createClient();
+  const password = String(formData.get("password") || "");
+  const confirmation = String(formData.get("confirmation") || "")
+    .trim()
+    .toUpperCase();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user?.email) {
+    return { success: false, error: "La sesión ya no es válida." };
+  }
+
+  if (confirmation !== "ELIMINAR") {
+    return {
+      success: false,
+      error: "Escribe ELIMINAR para confirmar el borrado definitivo.",
+    };
+  }
+
+  if (!password) {
+    return { success: false, error: "Introduce tu contraseña actual." };
+  }
+
+  const { error: passwordError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password,
+  });
+
+  if (passwordError) {
+    return { success: false, error: "La contraseña no es correcta." };
+  }
+
+  const { error: deletionError } = await supabaseAdmin.rpc(
+    "delete_account_for_profile",
+    { p_user_id: user.id },
+  );
+
+  if (deletionError) {
+    console.error("[AUTH] Account deletion failed:", deletionError.message);
+    return {
+      success: false,
+      error:
+        "No se ha podido eliminar la cuenta. Inténtalo de nuevo o contacta con soporte.",
+    };
+  }
+
+  await supabase.auth.signOut();
   redirect("/login");
 }
 

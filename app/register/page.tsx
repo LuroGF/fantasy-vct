@@ -19,7 +19,7 @@ export default function RegisterPage() {
     const formData = new FormData(form);
 
     if (!formData.get("legalAccepted")) {
-      setError("Debes aceptar las condiciones de uso y el aviso legal");
+      setError("Debes aceptar los términos, confirmar la política de privacidad y declarar que tienes al menos 16 años");
       setLoading(false);
       return;
     }
@@ -108,14 +108,23 @@ export default function RegisterPage() {
               className="mt-0.5 h-4 w-4 shrink-0 accent-red-600 cursor-pointer"
             />
             <span>
-              Acepto las condiciones de uso y el{" "}
+              Declaro que tengo al menos 16 años, acepto los{" "}
               <Link
-                href="/aviso-legal"
+                href="/terminos"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-v-red font-black hover:underline"
               >
-                Aviso Legal
+                Términos de uso
+              </Link>
+              {" "}y he leído la{" "}
+              <Link
+                href="/privacidad"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-v-red font-black hover:underline"
+              >
+                Política de privacidad
               </Link>
             </span>
           </label>

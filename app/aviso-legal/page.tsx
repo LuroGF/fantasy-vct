@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function AvisoLegalPage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -19,9 +21,14 @@ export default function AvisoLegalPage() {
               se informa que el presente sitio web es titularidad de:
             </p>
             <p>
-              <strong>Titular:</strong> [TU NOMBRE O EMPRESA]<br />
-              <strong>Email de contacto:</strong> [TU EMAIL]<br />
+              <strong>Titular:</strong> [NOMBRE Y APELLIDOS PENDIENTES]<br />
+              <strong>Situación:</strong> particular residente en España<br />
+              <strong>Domicilio profesional:</strong> [PENDIENTE]<br />
+              <strong>Email de contacto:</strong> [CORREO DEFINITIVO PENDIENTE]<br />
               <strong>Actividad:</strong> Plataforma digital de gestión de ligas fantasy basadas en competiciones de esports (VCT).
+            </p>
+            <p className="text-v-red">
+              Documento provisional. Los datos identificativos se completarán antes del lanzamiento público.
             </p>
           </section>
 
@@ -38,7 +45,8 @@ export default function AvisoLegalPage() {
           <section className="space-y-2">
             <h2 className="text-xl italic uppercase">Condiciones de uso</h2>
             <p>
-              El acceso y uso de esta web atribuye la condición de usuario, implicando la aceptación de las presentes condiciones.
+              Para registrarse es necesario tener al menos 16 años y aceptar los{" "}
+              <Link href="/terminos" className="font-black text-v-red hover:underline">Términos de uso</Link>.
             </p>
             <p>
               El usuario se compromete a hacer un uso adecuado del sitio, respetando la legalidad vigente y evitando:
@@ -73,6 +81,9 @@ export default function AvisoLegalPage() {
             <p>
               Las referencias a equipos, jugadores o competiciones de esports pertenecen a sus respectivos propietarios y se utilizan con fines informativos.
             </p>
+            <p>
+              [NOMBRE DE LA APLICACIÓN] no está respaldada por Riot Games y no refleja las opiniones de Riot Games ni de ninguna persona involucrada oficialmente en la producción o gestión de las propiedades de Riot Games. Riot Games y todas sus propiedades asociadas son marcas comerciales o marcas registradas de Riot Games, Inc.
+            </p>
           </section>
 
           {/* RESPONSABILIDAD */}
@@ -106,7 +117,8 @@ export default function AvisoLegalPage() {
               El tratamiento de datos personales se rige por el Reglamento General de Protección de Datos (RGPD) y la normativa aplicable.
             </p>
             <p>
-              Para más información, consulta la política de privacidad correspondiente.
+              Para más información, consulta la{" "}
+              <Link href="/privacidad" className="font-black text-v-red hover:underline">Política de privacidad</Link>.
             </p>
           </section>
 
@@ -117,9 +129,15 @@ export default function AvisoLegalPage() {
               Para cualquier consulta legal o relacionada con el sitio web, puedes contactar en:
             </p>
             <p>
-              <strong>Email:</strong> [TU EMAIL]
+              <strong>Email:</strong> [CORREO DEFINITIVO PENDIENTE]
             </p>
           </section>
+
+          <nav className="flex flex-wrap gap-4 border-t border-white/10 pt-5 text-[10px] font-black uppercase tracking-wider">
+            <Link href="/privacidad" className="hover:text-v-red">Privacidad</Link>
+            <Link href="/terminos" className="hover:text-v-red">Términos</Link>
+            <Link href="/cookies" className="hover:text-v-red">Cookies</Link>
+          </nav>
 
         </div>
       </div>

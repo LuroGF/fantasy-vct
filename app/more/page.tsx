@@ -11,6 +11,7 @@ const baseOptions = [
   { label: "Invitar amigos", href: "/more/invite" },
   { label: "Reglas y puntuacion", href: "/more/rules" },
   { label: "Ayuda y FAQ", href: "/more/support" },
+  { label: "Privacidad y términos", href: "/privacidad" },
 ];
 
 export default async function MorePage() {
@@ -80,6 +81,12 @@ export default async function MorePage() {
           <div className="w-1 h-1 bg-v-red/20" />
           <div className="w-1 h-1 bg-v-red/50" />
           <div className="w-1 h-1 bg-v-red/20" />
+        </div>
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-2 text-[9px] font-black uppercase tracking-wider text-v-white/30">
+          <Link href="/aviso-legal" className="hover:text-v-red">Aviso legal</Link>
+          <Link href="/privacidad" className="hover:text-v-red">Privacidad</Link>
+          <Link href="/terminos" className="hover:text-v-red">Términos</Link>
+          <Link href="/cookies" className="hover:text-v-red">Cookies</Link>
         </div>
       </div>
     </div>

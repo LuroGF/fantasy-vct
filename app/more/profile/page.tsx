@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Trophy, Users, Star } from "lucide-react";
 import { EditProfileButton } from "@/components/EditProfileButton";
+import { DeleteAccountSection } from "@/components/DeleteAccountSection";
 
 export default async function ProfilePage() {
   const session = await getSession();
@@ -202,6 +203,8 @@ export default async function ProfilePage() {
               )}
             </div>
           </div>
+
+          <DeleteAccountSection />
         </div>
 
       </div>

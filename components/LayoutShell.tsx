@@ -20,7 +20,10 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
     pathname === "/register" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
-    pathname === "/aviso-legal";
+    pathname === "/aviso-legal" ||
+    pathname === "/privacidad" ||
+    pathname === "/terminos" ||
+    pathname === "/cookies";
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-background shadow-2xl">
