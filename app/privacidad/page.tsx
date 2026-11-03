@@ -67,7 +67,8 @@ export default function PrivacyPage() {
         <h2>7. Tus derechos y eliminación</h2>
         <p>
           Puedes solicitar acceso, rectificación, supresión, limitación, oposición y portabilidad mediante el correo de
-          privacidad. También puedes eliminar directamente la cuenta desde <strong>Más → Perfil → Eliminar cuenta</strong>.
+          privacidad. Puedes descargar una copia estructurada desde <strong>Más → Perfil → Descargar mis datos</strong> y
+          eliminar directamente la cuenta desde <strong>Más → Perfil → Eliminar cuenta</strong>.
           Si consideras que el tratamiento incumple la normativa, puedes reclamar ante la Agencia Española de Protección de Datos.
         </p>
       </section>

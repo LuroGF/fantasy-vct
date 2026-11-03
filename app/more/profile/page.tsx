@@ -5,7 +5,7 @@ import { getAllTeams } from "@/lib/actions/profile";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Trophy, Users, Star } from "lucide-react";
+import { Download, Trophy, Users, Star } from "lucide-react";
 import { EditProfileButton } from "@/components/EditProfileButton";
 import { DeleteAccountSection } from "@/components/DeleteAccountSection";
 
@@ -203,6 +203,26 @@ export default async function ProfilePage() {
               )}
             </div>
           </div>
+
+          <section className="v-panel p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-black italic uppercase">Tus datos</h2>
+                <p className="mt-1 max-w-xl text-xs leading-relaxed text-v-white/45">
+                  Descarga una copia en JSON de tu perfil, ligas, plantillas, puntos, mercado y preferencias.
+                  No incluye contraseñas, claves push ni secretos técnicos.
+                </p>
+              </div>
+              <a
+                href="/api/account/export"
+                download
+                className="v-btn-secondary inline-flex shrink-0 items-center justify-center gap-2 px-5 py-3 text-[9px]"
+              >
+                <Download className="h-4 w-4" aria-hidden="true" />
+                Descargar mis datos
+              </a>
+            </div>
+          </section>
 
           <DeleteAccountSection />
         </div>
