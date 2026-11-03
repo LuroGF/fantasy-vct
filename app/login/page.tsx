@@ -36,11 +36,11 @@ export default function LoginPage() {
           loop
           playsInline
           preload="metadata"
-          poster="/hero-bg.png"
+          poster="/videos/aimers-2027-poster.webp"
           aria-hidden="true"
         >
           <source
-            src="/videos/aimers.mp4"
+            src="/videos/aimers-2027.mp4"
             type="video/mp4"
             media="(min-width: 640px) and (prefers-reduced-motion: no-preference)"
           />
