@@ -127,6 +127,8 @@ Después del despliegue de Mercado, se tradujeron a ES/EN/FR la portada de «Má
 
 En el mismo bloque, antes de desplegar, se tradujeron el perfil propio y el perfil público de otros entrenadores: métricas, historial, ligas, descarga de datos, amistad, personalización, equipo favorito y títulos configurables. Los valores canónicos de los títulos se conservan en español en Supabase para no fragmentar datos, pero se presentan localizados. La verificación de contraseña y la eliminación de cuenta reciben ahora el locale y devuelven sus errores controlados en ES/EN/FR. TypeScript, lint del bloque sin errores nuevos, 11 tests y build de producción correctos. No requiere migración. Pendiente dentro de «Más»: Rendimiento, Comunidad, invitaciones, reglas, soporte, operaciones y legales.
 
+Después de desplegar Perfil, se tradujo Rendimiento a ES/EN/FR: estado sin liga, selectores, métricas, comparación con jornada anterior y media, gráfica, aportación del quinteto, jugadores destacados y premios. El gráfico usa etiquetas traducidas y los importes se formatean según el locale activo (`es-ES`, `en-GB` o `fr-FR`). Los nombres propios de ligas y jornadas permanecen sin traducir. Verificación: TypeScript correcto, lint sin errores nuevos (warnings `any` heredados en la página de datos), 11 tests y build de producción correctos. No requiere migración. Pendiente dentro de «Más»: Comunidad, invitaciones, reglas, soporte, operaciones y legales.
+
 ## Cómo retomar
 
 Leer este archivo y el código actual antes de trabajar. Las decisiones nuevas del usuario prevalecen. No editar `sources/` ni archivos sincronizados de este espejo. Mantener este documento actualizado con resultados comprobados y pendientes.

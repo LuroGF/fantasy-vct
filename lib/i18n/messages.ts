@@ -250,6 +250,20 @@ export const messages = {
       acceptErrorDescription: "No se pudo aceptar la solicitud", friends: "Amigos", pendingRequest: "Solicitud enviada", acceptFriend: "Aceptar amistad",
       sending: "Enviando...", addFriend: "Añadir amigo",
     },
+    stats: {
+      title: "Rendimiento", noLeague: "Únete a una liga para empezar a medir el rendimiento de tu equipo.", goLeagues: "Ir a ligas",
+      subtitle: "Detecta quién aporta puntos, compara tu jornada y revisa tus premios.", selectLeague: "Seleccionar liga", selectGameweek: "Seleccionar jornada",
+      yourPoints: "Tus puntos", gameweekPoints: "Puntos de jornada", noGameweek: "Sin jornada", versusPrevious: "{value} respecto a la anterior",
+      gameweekRank: "Posición de jornada", outOfCoaches: "de {count} entrenadores", noRanking: "Sin clasificación", leagueAverage: "Media de la liga",
+      versusAverage: "{value} frente a la media", totalRanking: "Clasificación total", accumulatedPoints: "{points} puntos acumulados",
+      evolution: "Evolución", pointsPerGameweek: "Puntos conseguidos en cada jornada", gameweeksCount: "{count} jornadas",
+      chartEmpty: "La gráfica aparecerá al terminar tu primera jornada.", lineupContribution: "Aportación del quinteto",
+      startersAtStart: "Titulares guardados al comenzar {gameweek}", theGameweek: "la jornada", player: "Jugador",
+      lineupEmpty: "Todavía no existe un quinteto capturado para esta jornada.", bestContribution: "Mejor aportación", playerToReview: "Jugador a revisar",
+      noData: "Sin datos", pointsValue: "{points} puntos", rewards: "Premios recibidos", rewardIncome: "Ingresos por clasificación y participación",
+      gameweekFallback: "Jornada {number}", place: "{rank}.º puesto", tie: "empate", participationReward: "Premio de participación",
+      rewardsEmpty: "Los premios aparecerán al liquidarse una jornada válida.",
+    },
   },
   en: {
     nav: {
@@ -459,6 +473,20 @@ export const messages = {
       friendshipAccepted: "Friend request accepted", friendshipAcceptedDescription: "You are now friends!", acceptError: "Error accepting request",
       acceptErrorDescription: "The request could not be accepted", friends: "Friends", pendingRequest: "Request sent", acceptFriend: "Accept friend",
       sending: "Sending...", addFriend: "Add friend",
+    },
+    stats: {
+      title: "Performance", noLeague: "Join a league to start measuring your team’s performance.", goLeagues: "Go to leagues",
+      subtitle: "See who contributes points, compare your gameweek and review your rewards.", selectLeague: "Select league", selectGameweek: "Select gameweek",
+      yourPoints: "Your points", gameweekPoints: "Gameweek points", noGameweek: "No gameweek", versusPrevious: "{value} compared with the previous one",
+      gameweekRank: "Gameweek position", outOfCoaches: "out of {count} coaches", noRanking: "No ranking", leagueAverage: "League average",
+      versusAverage: "{value} versus the average", totalRanking: "Overall ranking", accumulatedPoints: "{points} accumulated points",
+      evolution: "Progress", pointsPerGameweek: "Points earned in each gameweek", gameweeksCount: "{count} gameweeks",
+      chartEmpty: "The chart will appear after your first gameweek ends.", lineupContribution: "Starting five contribution",
+      startersAtStart: "Starters saved at the beginning of {gameweek}", theGameweek: "the gameweek", player: "Player",
+      lineupEmpty: "No starting five has been captured for this gameweek yet.", bestContribution: "Best contribution", playerToReview: "Player to review",
+      noData: "No data", pointsValue: "{points} points", rewards: "Rewards received", rewardIncome: "Income from ranking and participation",
+      gameweekFallback: "Gameweek {number}", place: "{rank} place", tie: "tie", participationReward: "Participation reward",
+      rewardsEmpty: "Rewards will appear after a valid gameweek is settled.",
     },
   },
   fr: {
@@ -676,6 +704,20 @@ export const messages = {
       acceptErrorDescription: "Impossible d’accepter la demande", friends: "Amis", pendingRequest: "Demande envoyée", acceptFriend: "Accepter l’ami",
       sending: "Envoi...", addFriend: "Ajouter un ami",
     },
+    stats: {
+      title: "Performance", noLeague: "Rejoignez une ligue pour commencer à mesurer les performances de votre équipe.", goLeagues: "Voir les ligues",
+      subtitle: "Identifiez qui rapporte des points, comparez votre journée et consultez vos récompenses.", selectLeague: "Sélectionner la ligue", selectGameweek: "Sélectionner la journée",
+      yourPoints: "Vos points", gameweekPoints: "Points de la journée", noGameweek: "Aucune journée", versusPrevious: "{value} par rapport à la précédente",
+      gameweekRank: "Position de la journée", outOfCoaches: "sur {count} entraîneurs", noRanking: "Aucun classement", leagueAverage: "Moyenne de la ligue",
+      versusAverage: "{value} par rapport à la moyenne", totalRanking: "Classement général", accumulatedPoints: "{points} points cumulés",
+      evolution: "Évolution", pointsPerGameweek: "Points obtenus à chaque journée", gameweeksCount: "{count} journées",
+      chartEmpty: "Le graphique apparaîtra à la fin de votre première journée.", lineupContribution: "Contribution du cinq",
+      startersAtStart: "Titulaires enregistrés au début de {gameweek}", theGameweek: "la journée", player: "Joueur",
+      lineupEmpty: "Aucun cinq n’a encore été enregistré pour cette journée.", bestContribution: "Meilleure contribution", playerToReview: "Joueur à surveiller",
+      noData: "Aucune donnée", pointsValue: "{points} points", rewards: "Récompenses reçues", rewardIncome: "Revenus liés au classement et à la participation",
+      gameweekFallback: "Journée {number}", place: "{rank}e place", tie: "égalité", participationReward: "Récompense de participation",
+      rewardsEmpty: "Les récompenses apparaîtront après le règlement d’une journée valide.",
+    },
   },
 } as const satisfies Record<Locale, Record<string, Record<string, string>>>;
 
@@ -690,7 +732,8 @@ export type MessageKey =
   | `market.${keyof (typeof messages)["es"]["market"]}`
   | `more.${keyof (typeof messages)["es"]["more"]}`
   | `notifications.${keyof (typeof messages)["es"]["notifications"]}`
-  | `profile.${keyof (typeof messages)["es"]["profile"]}`;
+  | `profile.${keyof (typeof messages)["es"]["profile"]}`
+  | `stats.${keyof (typeof messages)["es"]["stats"]}`;
 
 export function translateMessage(
   locale: Locale,

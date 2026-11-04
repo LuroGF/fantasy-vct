@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { ArrowDownRight, ArrowUpRight, CircleDollarSign, Target, Trophy, Users } from "lucide-react";
+import { useLocale } from "@/components/LocaleProvider";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -59,12 +60,6 @@ type StatsViewProps = {
   rewards: GameweekReward[];
 };
 
-const euroFormatter = new Intl.NumberFormat("es-ES", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-});
-
 function relationName(value?: RelatedGameweek) {
   if (Array.isArray(value)) return value[0]?.name;
   return value?.name;
@@ -82,6 +77,13 @@ export default function StatsView({
   leagueAverage,
   rewards,
 }: StatsViewProps) {
+  const { locale, t } = useLocale();
+  const numberLocale = locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "es-ES";
+  const euroFormatter = useMemo(() => new Intl.NumberFormat(numberLocale, {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }), [numberLocale]);
   const sortedLineup = useMemo(
     () => [...lineup].sort((a, b) => Number(b.gameweek_points) - Number(a.gameweek_points)),
     [lineup],
@@ -112,7 +114,7 @@ export default function StatsView({
     ),
     datasets: [
       {
-        label: "Tus puntos",
+        label: t("stats.yourPoints"),
         data: scoreHistory.map((score) => Number(score.points_earned || 0)),
         borderColor: "#D6B25E",
         backgroundColor: "rgba(214, 178, 94, 0.12)",
@@ -145,30 +147,34 @@ export default function StatsView({
 
   const metrics = [
     {
-      label: "Puntos de jornada",
+      key: "gameweekPoints",
+      label: t("stats.gameweekPoints"),
       value: String(gameweekPoints),
       detail:
         trend === null
-          ? selectedGameweek?.name || "Sin jornada"
-          : `${trend >= 0 ? "+" : ""}${trend} respecto a la anterior`,
+          ? selectedGameweek?.name || t("stats.noGameweek")
+          : t("stats.versusPrevious", { value: `${trend >= 0 ? "+" : ""}${trend}` }),
       icon: Target,
     },
     {
-      label: "Posición de jornada",
+      key: "gameweekRank",
+      label: t("stats.gameweekRank"),
       value: gameweekRank > 0 ? `#${gameweekRank}` : "—",
-      detail: participantCount ? `de ${participantCount} entrenadores` : "Sin clasificación",
+      detail: participantCount ? t("stats.outOfCoaches", { count: participantCount }) : t("stats.noRanking"),
       icon: Trophy,
     },
     {
-      label: "Media de la liga",
+      key: "leagueAverage",
+      label: t("stats.leagueAverage"),
       value: leagueAverage.toFixed(1),
-      detail: `${averageDifference >= 0 ? "+" : ""}${averageDifference.toFixed(1)} frente a la media`,
+      detail: t("stats.versusAverage", { value: `${averageDifference >= 0 ? "+" : ""}${averageDifference.toFixed(1)}` }),
       icon: Users,
     },
     {
-      label: "Clasificación total",
+      key: "totalRanking",
+      label: t("stats.totalRanking"),
       value: totalRank > 0 ? `#${totalRank}` : "—",
-      detail: `${totalPoints} puntos acumulados`,
+      detail: t("stats.accumulatedPoints", { points: totalPoints }),
       icon: Trophy,
     },
   ];
@@ -177,10 +183,10 @@ export default function StatsView({
     <div className="flex flex-col gap-6">
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {metrics.map((metric) => (
-          <article key={metric.label} className="v-panel min-w-0 p-4">
+          <article key={metric.key} className="v-panel min-w-0 p-4">
             <div className="mb-4 flex items-center justify-between">
               <metric.icon size={16} className="text-v-red" />
-              {metric.label === "Puntos de jornada" && trend !== null && (
+              {metric.key === "gameweekPoints" && trend !== null && (
                 trend >= 0
                   ? <ArrowUpRight size={15} className="text-emerald-400" />
                   : <ArrowDownRight size={15} className="text-v-red" />
@@ -198,13 +204,13 @@ export default function StatsView({
       <section className="v-panel p-4 sm:p-5">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-lg uppercase">Evolución</h2>
+            <h2 className="text-lg uppercase">{t("stats.evolution")}</h2>
             <p className="mt-1 text-[10px] uppercase tracking-wider text-v-white/35">
-              Puntos conseguidos en cada jornada
+              {t("stats.pointsPerGameweek")}
             </p>
           </div>
           <span className="text-[10px] font-black uppercase text-v-red">
-            {scoreHistory.length} jornadas
+            {t("stats.gameweeksCount", { count: scoreHistory.length })}
           </span>
         </div>
         <div className="h-56 w-full">
@@ -212,7 +218,7 @@ export default function StatsView({
             <Line data={lineData} options={lineOptions} />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-v-white/25">
-              La gráfica aparecerá al terminar tu primera jornada.
+              {t("stats.chartEmpty")}
             </div>
           )}
         </div>
@@ -220,9 +226,9 @@ export default function StatsView({
 
       <section className="v-panel p-4 sm:p-5">
         <div className="mb-5">
-          <h2 className="text-lg uppercase">Aportación del quinteto</h2>
+          <h2 className="text-lg uppercase">{t("stats.lineupContribution")}</h2>
           <p className="mt-1 text-[10px] uppercase tracking-wider text-v-white/35">
-            Titulares guardados al comenzar {selectedGameweek?.name || "la jornada"}
+            {t("stats.startersAtStart", { gameweek: selectedGameweek?.name || t("stats.theGameweek") })}
           </p>
         </div>
 
@@ -241,7 +247,7 @@ export default function StatsView({
                       <div className="min-w-0">
                         <p className="truncate text-[11px] font-black uppercase">{player.nickname}</p>
                         <p className="text-[9px] uppercase text-v-white/35">
-                          {player.pro_teams?.tag || player.role || "Jugador"}
+                          {player.pro_teams?.tag || player.role || t("stats.player")}
                         </p>
                       </div>
                     </div>
@@ -261,7 +267,7 @@ export default function StatsView({
           </div>
         ) : (
           <p className="py-8 text-center text-xs text-v-white/25">
-            Todavía no existe un quinteto capturado para esta jornada.
+            {t("stats.lineupEmpty")}
           </p>
         )}
       </section>
@@ -269,24 +275,24 @@ export default function StatsView({
       <section className="grid gap-3 sm:grid-cols-2">
         <article className="v-panel p-5">
           <p className="text-[9px] font-black uppercase tracking-widest text-v-white/35">
-            Mejor aportación
+            {t("stats.bestContribution")}
           </p>
           <p className="mt-3 text-xl font-black uppercase italic">
-            {bestPlayer?.nickname || "Sin datos"}
+            {bestPlayer?.nickname || t("stats.noData")}
           </p>
           <p className="mt-2 text-sm font-black text-emerald-400">
-            {bestPlayer ? `+${Number(bestPlayer.gameweek_points || 0)} puntos` : "—"}
+            {bestPlayer ? t("stats.pointsValue", { points: `+${Number(bestPlayer.gameweek_points || 0)}` }) : "—"}
           </p>
         </article>
         <article className="v-panel p-5">
           <p className="text-[9px] font-black uppercase tracking-widest text-v-white/35">
-            Jugador a revisar
+            {t("stats.playerToReview")}
           </p>
           <p className="mt-3 text-xl font-black uppercase italic">
-            {watchPlayer?.nickname || "Sin datos"}
+            {watchPlayer?.nickname || t("stats.noData")}
           </p>
           <p className="mt-2 text-sm font-black text-v-red">
-            {watchPlayer ? `${Number(watchPlayer.gameweek_points || 0)} puntos` : "—"}
+            {watchPlayer ? t("stats.pointsValue", { points: Number(watchPlayer.gameweek_points || 0) }) : "—"}
           </p>
         </article>
       </section>
@@ -294,9 +300,9 @@ export default function StatsView({
       <section className="v-panel p-4 sm:p-5">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-lg uppercase">Premios recibidos</h2>
+            <h2 className="text-lg uppercase">{t("stats.rewards")}</h2>
             <p className="mt-1 text-[10px] uppercase tracking-wider text-v-white/35">
-              Ingresos por clasificación y participación
+              {t("stats.rewardIncome")}
             </p>
           </div>
           <div className="flex items-center gap-2 text-v-red">
@@ -311,12 +317,12 @@ export default function StatsView({
               <div key={`${reward.gameweek_id}-${reward.paid_at}`} className="flex items-center justify-between gap-4 py-3">
                 <div>
                   <p className="text-[11px] font-black uppercase">
-                    {relationName(reward.gameweeks) || `Jornada ${reward.gameweek_id}`}
+                    {relationName(reward.gameweeks) || t("stats.gameweekFallback", { number: reward.gameweek_id })}
                   </p>
                   <p className="mt-1 text-[9px] uppercase tracking-wider text-v-white/40">
                     {reward.rank_position <= 3
-                      ? `${reward.rank_position}.º puesto${reward.tied_participants > 1 ? " · empate" : ""}`
-                      : "Premio de participación"}
+                      ? `${t("stats.place", { rank: reward.rank_position })}${reward.tied_participants > 1 ? ` · ${t("stats.tie")}` : ""}`
+                      : t("stats.participationReward")}
                   </p>
                 </div>
                 <span className="text-sm font-black text-v-red">
@@ -327,7 +333,7 @@ export default function StatsView({
           </div>
         ) : (
           <p className="py-7 text-center text-xs text-v-white/25">
-            Los premios aparecerán al liquidarse una jornada válida.
+            {t("stats.rewardsEmpty")}
           </p>
         )}
       </section>

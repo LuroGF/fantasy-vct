@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions/leagues";
 import { createClient } from "@/utils/supabase/server";
 import StatsView from "./StatsView";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ function leagueData(participation: any) {
 }
 
 export default async function StatsPage({ searchParams }: StatsPageProps) {
+  const { t } = await getServerTranslator();
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -38,12 +40,12 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
   if (!selectedParticipation || !selectedLeague) {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-10 text-center">
-        <h1 className="text-4xl uppercase">Rendimiento</h1>
+        <h1 className="text-4xl uppercase">{t("stats.title")}</h1>
         <p className="text-sm text-v-white/50">
-          Únete a una liga para empezar a medir el rendimiento de tu equipo.
+          {t("stats.noLeague")}
         </p>
         <Link href="/leagues" className="v-btn-primary mx-auto text-xs">
-          Ir a ligas
+          {t("stats.goLeagues")}
         </Link>
       </div>
     );
@@ -108,14 +110,14 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">
             {selectedLeague.name}
           </p>
-          <h1 className="text-4xl leading-none uppercase sm:text-5xl">Rendimiento</h1>
+          <h1 className="text-4xl leading-none uppercase sm:text-5xl">{t("stats.title")}</h1>
           <p className="text-sm text-v-white/50">
-            Detecta quién aporta puntos, compara tu jornada y revisa tus premios.
+            {t("stats.subtitle")}
           </p>
         </header>
 
         {leagues.length > 1 && (
-          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Seleccionar liga">
+          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label={t("stats.selectLeague")}>
             {leagues.map((participation: any) => {
               const league = leagueData(participation);
               if (!league) return null;
@@ -138,7 +140,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
         )}
 
         {latestGameweeks.length > 0 && (
-          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Seleccionar jornada">
+          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label={t("stats.selectGameweek")}>
             {latestGameweeks.map((gameweek: any) => {
               const active = gameweek.id === overview.selectedGameweek?.id;
               return (
