@@ -14,6 +14,7 @@ import {
 import { haptic } from "@/lib/utils/haptics";
 import { sileo } from "sileo";
 import { Crown, Flag, UserMinus } from "lucide-react";
+import { useLocale } from "./LocaleProvider";
 
 interface LeagueDetailsProps {
   leagueId: string;
@@ -153,6 +154,7 @@ export default function LeagueDetails({
   leagueName,
   onBack,
 }: LeagueDetailsProps) {
+  const { locale, t } = useLocale();
   // ============================================================
   // GENERAL
   // ============================================================
@@ -221,8 +223,8 @@ export default function LeagueDetails({
         console.error(err);
 
         sileo.error({
-          title: "No se pudo cargar la liga",
-          description: "Inténtalo de nuevo.",
+          title: t("leagues.loadFailed"),
+          description: t("leagues.tryAgain"),
         });
       } finally {
         setLoading(false);
@@ -230,7 +232,7 @@ export default function LeagueDetails({
     }
 
     void load();
-  }, [leagueId]);
+  }, [leagueId, t]);
 
   // ============================================================
   // CARGAR JORNADA
@@ -332,7 +334,7 @@ export default function LeagueDetails({
       haptic.success();
 
       sileo.success({
-        title: "Código copiado",
+        title: t("leagues.codeCopied"),
         description: `Código ${inviteCode} copiado al portapapeles`,
       });
     } catch (err) {
@@ -341,8 +343,8 @@ export default function LeagueDetails({
       haptic.error();
 
       sileo.error({
-        title: "No se pudo compartir",
-        description: "Inténtalo de nuevo",
+        title: t("leagues.shareFailed"),
+        description: t("leagues.tryAgain"),
       });
     }
   }
@@ -406,15 +408,15 @@ export default function LeagueDetails({
   }
 
   async function handleKick(profileId: string) {
-    if (!window.confirm("¿Expulsar a este entrenador de la liga? Esta acción libera su plantilla.")) return;
+    if (!window.confirm(t("leagues.kickConfirm"))) return;
     setActionLoading(true);
     const result = await kickLeagueMember(leagueId, profileId);
     if (result.success) {
-      sileo.success({ title: "Entrenador expulsado", description: "La plantilla ha quedado liberada." });
+      sileo.success({ title: t("leagues.kicked"), description: t("leagues.kickedDescription") });
       setSelectedManager(null);
       await refreshClassification();
     } else {
-      sileo.error({ title: "No se pudo expulsar", description: result.error || "Inténtalo de nuevo." });
+      sileo.error({ title: t("leagues.kickFailed"), description: result.error || t("leagues.tryAgain") });
     }
     setActionLoading(false);
   }
@@ -429,11 +431,11 @@ export default function LeagueDetails({
       reportDetails,
     );
     if (result.success) {
-      sileo.success({ title: "Reporte enviado", description: "El líder de la liga podrá revisarlo." });
+      sileo.success({ title: t("leagues.reportSent"), description: t("leagues.reportSentDescription") });
       setReportTarget(null);
       setReportDetails("");
     } else {
-      sileo.error({ title: "No se pudo enviar", description: result.error || "Inténtalo de nuevo." });
+      sileo.error({ title: t("leagues.reportFailed"), description: result.error || t("leagues.tryAgain") });
     }
     setActionLoading(false);
   }
@@ -443,9 +445,9 @@ export default function LeagueDetails({
     const result = await dismissLeagueReport(reportId);
     if (result.success) {
       await refreshClassification();
-      sileo.success({ title: "Reporte archivado" });
+      sileo.success({ title: t("leagues.reportArchived") });
     } else {
-      sileo.error({ title: "No se pudo archivar", description: result.error || "Inténtalo de nuevo." });
+      sileo.error({ title: t("leagues.archiveFailed"), description: result.error || t("leagues.tryAgain") });
     }
     setActionLoading(false);
   }
@@ -474,7 +476,7 @@ export default function LeagueDetails({
             d="M15 19l-7-7 7-7"
           />
         </svg>
-        Volver a mis ligas
+        {t("leagues.back")}
       </button>
 
       {/* PANEL PRINCIPAL */}
@@ -484,28 +486,27 @@ export default function LeagueDetails({
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="mb-1 flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.28em] text-v-red">
-                Liga activa
+                {t("leagues.activeLeague")}
                 {leaderId === currentUserId && (
                   <span className="flex items-center gap-1 border border-v-red/30 px-2 py-0.5">
-                    <Crown className="h-3 w-3" /> Líder
+                    <Crown className="h-3 w-3" /> {t("leagues.leader")}
                   </span>
                 )}
               </p>
 
               <h2 className="text-3xl italic uppercase tracking-tighter text-v-white sm:text-4xl">
-                {leagueName || "Clasificación"}
+                {leagueName || t("leagues.standings")}
               </h2>
 
               <p className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-v-white/25">
-                {data.length} {data.length === 1 ? "manager" : "managers"} · ver
-                plantillas
+                {t("leagues.managersCount", { count: data.length })}
               </p>
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div>
                 <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.24em] text-v-white/30">
-                  Código de invitación
+                  {t("leagues.inviteCode")}
                 </p>
 
                 <div className="border border-white/10 bg-v-navy/60 px-4 py-2.5 text-sm font-black italic tracking-[0.28em] text-v-white">
@@ -517,7 +518,7 @@ export default function LeagueDetails({
                 onClick={handleShareInviteCode}
                 className="v-btn-primary min-h-[42px] cursor-pointer px-5 py-2.5 text-[9px]"
               >
-                Compartir código
+                {t("leagues.shareCode")}
               </button>
             </div>
           </div>
@@ -545,7 +546,7 @@ export default function LeagueDetails({
                   : "text-v-white/30 hover:text-v-white"
               }`}
             >
-              General
+              {t("leagues.general")}
             </button>
 
             <button
@@ -563,7 +564,7 @@ export default function LeagueDetails({
                   : "text-v-white/30 hover:text-v-white"
               }`}
             >
-              Jornadas
+              {t("leagues.gameweeks")}
             </button>
 
             {leaderId === currentUserId && (
@@ -581,7 +582,7 @@ export default function LeagueDetails({
                     : "text-v-white/30 hover:text-v-white"
                 }`}
               >
-                Gestión {reports.length > 0 ? `(${reports.length})` : ""}
+                {t("leagues.management")} {reports.length > 0 ? `(${reports.length})` : ""}
               </button>
             )}
           </div>
@@ -599,15 +600,15 @@ export default function LeagueDetails({
             <>
               <div className="mb-3 grid grid-cols-[1fr_auto_auto] items-end gap-5 px-2">
                 <h3 className="text-xl italic uppercase tracking-tighter">
-                  Clasificación
+                  {t("leagues.standings")}
                 </h3>
 
                 <span className="hidden text-[8px] font-black uppercase tracking-[0.2em] text-v-white/25 sm:block">
-                  Valor
+                  {t("leagues.value")}
                 </span>
 
                 <span className="text-[8px] font-black uppercase tracking-[0.2em] text-v-white/25">
-                  Puntos
+                  {t("leagues.points")}
                 </span>
               </div>
 
@@ -655,12 +656,12 @@ export default function LeagueDetails({
                             </p>
 
                           <span className="hidden text-[8px] font-black uppercase tracking-widest text-v-white/35 sm:inline">
-                            {manager.roster.length} jugadores
+                            {t("leagues.playersCount", { count: manager.roster.length })}
                           </span>
                         </div>
 
                         <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-v-white/35 sm:hidden">
-                          Plantilla {formatMillions(rosterValue)}
+                          {t("leagues.squad")} {formatMillions(rosterValue)}
                         </p>
                       </div>
 
@@ -696,7 +697,7 @@ export default function LeagueDetails({
                 {!loading && data.length === 0 && (
                   <div className="py-14 text-center">
                     <p className="text-[9px] font-black uppercase tracking-[0.3em] text-v-white/25">
-                      No hay managers en la clasificación
+                      {t("leagues.noManagers")}
                     </p>
                   </div>
                 )}
@@ -862,13 +863,13 @@ export default function LeagueDetails({
             <div className="space-y-5">
               <div>
                 <p className="text-[8px] font-black uppercase tracking-[0.25em] text-v-red">
-                  Moderación
+                  {t("leagues.moderation")}
                 </p>
                 <h3 className="text-xl font-black italic uppercase tracking-tighter">
-                  Reportes pendientes
+                  {t("leagues.pendingReports")}
                 </h3>
                 <p className="mt-1 text-[9px] text-v-white/35">
-                  Revisa el contexto antes de expulsar a un entrenador.
+                  {t("leagues.reviewBeforeKick")}
                 </p>
               </div>
 
@@ -882,10 +883,10 @@ export default function LeagueDetails({
                             {report.target_name}
                           </p>
                           <p className="mt-1 text-[8px] font-black uppercase tracking-wider text-v-red">
-                            {report.reason === "inactivity" ? "Inactividad" : "Conducta antideportiva"}
+                            {report.reason === "inactivity" ? t("leagues.inactivity") : t("leagues.unsportsmanlike")}
                           </p>
                           <p className="mt-2 text-[9px] text-v-white/40">
-                            Reportado por {report.reporter_name} · {new Date(report.created_at).toLocaleDateString("es-ES")}
+                            {t("leagues.reportedBy", { name: report.reporter_name })} · {new Date(report.created_at).toLocaleDateString(locale)}
                           </p>
                           {report.details && (
                             <p className="mt-3 text-xs leading-relaxed text-v-white/65">{report.details}</p>
@@ -898,7 +899,7 @@ export default function LeagueDetails({
                             onClick={() => void handleDismissReport(report.id)}
                             className="v-btn-secondary px-3 py-2 text-[8px] disabled:opacity-50"
                           >
-                            Archivar
+                            {t("leagues.archive")}
                           </button>
                           <button
                             type="button"
@@ -906,7 +907,7 @@ export default function LeagueDetails({
                             onClick={() => void handleKick(report.target_profile_id)}
                             className="v-btn-primary px-3 py-2 text-[8px] disabled:opacity-50"
                           >
-                            Expulsar
+                            {t("leagues.kick")}
                           </button>
                         </div>
                       </div>
@@ -916,7 +917,7 @@ export default function LeagueDetails({
               ) : (
                 <div className="border border-dashed border-white/10 py-14 text-center">
                   <p className="text-[9px] font-black uppercase tracking-[0.25em] text-v-white/25">
-                    No hay reportes pendientes
+                    {t("leagues.noReports")}
                   </p>
                 </div>
               )}
@@ -942,7 +943,7 @@ export default function LeagueDetails({
             <div className="flex shrink-0 items-start justify-between border-b border-white/5 p-5 sm:p-6">
               <div className="min-w-0">
                 <p className="mb-1 text-[8px] font-black uppercase tracking-[0.25em] text-v-red">
-                  Plantilla del manager
+                  {t("leagues.managerRoster")}
                 </p>
 
                 <h3 className="truncate text-3xl font-black italic uppercase tracking-tighter text-v-white">
@@ -952,7 +953,7 @@ export default function LeagueDetails({
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
                   <div>
                     <p className="text-[7px] font-black uppercase tracking-widest text-v-white/25">
-                      Puntos
+                      {t("leagues.points")}
                     </p>
 
                     <p className="mt-0.5 text-sm font-black italic">
@@ -962,7 +963,7 @@ export default function LeagueDetails({
 
                   <div>
                     <p className="text-[7px] font-black uppercase tracking-widest text-v-white/25">
-                      Valor plantilla
+                      {t("leagues.squadValue")}
                     </p>
 
                     <p className="mt-0.5 text-sm font-black italic">
@@ -972,7 +973,7 @@ export default function LeagueDetails({
 
                   <div>
                     <p className="text-[7px] font-black uppercase tracking-widest text-v-white/25">
-                      Jugadores
+                      {t("leagues.players")}
                     </p>
 
                     <p className="mt-0.5 text-sm font-black italic">
@@ -991,7 +992,7 @@ export default function LeagueDetails({
                         onClick={() => void handleKick(selectedManager.profile_id)}
                         className="flex items-center gap-2 border border-v-red/40 bg-v-red/10 px-3 py-2 text-[8px] font-black uppercase tracking-wider text-v-red disabled:opacity-50"
                       >
-                        <UserMinus className="h-3 w-3" /> Expulsar
+                        <UserMinus className="h-3 w-3" /> {t("leagues.kick")}
                       </button>
                     ) : (
                       <button
@@ -999,7 +1000,7 @@ export default function LeagueDetails({
                         onClick={() => setReportTarget(selectedManager)}
                         className="flex items-center gap-2 border border-white/10 px-3 py-2 text-[8px] font-black uppercase tracking-wider text-v-white/55 hover:border-v-red hover:text-v-red"
                       >
-                        <Flag className="h-3 w-3" /> Reportar
+                        <Flag className="h-3 w-3" /> {t("leagues.report")}
                       </button>
                     )}
                   </div>
@@ -1010,7 +1011,7 @@ export default function LeagueDetails({
                 type="button"
                 onClick={() => setSelectedManager(null)}
                 className="ml-4 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center border border-white/10 text-v-white/40 transition-colors hover:border-v-red hover:text-v-red"
-                aria-label="Cerrar plantilla"
+                aria-label={t("leagues.closeRoster")}
               >
                 ✕
               </button>
@@ -1022,7 +1023,7 @@ export default function LeagueDetails({
                 onClick={() => setManagerModalTab("roster")}
                 className={`py-3 text-[9px] font-black uppercase tracking-[0.2em] ${managerModalTab === "roster" ? "bg-v-red text-white" : "text-v-white/35"}`}
               >
-                Plantilla
+                {t("leagues.roster")}
               </button>
               <button
                 type="button"
@@ -1032,7 +1033,7 @@ export default function LeagueDetails({
                 }}
                 className={`py-3 text-[9px] font-black uppercase tracking-[0.2em] ${managerModalTab === "points" ? "bg-v-red text-white" : "text-v-white/35"}`}
               >
-                Puntos
+                {t("leagues.points")}
               </button>
             </div>
 
@@ -1041,8 +1042,8 @@ export default function LeagueDetails({
                 <>
                   <RosterSection
                     leagueId={leagueId}
-                    title="Titulares"
-                    subtitle="Puntúan en la jornada"
+                    title={t("leagues.starters")}
+                    subtitle={t("leagues.startersScore")}
                     players={selectedRoster.starters}
                     accent
                   />
@@ -1051,8 +1052,8 @@ export default function LeagueDetails({
                     <div className="mt-7 border-t border-white/5 pt-6">
                       <RosterSection
                         leagueId={leagueId}
-                        title="Banquillo"
-                        subtitle="No puntúan mientras sean suplentes"
+                        title={t("leagues.bench")}
+                        subtitle={t("leagues.benchNoScore")}
                         players={selectedRoster.bench}
                       />
                     </div>
@@ -1061,7 +1062,7 @@ export default function LeagueDetails({
                   {selectedManager.roster.length === 0 && (
                     <div className="py-14 text-center">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-v-white/25">
-                        Sin jugadores asignados
+                        {t("leagues.noAssignedPlayers")}
                       </p>
                     </div>
                   )}
@@ -1254,10 +1255,10 @@ export default function LeagueDetails({
         <div className="fixed inset-0 z-[130] flex items-center justify-center overflow-y-auto bg-black/85 p-4 backdrop-blur-sm">
           <div className="v-panel w-full max-w-md space-y-5 p-5 sm:p-6">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.25em] text-v-red">Reporte al líder</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.25em] text-v-red">{t("leagues.reportToLeader")}</p>
               <h3 className="mt-1 text-2xl font-black italic uppercase">{reportTarget.profiles?.username}</h3>
               <p className="mt-2 text-xs leading-relaxed text-v-white/45">
-                El reporte no expulsa automáticamente. El líder revisará el motivo y decidirá.
+                {t("leagues.reportExplanation")}
               </p>
             </div>
 
@@ -1269,7 +1270,7 @@ export default function LeagueDetails({
                   onClick={() => setReportReason(reason)}
                   className={`border px-3 py-3 text-[8px] font-black uppercase tracking-wider ${reportReason === reason ? "border-v-red bg-v-red/10 text-v-red" : "border-white/10 text-v-white/40"}`}
                 >
-                  {reason === "inactivity" ? "Inactividad" : "Conducta antideportiva"}
+                  {reason === "inactivity" ? t("leagues.inactivity") : t("leagues.unsportsmanlike")}
                 </button>
               ))}
             </div>
@@ -1278,7 +1279,7 @@ export default function LeagueDetails({
               value={reportDetails}
               onChange={(event) => setReportDetails(event.target.value.slice(0, 500))}
               rows={4}
-              placeholder="Añade contexto para el líder (opcional)"
+              placeholder={t("leagues.reportPlaceholder")}
               className="w-full resize-none border border-white/10 bg-black/20 p-3 text-xs outline-none placeholder:text-v-white/20 focus:border-v-red"
             />
             <p className="text-right text-[8px] text-v-white/25">{reportDetails.length}/500</p>
@@ -1293,7 +1294,7 @@ export default function LeagueDetails({
                 }}
                 className="v-btn-secondary py-3 text-[9px] disabled:opacity-50"
               >
-                Cancelar
+                {t("leagues.cancel")}
               </button>
               <button
                 type="button"
@@ -1301,7 +1302,7 @@ export default function LeagueDetails({
                 onClick={() => void handleReportSubmit()}
                 className="v-btn-primary py-3 text-[9px] disabled:opacity-50"
               >
-                {actionLoading ? "Enviando..." : "Enviar reporte"}
+                {actionLoading ? t("leagues.sending") : t("leagues.sendReport")}
               </button>
             </div>
           </div>
@@ -1313,7 +1314,7 @@ export default function LeagueDetails({
       {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-v-navy/80 backdrop-blur-sm">
           <p className="animate-pulse text-[10px] font-black uppercase tracking-[0.5em]">
-            Cargando liga...
+            {t("leagues.loadingLeague")}
           </p>
         </div>
       )}
@@ -1338,6 +1339,8 @@ function RosterSection({
   players: RosterPlayer[];
   accent?: boolean;
 }) {
+  const { t } = useLocale();
+
   if (players.length === 0) {
     return null;
   }
@@ -1396,21 +1399,21 @@ function RosterSection({
 
                     <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-v-white/35">
                       {player.pro_teams?.tag || "FA"} ·{" "}
-                      {player.role || "Sin rol"}
+                      {player.role || t("leagues.noRole")}
                     </p>
                   </div>
                 </div>
 
                 {player.is_starter || player.slot_type === "starter" ? (
                   <span className="shrink-0 bg-v-red/10 px-1.5 py-0.5 text-[6px] font-black uppercase tracking-widest text-v-red">
-                    Titular
+                    {t("leagues.starter")}
                   </span>
                 ) : null}
               </div>
 
               <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-1.5">
                 <span className="text-[7px] font-black uppercase text-v-white/20">
-                  Valor
+                  {t("leagues.value")}
                 </span>
 
                 <span className="text-[9px] font-black italic text-v-white/70">

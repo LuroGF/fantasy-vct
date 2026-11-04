@@ -15,8 +15,10 @@ import LeagueDetails from "@/components/LeagueDetails";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 import { sileo } from "sileo";
 import { Crown, MoreHorizontal } from "lucide-react";
+import { useLocale } from "@/components/LocaleProvider";
 
 export default function LeaguesPage() {
+  const { t } = useLocale();
   const [leagues, setLeagues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -68,8 +70,8 @@ export default function LeaguesPage() {
 
     setConfirmDialog({
       show: true,
-      title: "Crear liga",
-      message: `¿Confirmar creación de liga: ${newLeagueName}?`,
+      title: t("leagues.confirmCreateTitle"),
+      message: t("leagues.confirmCreate", { name: newLeagueName }),
       onConfirm: async () => {
         setLoading(true);
         haptic.medium();
@@ -79,8 +81,8 @@ export default function LeaguesPage() {
         if (res.success) {
           haptic.success();
           sileo.success({
-            title: "Liga creada",
-            description: "¡La liga se ha creado con éxito!",
+            title: t("leagues.created"),
+            description: t("leagues.createdDescription"),
           });
           setNewLeagueName("");
           setShowCreate(false);
@@ -91,11 +93,11 @@ export default function LeaguesPage() {
         } else {
           haptic.error();
           sileo.error({
-            title: "Error al crear la liga",
+            title: t("leagues.createError"),
             description:
               typeof res.error === "string"
                 ? res.error
-                : "No se pudo crear la liga",
+                : t("leagues.createFailed"),
           });
         }
 
@@ -109,8 +111,8 @@ export default function LeaguesPage() {
 
     setConfirmDialog({
       show: true,
-      title: "Unirse a la liga",
-      message: `¿Unirse a la liga con código: ${inviteCode}?`,
+      title: t("leagues.confirmJoinTitle"),
+      message: t("leagues.confirmJoin", { code: inviteCode }),
       onConfirm: async () => {
         setLoading(true);
         haptic.medium();
@@ -120,8 +122,8 @@ export default function LeaguesPage() {
         if (res.success) {
           haptic.success();
           sileo.success({
-            title: "Te has unido a la liga",
-            description: "Acceso concedido correctamente",
+            title: t("leagues.joined"),
+            description: t("leagues.joinedDescription"),
           });
           setInviteCode("");
           setShowJoin(false);
@@ -132,11 +134,11 @@ export default function LeaguesPage() {
         } else {
           haptic.error();
           sileo.error({
-            title: "Error al unirse",
+            title: t("leagues.joinError"),
             description:
               typeof res.error === "string"
                 ? res.error
-                : "No se pudo unir a la liga",
+                : t("leagues.joinFailed"),
           });
         }
 
@@ -150,26 +152,26 @@ export default function LeaguesPage() {
     setLeagueMenuId(null);
     setConfirmDialog({
       show: true,
-      title: "Abandonar liga",
+      title: t("leagues.leaveTitle"),
       message: isLeader
-        ? `Si hay más participantes, el liderazgo de ${league.leagues.name} pasará al entrenador más antiguo. Si estás solo, la liga se eliminará.`
-        : `Dejarás de participar en ${league.leagues.name} y tus jugadores volverán a quedar disponibles.`,
+        ? t("leagues.leaderLeaveWarning", { name: league.leagues.name })
+        : t("leagues.memberLeaveWarning", { name: league.leagues.name }),
       onConfirm: async () => {
         setLoading(true);
         const result = await leaveLeague(league.leagues.id);
         if (result.success) {
           haptic.success();
           sileo.success({
-            title: "Has abandonado la liga",
-            description: "Tu participación se ha eliminado correctamente.",
+            title: t("leagues.left"),
+            description: t("leagues.leftDescription"),
           });
           setSelectedLeagueId(null);
           await loadLeagues();
         } else {
           haptic.error();
           sileo.error({
-            title: "No se pudo abandonar la liga",
-            description: result.error || "Inténtalo de nuevo.",
+            title: t("leagues.leaveError"),
+            description: result.error || t("leagues.tryAgain"),
           });
         }
         setLoading(false);
@@ -200,9 +202,9 @@ export default function LeaguesPage() {
       >
         <div className="flex items-end justify-between px-1 shrink-0">
           <div>
-            <h1 className="text-4xl leading-none italic uppercase">Ligas</h1>
+            <h1 className="text-4xl leading-none italic uppercase">{t("leagues.title")}</h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red mt-1">
-              Gestión de Ligas VCT
+              {t("leagues.subtitle")}
             </p>
           </div>
           <StatusBadge label="VCT 2027" variant="red" />
@@ -231,7 +233,7 @@ export default function LeaguesPage() {
                 }}
                 className="v-btn-primary py-4 text-[10px] cursor-pointer shadow-lg shadow-v-red/10 active:scale-95 transition-all"
               >
-                Crear Liga
+                {t("leagues.create")}
               </button>
               <button
                 onClick={() => {
@@ -240,7 +242,7 @@ export default function LeaguesPage() {
                 }}
                 className="v-btn-secondary py-4 text-[10px] cursor-pointer active:scale-95 transition-all"
               >
-                Unirse con Código
+                {t("leagues.joinCode")}
               </button>
             </div>
 
@@ -253,10 +255,10 @@ export default function LeaguesPage() {
                   className="overflow-hidden"
                 >
                   <div className="v-panel p-4 space-y-4 border-v-red">
-                    <h3 className="text-xl italic">Crear Nueva Liga</h3>
+                    <h3 className="text-xl italic">{t("leagues.createNew")}</h3>
                     <input
                       type="text"
-                      placeholder="NOMBRE DE LA LIGA..."
+                      placeholder={t("leagues.leagueNamePlaceholder")}
                       value={newLeagueName}
                       onChange={(e) => setNewLeagueName(e.target.value)}
                       className="w-full bg-v-navy border border-white/10 px-4 py-3 text-[10px] font-black tracking-widest focus:border-v-red outline-none transition-colors"
@@ -267,7 +269,7 @@ export default function LeaguesPage() {
                         disabled={loading}
                         className="v-btn-primary cursor-pointer flex-1 py-2 text-[10px] disabled:opacity-50"
                       >
-                        Crear liga
+                        {t("leagues.create")}
                       </button>
                       <button
                         onClick={() => setShowCreate(false)}
@@ -290,7 +292,7 @@ export default function LeaguesPage() {
                 >
                   <div className="v-panel p-4 space-y-4 border-v-red">
                     <h3 className="text-xl italic">
-                      Introducir Código de Invitación
+                      {t("leagues.enterInvite")}
                     </h3>
                     <input
                       type="text"
@@ -305,7 +307,7 @@ export default function LeaguesPage() {
                         disabled={loading}
                         className="v-btn-primary cursor-pointer flex-1 py-2 text-[10px] disabled:opacity-50"
                       >
-                        Unirse a liga
+                        {t("leagues.join")}
                       </button>
                       <button
                         onClick={() => setShowJoin(false)}
@@ -322,13 +324,13 @@ export default function LeaguesPage() {
 
             <div className="space-y-4">
               <h2 className="text-2xl italic tracking-tighter px-1">
-                Tus ligas activas
+                {t("leagues.activeLeagues")}
               </h2>
 
               {loading ? (
                 <div className="p-12 text-center opacity-20 animate-pulse">
                   <p className="text-[10px] font-black tracking-[0.5em] uppercase">
-                    Cargando Datos...
+                    {t("leagues.loading")}
                   </p>
                 </div>
               ) : (
@@ -348,7 +350,7 @@ export default function LeaguesPage() {
                         <div className="flex-1 min-w-0 pr-4">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-[7px] font-black uppercase text-v-red tracking-[0.2em]">
-                              Código de liga: {ul.leagues.invite_code}
+                              {t("leagues.leagueCode", { code: ul.leagues.invite_code })}
                             </span>
                             <div className="h-px bg-v-red/20 flex-1" />
                           </div>
@@ -359,7 +361,7 @@ export default function LeaguesPage() {
                         <div className="shrink-0 flex items-start gap-2">
                           <div className="bg-v-red/10 border border-v-red/20 px-2 py-0.5">
                             <span className="text-[7px] font-black text-v-red uppercase tracking-widest italic">
-                              Rank #{ul.rank ?? "--"}
+                              {t("leagues.rank", { rank: ul.rank ?? "--" })}
                             </span>
                           </div>
                           <button
@@ -371,7 +373,7 @@ export default function LeaguesPage() {
                               );
                             }}
                             className="flex h-8 w-8 items-center justify-center border border-white/10 bg-v-navy text-v-white/45 transition-colors hover:border-v-red hover:text-v-red"
-                            aria-label={`Opciones de ${ul.leagues.name}`}
+                            aria-label={t("leagues.options", { name: ul.leagues.name })}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </button>
@@ -380,7 +382,7 @@ export default function LeaguesPage() {
 
                       {ul.leagues.creator_id === userId && (
                         <div className="relative z-10 flex w-fit items-center gap-1.5 text-[7px] font-black uppercase tracking-[0.18em] text-v-red">
-                          <Crown className="h-3 w-3" /> Líder
+                          <Crown className="h-3 w-3" /> {t("leagues.leader")}
                         </div>
                       )}
 
@@ -394,7 +396,7 @@ export default function LeaguesPage() {
                             onClick={() => requestLeaveLeague(ul)}
                             className="w-full px-3 py-3 text-left text-[9px] font-black uppercase tracking-wider text-v-red transition-colors hover:bg-v-red/10"
                           >
-                            Abandonar liga
+                            {t("leagues.leave")}
                           </button>
                         </div>
                       )}
@@ -403,7 +405,7 @@ export default function LeaguesPage() {
                         <div>
                           <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest flex items-center gap-1.5">
                             <span className="w-1 h-1 bg-v-white/20" />
-                            Puntos
+                            {t("leagues.points")}
                           </p>
                           <p className="text-xl font-black italic mt-1">
                             {ul.total_points}
@@ -411,7 +413,7 @@ export default function LeaguesPage() {
                         </div>
                         <div className="text-right border-l border-white/5 pl-4">
                           <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest flex items-center justify-end gap-1.5">
-                            Presupuesto
+                            {t("leagues.budget")}
                             <span className="w-1 h-1 bg-v-red/40" />
                           </p>
                           <p className="text-xl font-black italic text-v-red mt-1">
@@ -424,11 +426,10 @@ export default function LeaguesPage() {
 
                   {leagues.length === 0 && (
                     <div className="v-panel border-white/5 text-center py-12 opacity-40 italic">
-                      No perteneces a ninguna liga todavía.
+                      {t("leagues.noLeagues")}
                       <br />
                       <span className="text-[8px] uppercase font-black not-italic mt-2 block">
-                        Debes crear o unirte a una liga para ver tus ligas
-                        activas
+                        {t("leagues.noLeaguesHint")}
                       </span>
                     </div>
                   )}
@@ -444,7 +445,7 @@ export default function LeaguesPage() {
           <div className="v-panel w-full max-w-xs p-6 space-y-6 border-t-4 border-v-white animate-in zoom-in-95 duration-200">
             <div className="space-y-2 text-center">
               <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">
-                Confirmación
+                {t("leagues.confirmation")}
               </p>
               <h3 className="text-xl font-black italic uppercase leading-tight tracking-wider">
                 {confirmDialog.title}
@@ -465,7 +466,7 @@ export default function LeaguesPage() {
                 disabled={loading}
                 className="w-full py-4 cursor-pointer bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10 disabled:opacity-50"
               >
-                {loading ? "Procesando..." : "Realizar acción"}
+                {loading ? t("leagues.processing") : t("leagues.performAction")}
               </button>
 
               <button
@@ -473,7 +474,7 @@ export default function LeaguesPage() {
                 disabled={loading}
                 className="w-full py-2 cursor-pointer text-[8px] font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest disabled:opacity-50"
               >
-                Cancelar
+                {t("leagues.cancel")}
               </button>
             </div>
           </div>
