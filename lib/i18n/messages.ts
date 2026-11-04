@@ -264,6 +264,14 @@ export const messages = {
       gameweekFallback: "Jornada {number}", place: "{rank}.º puesto", tie: "empate", participationReward: "Premio de participación",
       rewardsEmpty: "Los premios aparecerán al liquidarse una jornada válida.",
     },
+    community: {
+      title: "Comunidad", coaches: "Entrenadores", backMore: "Volver a Más", search: "Buscar entrenador", searchPlaceholder: "BUSCAR ENTRENADOR...",
+      loadFailed: "No se ha podido cargar la comunidad. Inténtalo de nuevo.", points: "pts", viewProfile: "Ver perfil", noResults: "No se encontraron entrenadores",
+      inviteTitle: "Invitar amigos", inviteHeading: "Invita a tus amigos a tu liga", inviteDescription: "Comparte el código de una de tus ligas para que otros entrenadores puedan unirse.",
+      selectLeague: "Seleccionar liga", invitationCode: "Tu código de invitación", copyCode: "Copiar código", copied: "Código copiado",
+      copiedDescription: "El código {code} se ha copiado al portapapeles.", copyFailed: "No se ha podido copiar el código.", share: "Compartir",
+      shareText: "Únete a mi liga {league} con el código {code}.", noLeagues: "Aún no perteneces a ninguna liga que puedas compartir.", createLeague: "Crear o unirme a una liga",
+    },
   },
   en: {
     nav: {
@@ -487,6 +495,14 @@ export const messages = {
       noData: "No data", pointsValue: "{points} points", rewards: "Rewards received", rewardIncome: "Income from ranking and participation",
       gameweekFallback: "Gameweek {number}", place: "{rank} place", tie: "tie", participationReward: "Participation reward",
       rewardsEmpty: "Rewards will appear after a valid gameweek is settled.",
+    },
+    community: {
+      title: "Community", coaches: "Coaches", backMore: "Back to More", search: "Search for a coach", searchPlaceholder: "SEARCH FOR A COACH...",
+      loadFailed: "The community could not be loaded. Try again.", points: "pts", viewProfile: "View profile", noResults: "No coaches found",
+      inviteTitle: "Invite friends", inviteHeading: "Invite friends to your league", inviteDescription: "Share one of your league codes so other coaches can join.",
+      selectLeague: "Select league", invitationCode: "Your invitation code", copyCode: "Copy code", copied: "Code copied",
+      copiedDescription: "Code {code} was copied to the clipboard.", copyFailed: "The code could not be copied.", share: "Share",
+      shareText: "Join my league {league} with code {code}.", noLeagues: "You do not belong to a league that can be shared yet.", createLeague: "Create or join a league",
     },
   },
   fr: {
@@ -718,6 +734,14 @@ export const messages = {
       gameweekFallback: "Journée {number}", place: "{rank}e place", tie: "égalité", participationReward: "Récompense de participation",
       rewardsEmpty: "Les récompenses apparaîtront après le règlement d’une journée valide.",
     },
+    community: {
+      title: "Communauté", coaches: "Entraîneurs", backMore: "Retour à Plus", search: "Rechercher un entraîneur", searchPlaceholder: "RECHERCHER UN ENTRAÎNEUR...",
+      loadFailed: "Impossible de charger la communauté. Réessayez.", points: "pts", viewProfile: "Voir le profil", noResults: "Aucun entraîneur trouvé",
+      inviteTitle: "Inviter des amis", inviteHeading: "Invitez vos amis dans votre ligue", inviteDescription: "Partagez le code d’une de vos ligues pour permettre à d’autres entraîneurs de la rejoindre.",
+      selectLeague: "Sélectionner la ligue", invitationCode: "Votre code d’invitation", copyCode: "Copier le code", copied: "Code copié",
+      copiedDescription: "Le code {code} a été copié dans le presse-papiers.", copyFailed: "Impossible de copier le code.", share: "Partager",
+      shareText: "Rejoignez ma ligue {league} avec le code {code}.", noLeagues: "Vous n’appartenez encore à aucune ligue à partager.", createLeague: "Créer ou rejoindre une ligue",
+    },
   },
 } as const satisfies Record<Locale, Record<string, Record<string, string>>>;
 
@@ -733,7 +757,8 @@ export type MessageKey =
   | `more.${keyof (typeof messages)["es"]["more"]}`
   | `notifications.${keyof (typeof messages)["es"]["notifications"]}`
   | `profile.${keyof (typeof messages)["es"]["profile"]}`
-  | `stats.${keyof (typeof messages)["es"]["stats"]}`;
+  | `stats.${keyof (typeof messages)["es"]["stats"]}`
+  | `community.${keyof (typeof messages)["es"]["community"]}`;
 
 export function translateMessage(
   locale: Locale,

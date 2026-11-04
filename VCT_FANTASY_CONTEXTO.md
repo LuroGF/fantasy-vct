@@ -129,6 +129,8 @@ En el mismo bloque, antes de desplegar, se tradujeron el perfil propio y el perf
 
 Después de desplegar Perfil, se tradujo Rendimiento a ES/EN/FR: estado sin liga, selectores, métricas, comparación con jornada anterior y media, gráfica, aportación del quinteto, jugadores destacados y premios. El gráfico usa etiquetas traducidas y los importes se formatean según el locale activo (`es-ES`, `en-GB` o `fr-FR`). Los nombres propios de ligas y jornadas permanecen sin traducir. Verificación: TypeScript correcto, lint sin errores nuevos (warnings `any` heredados en la página de datos), 11 tests y build de producción correctos. No requiere migración. Pendiente dentro de «Más»: Comunidad, invitaciones, reglas, soporte, operaciones y legales.
 
+Antes de la siguiente subida se tradujeron Comunidad e Invitaciones a ES/EN/FR. Comunidad localiza buscador, estados, puntos y acceso a perfiles, usando el locale activo para búsqueda y números. Invitaciones dejó de mostrar el código ficticio `FNT-LLE-2026`: ahora requiere sesión, carga las ligas reales mediante `getUserLeagues`, permite escoger liga, copiar el código real o abrir el menú nativo de compartir y ofrece un estado sin ligas. TypeScript y lint del bloque sin errores, 11 tests y build de producción correctos. No requiere migración. Pendiente dentro de «Más»: reglas, soporte, operaciones y legales.
+
 ## Cómo retomar
 
 Leer este archivo y el código actual antes de trabajar. Las decisiones nuevas del usuario prevalecen. No editar `sources/` ni archivos sincronizados de este espejo. Mantener este documento actualizado con resultados comprobados y pendientes.
