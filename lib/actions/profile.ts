@@ -4,6 +4,12 @@ import { createClient } from "@/utils/supabase/server";
 import { getSession } from "./auth";
 import { revalidatePath } from "next/cache";
 import { cleanPlainText, isUuid } from "@/lib/security/validation";
+import { defaultLocale, isLocale, type Locale } from "@/lib/i18n/config";
+import { translateMessage, type MessageKey } from "@/lib/i18n/messages";
+
+function profileMessage(locale: Locale | undefined, key: MessageKey) {
+  return translateMessage(locale && isLocale(locale) ? locale : defaultLocale, key);
+}
 
 export async function getCurrentHeaderProfile() {
   const session = await getSession();
@@ -34,9 +40,10 @@ export async function updateProfile(data: {
   banner_color?: string;
   fav_team_id?: string;
   title?: string;
+  locale?: Locale;
 }) {
   const session = await getSession();
-  if (!session) return { success: false, error: "No autorizado" };
+  if (!session) return { success: false, error: profileMessage(data.locale, "profile.unauthorized") };
   const userId = session.user.id;
 
   const username = data.username === undefined ? undefined : cleanPlainText(data.username, 20);
@@ -56,13 +63,13 @@ export async function updateProfile(data: {
         : undefined;
 
   if (username !== undefined && (!username || username.length < 3 || !/^[a-zA-Z0-9_]+$/.test(username))) {
-    return { success: false, error: "El nombre debe tener entre 3 y 20 caracteres y usar solo letras, números o guion bajo." };
+    return { success: false, error: profileMessage(data.locale, "profile.invalidUsername") };
   }
   if (data.banner_color !== undefined && bannerColor === null) {
-    return { success: false, error: "El color del banner no es válido." };
+    return { success: false, error: profileMessage(data.locale, "profile.invalidColor") };
   }
   if (data.fav_team_id !== undefined && favouriteTeamId === undefined) {
-    return { success: false, error: "El equipo seleccionado no es válido." };
+    return { success: false, error: profileMessage(data.locale, "profile.invalidTeam") };
   }
 
   const safeData = {
@@ -74,7 +81,7 @@ export async function updateProfile(data: {
   };
 
   if (Object.keys(safeData).length === 0) {
-    return { success: false, error: "No hay cambios válidos para guardar." };
+    return { success: false, error: profileMessage(data.locale, "profile.noValidChanges") };
   }
 
   const supabase = await createClient();
@@ -86,7 +93,7 @@ export async function updateProfile(data: {
 
   if (error) {
     console.error("Error updating profile:", error);
-    return { success: false, error: "No se ha podido actualizar el perfil." };
+    return { success: false, error: profileMessage(data.locale, "profile.updateFailed") };
   }
 
   revalidatePath("/more/profile");

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { updateProfile } from "@/lib/actions/profile";
 import { X, Save, Palette, Type, Users } from "lucide-react";
+import { useLocale } from "@/components/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 interface ProfileCustomizerProps {
   profile: any;
@@ -20,16 +22,17 @@ const PRESET_COLORS = [
   { name: "Cyber Blue", value: "#00b4d8" },
 ];
 
-const PRESET_TITLES = [
-  "Entrenador novato",
-  "Estratega",
-  "Caza-Cláusulas",
-  "Ojeador Maestro",
-  "Magnate del E-sport",
-  "Referente del Fantasy",
+const PRESET_TITLES: { value: string; label: MessageKey }[] = [
+  { value: "Entrenador novato", label: "profile.titleNovice" },
+  { value: "Estratega", label: "profile.titleStrategist" },
+  { value: "Caza-Cláusulas", label: "profile.titleClauseHunter" },
+  { value: "Ojeador Maestro", label: "profile.titleMasterScout" },
+  { value: "Magnate del E-sport", label: "profile.titleTycoon" },
+  { value: "Referente del Fantasy", label: "profile.titleFantasyReference" },
 ];
 
 export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizerProps) {
+  const { locale, t } = useLocale();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: profile.username || "",
@@ -45,11 +48,11 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const res = await updateProfile(formData);
+    const res = await updateProfile({ ...formData, locale });
     if (res.success) {
       onClose();
     } else {
-      alert("Error al guardar: " + res.error);
+      alert(t("profile.saveError", { error: res.error || "" }));
     }
     setLoading(false);
   }
@@ -61,7 +64,7 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
         <div className="p-4 border-b border-white/10 flex items-center justify-between bg-v-gray/20">
           <div className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-v-red" />
-            <h2 className="text-xl font-black italic uppercase tracking-tighter">Personalizar Perfil</h2>
+            <h2 className="text-xl font-black italic uppercase tracking-tighter">{t("profile.customize")}</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors">
             <X className="w-6 h-6" />
@@ -73,7 +76,7 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
           {/* Banner & Color */}
           <section className="space-y-4">
             <label className="text-[10px] font-black uppercase text-v-white/40 tracking-[0.2em] flex items-center gap-2">
-              <Palette className="w-3 h-3" /> Color de Identificación
+              <Palette className="w-3 h-3" /> {t("profile.identificationColor")}
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {PRESET_COLORS.map((color) => (
@@ -93,15 +96,15 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
           {/* Title Selector */}
           <section className="space-y-4">
             <label className="text-[10px] font-black uppercase text-v-white/40 tracking-[0.2em] flex items-center gap-2">
-              <Type className="w-3 h-3" /> Título del entrenador
+              <Type className="w-3 h-3" /> {t("profile.coachTitle")}
             </label>
             <select
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full bg-v-gray/40 border border-white/10 p-4 text-sm font-black uppercase tracking-widest focus:outline-none focus:border-v-red/50 appearance-none"
             >
-              {PRESET_TITLES.map((t) => (
-                <option key={t} value={t}>{t}</option>
+              {PRESET_TITLES.map((title) => (
+                <option key={title.value} value={title.value}>{t(title.label)}</option>
               ))}
             </select>
           </section>
@@ -109,7 +112,7 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
           {/* Favorite Team */}
           <section className="space-y-4">
             <label className="text-[10px] font-black uppercase text-v-white/40 tracking-[0.2em] flex items-center gap-2">
-              <Users className="w-3 h-3" /> Equipo Favorito
+              <Users className="w-3 h-3" /> {t("profile.favoriteTeam")}
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -119,7 +122,7 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
                   formData.fav_team_id === "" ? "border-v-red bg-v-red/10" : "border-white/5 bg-v-white/5"
                 }`}
               >
-                NINGUNO
+                {t("profile.none")}
               </button>
               {teams.map((team) => (
                 <button
@@ -140,12 +143,12 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
           {/* Bio */}
           <section className="space-y-4">
             <label className="text-[10px] font-black uppercase text-v-white/40 tracking-[0.2em] flex items-center gap-2">
-              <Type className="w-3 h-3" /> Biografía / Descripción
+              <Type className="w-3 h-3" /> {t("profile.biography")}
             </label>
             <textarea
               value={formData.bio}
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              placeholder="CUÉNTALES QUIÉN ERES..."
+              placeholder={t("profile.bioPlaceholder")}
               maxLength={150}
               className="w-full bg-v-gray/40 border border-white/10 p-4 text-sm font-black uppercase tracking-widest focus:outline-none focus:border-v-red/50 min-h-[100px] resize-none"
             />
@@ -160,14 +163,14 @@ export function ProfileCustomizer({ profile, teams, onClose }: ProfileCustomizer
             onClick={onClose}
             className="v-btn-secondary flex-1 py-4 text-[11px]"
           >
-            CANCELAR
+            {t("profile.cancel")}
           </button>
           <button 
             onClick={handleSubmit}
             disabled={loading}
             className="v-btn-primary flex-1 py-4 text-[11px] flex items-center justify-center gap-2"
           >
-            {loading ? "GUARDANDO..." : <><Save className="w-4 h-4" /> GUARDAR</>}
+            {loading ? t("profile.saving") : <><Save className="w-4 h-4" /> {t("profile.save")}</>}
           </button>
         </div>
       </div>

@@ -2,22 +2,24 @@ import Link from "next/link";
 import { signOut } from "@/lib/actions/auth";
 import { NotificationBadge } from "@/components/NotificationBadge";
 import { isCurrentUserAdmin } from "@/lib/admin/access";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 const baseOptions = [
-  { label: "Perfil", href: "/more/profile" },
-  { label: "Rendimiento", href: "/stats" },
-  { label: "Comunidad", href: "/more/community" },
-  { label: "Notificaciones", href: "/more/notifications" },
-  { label: "Invitar amigos", href: "/more/invite" },
-  { label: "Reglas y puntuacion", href: "/more/rules" },
-  { label: "Ayuda y FAQ", href: "/more/support" },
-  { label: "Privacidad y términos", href: "/privacidad" },
+  { labelKey: "more.profile" as const, href: "/more/profile" },
+  { labelKey: "more.performance" as const, href: "/stats" },
+  { labelKey: "more.community" as const, href: "/more/community" },
+  { labelKey: "more.notifications" as const, href: "/more/notifications" },
+  { labelKey: "more.invite" as const, href: "/more/invite" },
+  { labelKey: "more.rules" as const, href: "/more/rules" },
+  { labelKey: "more.support" as const, href: "/more/support" },
+  { labelKey: "more.privacyTerms" as const, href: "/privacidad" },
 ];
 
 export default async function MorePage() {
+  const { t } = await getServerTranslator();
   const isAdmin = await isCurrentUserAdmin();
   const options = isAdmin
-    ? [...baseOptions, { label: "Operaciones VLR", href: "/more/operations" }]
+    ? [...baseOptions, { labelKey: "more.operations" as const, href: "/more/operations" }]
     : baseOptions;
 
   return (
@@ -34,20 +36,20 @@ export default async function MorePage() {
       >
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-4xl leading-none">Más</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Perfil y preferencias</p>
+          <h1 className="text-4xl leading-none">{t("more.title")}</h1>
+          <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">{t("more.subtitle")}</p>
         </div>
       </div>
 
       <div className="v-panel p-2 space-y-1 bg-v-gray/40">
         {options.map((item) => (
           <Link
-            key={item.label}
+            key={item.labelKey}
             href={item.href}
             className="w-full flex items-center justify-between p-4 hover:bg-v-white/5 transition-colors group border-b border-white/5 last:border-0"
           >
             <span className="text-sm font-black uppercase tracking-widest text-v-white/80">
-              {item.label}
+              {t(item.labelKey)}
             </span>
             <span className="flex items-center gap-3">
               {item.href === "/more/notifications" && (
@@ -66,7 +68,7 @@ export default async function MorePage() {
             className="w-full flex items-center justify-between p-4 hover:bg-v-red/10 transition-colors group border-t cursor-pointer border-white/10"
           >
             <span className="text-sm font-black uppercase tracking-widest text-v-red">
-              Cerrar sesión
+              {t("more.logout")}
             </span>
             <span className="text-v-red/50 group-hover:text-v-red transition-colors text-xl">
               {"//"}
@@ -83,10 +85,10 @@ export default async function MorePage() {
           <div className="w-1 h-1 bg-v-red/20" />
         </div>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-2 text-[9px] font-black uppercase tracking-wider text-v-white/30">
-          <Link href="/aviso-legal" className="hover:text-v-red">Aviso legal</Link>
-          <Link href="/privacidad" className="hover:text-v-red">Privacidad</Link>
-          <Link href="/terminos" className="hover:text-v-red">Términos</Link>
-          <Link href="/cookies" className="hover:text-v-red">Cookies</Link>
+          <Link href="/aviso-legal" className="hover:text-v-red">{t("more.legalNotice")}</Link>
+          <Link href="/privacidad" className="hover:text-v-red">{t("more.privacy")}</Link>
+          <Link href="/terminos" className="hover:text-v-red">{t("more.terms")}</Link>
+          <Link href="/cookies" className="hover:text-v-red">{t("more.cookies")}</Link>
         </div>
       </div>
     </div>

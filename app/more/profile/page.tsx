@@ -8,8 +8,11 @@ import Image from "next/image";
 import { Download, Trophy, Users, Star } from "lucide-react";
 import { EditProfileButton } from "@/components/EditProfileButton";
 import { DeleteAccountSection } from "@/components/DeleteAccountSection";
+import { getServerTranslator } from "@/lib/i18n/server";
+import { translateProfileTitle } from "@/lib/i18n/profile";
 
 export default async function ProfilePage() {
+  const { t } = await getServerTranslator();
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -80,8 +83,8 @@ export default async function ProfilePage() {
               </svg>
             </Link>
             <div>
-              <h1 className="text-4xl leading-none italic uppercase">Perfil</h1>
-              <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Entrenador</p>
+              <h1 className="text-4xl leading-none italic uppercase">{t("profile.title")}</h1>
+              <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">{t("profile.coach")}</p>
             </div>
           </div>
         <EditProfileButton profile={profile} teams={teams} />
@@ -106,7 +109,7 @@ export default async function ProfilePage() {
                   <div className="relative w-16 h-16 bg-v-black/40 backdrop-blur-md p-3 border border-white/5 flex items-center justify-center">
                     <Image src={profile.pro_teams.logo_url} fill sizes="64px" className="object-contain p-3" alt="" />
                   </div>
-                  <span className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.3em] font-oswald">SOY FAN</span>
+                  <span className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.3em] font-oswald">{t("profile.fan")}</span>
                 </div>
               )}
 
@@ -119,19 +122,17 @@ export default async function ProfilePage() {
                 </div>
                 <div className="flex-1 min-w-0 pr-12 lg:pr-16">
                   <h2 className="text-3xl font-black uppercase italic tracking-tighter truncate leading-none">
-                    {profile?.username || "Entrenador"}
+                    {profile?.username || t("profile.defaultCoach")}
                   </h2>
                   <div className="flex items-center gap-2 mt-2">
                     <span 
                       className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest border transition-colors duration-500"
                       style={{ color: bannerColor, borderColor: `${bannerColor}40`, backgroundColor: `${bannerColor}10` }}
                     >
-                      {profile?.title === "Manager Novato"
-                        ? "Entrenador novato"
-                        : profile?.title || "Entrenador novato"}
+                      {translateProfileTitle(profile?.title, t)}
                     </span>
                     <span className="px-2 py-0.5 bg-v-white/5 text-v-white/40 text-[8px] font-black uppercase tracking-widest border border-white/5">
-                       #{globalRank} GLOBAL
+                       #{globalRank} {t("profile.global")}
                     </span>
                   </div>
                 </div>
@@ -149,24 +150,24 @@ export default async function ProfilePage() {
                 <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
                   <Trophy className="w-4 h-4 mb-2 opacity-50" style={{ color: bannerColor }} />
                   <p className="text-2xl font-black italic leading-none">{totalGlobalPoints.toLocaleString()}</p>
-                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Puntos Globales</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">{t("profile.globalPoints")}</p>
                 </div>
                 <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
                   <Users className="w-4 h-4 text-v-white mb-2 opacity-50" />
                   <p className="text-2xl font-black italic leading-none">{totalLeagues}</p>
-                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Ligas</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">{t("profile.leagues")}</p>
                 </div>
                 <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
                    <Star className="w-4 h-4 text-yellow-500 mb-2 opacity-50" />
                   <p className="text-2xl font-black italic leading-none text-yellow-400">{wins}</p>
-                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Semanas #1</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">{t("profile.firstWeeks")}</p>
                 </div>
                 <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
                   <div className="w-4 h-4 flex items-center justify-center mb-2">
                     <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: bannerColor }} />
                   </div>
-                  <p className="text-2xl font-black italic leading-none text-v-white/80">ACTIVA</p>
-                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">CUENTA</p>
+                  <p className="text-2xl font-black italic leading-none text-v-white/80">{t("profile.active")}</p>
+                  <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">{t("profile.account")}</p>
                 </div>
               </div>
             </div>
@@ -175,7 +176,7 @@ export default async function ProfilePage() {
           {/* Recent Performance */}
           <div className="v-panel p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-[9px] font-black uppercase text-v-white/30 tracking-widest uppercase">Historial Reciente</p>
+              <p className="text-[9px] font-black uppercase text-v-white/30 tracking-widest uppercase">{t("profile.recentHistory")}</p>
               <Trophy className="w-3 h-3 text-v-white/20" />
             </div>
             <div className="space-y-2">
@@ -190,16 +191,16 @@ export default async function ProfilePage() {
                       </div>
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-wide text-v-white/70">{(s.leagues as any)?.name}</p>
-                        <p className="text-[8px] font-black uppercase text-v-white/30">Jornada {s.gameweek_id}</p>
+                        <p className="text-[8px] font-black uppercase text-v-white/30">{t("profile.gameweek", { number: s.gameweek_id })}</p>
                       </div>
                     </div>
                     <span className="text-sm font-black italic text-v-white/80">
-                      {(s.points_earned || 0).toLocaleString()} <span className="text-v-red text-[9px]">pts</span>
+                      {(s.points_earned || 0).toLocaleString()} <span className="text-v-red text-[9px]">{t("profile.points")}</span>
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="text-[10px] font-black uppercase text-v-white/20 py-10 text-center italic">Sin actividad registrada</p>
+                <p className="text-[10px] font-black uppercase text-v-white/20 py-10 text-center italic">{t("profile.noActivity")}</p>
               )}
             </div>
           </div>
@@ -207,10 +208,9 @@ export default async function ProfilePage() {
           <section className="v-panel p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-black italic uppercase">Tus datos</h2>
+                <h2 className="text-lg font-black italic uppercase">{t("profile.yourData")}</h2>
                 <p className="mt-1 max-w-xl text-xs leading-relaxed text-v-white/45">
-                  Descarga una copia en JSON de tu perfil, ligas, plantillas, puntos, mercado y preferencias.
-                  No incluye contraseñas, claves push ni secretos técnicos.
+                  {t("profile.dataDescription")}
                 </p>
               </div>
               <a
@@ -219,7 +219,7 @@ export default async function ProfilePage() {
                 className="v-btn-secondary inline-flex shrink-0 items-center justify-center gap-2 px-5 py-3 text-[9px]"
               >
                 <Download className="h-4 w-4" aria-hidden="true" />
-                Descargar mis datos
+                {t("profile.downloadData")}
               </a>
             </div>
           </section>

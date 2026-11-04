@@ -4,6 +4,7 @@ import { useState } from "react";
 import { UserPlus, Check, Clock } from "lucide-react";
 import { sendFriendRequest, acceptFriendRequest } from "@/lib/actions/friends";
 import { sileo } from "sileo";
+import { useLocale } from "@/components/LocaleProvider";
 
 interface FriendButtonProps {
   targetId: string;
@@ -16,6 +17,7 @@ export function FriendButton({
   initialStatus,
   currentUserId,
 }: FriendButtonProps) {
+  const { t } = useLocale();
   const [status, setStatus] = useState(initialStatus);
   const [loading, setLoading] = useState(false);
 
@@ -32,13 +34,13 @@ export function FriendButton({
         status: "pending",
       });
       sileo.success({
-        title: "Solicitud enviada",
-        description: "La solicitud de amistad se ha enviado correctamente",
+        title: t("profile.requestSent"),
+        description: t("profile.requestSentDescription"),
       });
     } else {
       sileo.error({
-        title: "Error al enviar solicitud",
-        description: res.error || "No se pudo enviar la solicitud",
+        title: t("profile.requestError"),
+        description: res.error || t("profile.requestErrorDescription"),
       });
     }
 
@@ -52,13 +54,13 @@ export function FriendButton({
     if (res.success) {
       setStatus({ ...status, status: "accepted" });
       sileo.success({
-        title: "Amistad aceptada",
-        description: "¡Ahora sois amigos!",
+        title: t("profile.friendshipAccepted"),
+        description: t("profile.friendshipAcceptedDescription"),
       });
     } else {
       sileo.error({
-        title: "Error al aceptar solicitud",
-        description: res.error || "No se pudo aceptar la solicitud",
+        title: t("profile.acceptError"),
+        description: res.error || t("profile.acceptErrorDescription"),
       });
     }
 
@@ -68,7 +70,7 @@ export function FriendButton({
   if (status?.status === "accepted") {
     return (
       <button className="v-btn-secondary py-2 px-4 flex items-center gap-2 text-[10px] opacity-70 cursor-default">
-        <Check className="w-3 h-3" /> AMIGOS
+        <Check className="w-3 h-3" /> {t("profile.friends")}
       </button>
     );
   }
@@ -77,7 +79,7 @@ export function FriendButton({
     if (status.user_id === currentUserId) {
       return (
         <button className="v-btn-secondary py-2 px-4 flex items-center gap-2 text-[10px] opacity-50 cursor-default">
-          <Clock className="w-3 h-3" /> SOLICITUD ENVIADA
+          <Clock className="w-3 h-3" /> {t("profile.pendingRequest")}
         </button>
       );
     }
@@ -88,7 +90,7 @@ export function FriendButton({
         disabled={loading}
         className="v-btn-primary py-2 px-4 flex items-center gap-2 text-[10px]"
       >
-        {loading ? "..." : "ACEPTAR AMISTAD"}
+        {loading ? "..." : t("profile.acceptFriend")}
       </button>
     );
   }
@@ -99,7 +101,7 @@ export function FriendButton({
       disabled={loading}
       className="v-btn-secondary py-2 px-4 flex items-center gap-2 text-[10px]"
     >
-      <UserPlus className="w-3 h-3" /> {loading ? "ENVIANDO..." : "AÑADIR AMIGO"}
+      <UserPlus className="w-3 h-3" /> {loading ? t("profile.sending") : t("profile.addFriend")}
     </button>
   );
 }

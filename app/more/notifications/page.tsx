@@ -10,8 +10,10 @@ import {
 import { revalidatePath } from "next/cache";
 import { AutoMarkRead } from "@/components/AutoMarkRead";
 import { NotificationSettings } from "@/components/NotificationSettings";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 export default async function NotificationsPage() {
+  const { locale, t } = await getServerTranslator();
   const session = await getSession();
   if (!session) return redirect("/login");
 
@@ -62,7 +64,7 @@ export default async function NotificationsPage() {
                 />
               </svg>
             </div>
-            <h1 className="text-4xl leading-none italic uppercase">Avisos</h1>
+            <h1 className="text-4xl leading-none italic uppercase">{t("notifications.title")}</h1>
           </div>
         </Link>
 
@@ -72,7 +74,7 @@ export default async function NotificationsPage() {
               type="submit"
               className="text-[10px] font-black uppercase text-v-red tracking-widest hover:underline"
             >
-              Marcar todo como leído
+              {t("notifications.markAllRead")}
             </button>
           </form>
         )}
@@ -81,12 +83,12 @@ export default async function NotificationsPage() {
       {unreadNotifications.length > 0 && (
         <div className="v-panel p-3 border border-v-red/30 bg-v-red/10 flex items-center justify-between">
           <p className="text-[10px] font-black uppercase tracking-wider text-v-red">
-            {unreadNotifications.length} aviso
-            {unreadNotifications.length > 1 ? "s" : ""} nuevo
-            {unreadNotifications.length > 1 ? "s" : ""}
+            {unreadNotifications.length === 1
+              ? t("notifications.newSingle")
+              : t("notifications.newCount", { count: unreadNotifications.length })}
           </p>
           <p className="text-[9px] text-v-white/60">
-            Revisa los marcados como NUEVO.
+            {t("notifications.reviewNew")}
           </p>
         </div>
       )}
@@ -106,12 +108,12 @@ export default async function NotificationsPage() {
                 </h3>
                 {!n.is_read && (
                   <span className="text-[8px] px-2 py-0.5 rounded-sm bg-v-red text-white font-black uppercase tracking-widest">
-                    Nuevo
+                    {t("notifications.newBadge")}
                   </span>
                 )}
               </div>
               <span className="text-[8px] text-v-white/30 uppercase font-black">
-                {new Date(n.created_at).toLocaleDateString()}
+                {new Date(n.created_at).toLocaleDateString(locale)}
               </span>
             </div>
             <p className="text-xs text-v-white/60 leading-relaxed">
@@ -122,7 +124,7 @@ export default async function NotificationsPage() {
                 href={n.action_url}
                 className="mt-3 inline-flex text-[9px] font-black uppercase tracking-wider text-v-red hover:underline"
               >
-                Abrir
+                {t("notifications.open")}
               </Link>
             )}
             {!n.is_read && (
@@ -134,7 +136,7 @@ export default async function NotificationsPage() {
                   type="submit"
                   className="text-[9px] font-black uppercase text-v-red tracking-wider hover:underline"
                 >
-                  Marcar como leído
+                  {t("notifications.markRead")}
                 </button>
               </form>
             )}
@@ -144,7 +146,7 @@ export default async function NotificationsPage() {
 
       {notifications.length === 0 && (
         <div className="v-panel p-12 text-center opacity-40 italic border-dashed border-2 border-white/5">
-          <p className="text-sm">No tienes comunicaciones pendientes.</p>
+          <p className="text-sm">{t("notifications.empty")}</p>
         </div>
       )}
 

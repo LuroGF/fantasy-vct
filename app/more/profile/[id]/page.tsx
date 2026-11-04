@@ -7,8 +7,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Trophy, Users, Star, ArrowLeft } from "lucide-react";
 import { FriendButton } from "@/components/FriendButton";
+import { getServerTranslator } from "@/lib/i18n/server";
+import { translateProfileTitle } from "@/lib/i18n/profile";
 
 export default async function PublicProfilePage(props: { params: Promise<{ id: string }> }) {
+  const { t } = await getServerTranslator();
   const params = await props.params;
   const id = params.id;
   const session = await getSession();
@@ -78,8 +81,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
             <ArrowLeft className="w-6 h-6" />
           </Link>
           <div>
-            <h1 className="text-4xl leading-none italic uppercase">Expediente</h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Entrenador</p>
+            <h1 className="text-4xl leading-none italic uppercase">{t("profile.publicTitle")}</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">{t("profile.coach")}</p>
           </div>
         </div>
         
@@ -109,7 +112,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
               <div className="relative w-16 h-16 bg-v-black/40 backdrop-blur-md p-3 border border-white/5 flex items-center justify-center">
                 <Image src={profile.pro_teams.logo_url} fill sizes="64px" className="object-contain p-3" alt="" />
               </div>
-              <span className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.3em] font-oswald">FAN DE {profile.pro_teams.tag}</span>
+              <span className="text-[8px] font-black uppercase text-v-white/40 tracking-[0.3em] font-oswald">{t("profile.fanOf", { team: profile.pro_teams.tag })}</span>
             </div>
           )}
 
@@ -129,12 +132,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
                   className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest border transition-all duration-500"
                   style={{ color: bannerColor, borderColor: `${bannerColor}40`, backgroundColor: `${bannerColor}10` }}
                 >
-                  {profile.title === "Manager Novato"
-                    ? "Entrenador novato"
-                    : profile.title || "Entrenador novato"}
+                  {translateProfileTitle(profile.title, t)}
                 </span>
                 <span className="px-2 py-0.5 bg-v-white/5 text-v-white/40 text-[8px] font-black uppercase tracking-widest border border-white/5">
-                  #{globalRank} GLOBAL
+                  #{globalRank} {t("profile.global")}
                 </span>
               </div>
             </div>
@@ -153,24 +154,24 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
             <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
               <Trophy className="w-4 h-4 mb-2 opacity-50" style={{ color: bannerColor }} />
               <p className="text-2xl font-black italic leading-none">{(profile.global_points || 0).toLocaleString()}</p>
-              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Puntos Globales</p>
+              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">{t("profile.globalPoints")}</p>
             </div>
             <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
               <Users className="w-4 h-4 text-v-white mb-2 opacity-50" />
               <p className="text-2xl font-black italic leading-none">{participations?.length || 0}</p>
-              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Ligas</p>
+              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">{t("profile.leagues")}</p>
             </div>
             <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
               <Star className="w-4 h-4 text-yellow-500 mb-2 opacity-50" />
               <p className="text-2xl font-black italic leading-none">{wins}</p>
-              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">Semanas #1</p>
+              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">{t("profile.firstWeeks")}</p>
             </div>
             <div className="v-panel bg-v-black/40 border-white/5 p-4 flex flex-col items-center">
               <div className="w-4 h-4 flex items-center justify-center mb-2">
                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: bannerColor }} />
               </div>
-              <p className="text-2xl font-black italic leading-none text-v-white/80">ACTIVA</p>
-              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">CUENTA</p>
+              <p className="text-2xl font-black italic leading-none text-v-white/80">{t("profile.active")}</p>
+              <p className="text-[8px] font-black uppercase text-v-white/20 tracking-widest mt-2">{t("profile.account")}</p>
             </div>
           </div>
         </div>
@@ -179,7 +180,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Participation History */}
         <div className="v-panel p-6 space-y-4">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-v-red">Despliegue en Ligas</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-v-red">{t("profile.leagueActivity")}</h3>
           <div className="space-y-2">
             {participations && participations.length > 0 ? (
               participations.map((p: any) => (
@@ -189,20 +190,20 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
                   </span>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-black italic text-v-white">
-                      {(p.total_points || 0).toLocaleString()} <span className="text-v-red text-[10px]">PTS</span>
+                      {(p.total_points || 0).toLocaleString()} <span className="text-v-red text-[10px]">{t("profile.points")}</span>
                     </p>
                   </div>
                 </div>
               ))
             ) : (
-                <p className="text-[10px] font-black uppercase text-v-white/20 py-10 text-center italic">Sin actividad registrada en ligas</p>
+                <p className="text-[10px] font-black uppercase text-v-white/20 py-10 text-center italic">{t("profile.noLeagueActivity")}</p>
             )}
           </div>
         </div>
 
         {/* Recent Performance */}
         <div className="v-panel p-6 space-y-4">
-           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-v-red">Rendimiento Reciente</h3>
+           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-v-red">{t("profile.recentPerformance")}</h3>
            <div className="space-y-3">
              {recentScores && recentScores.length > 0 ? (
                recentScores.map((s: any, i: number) => (
@@ -217,16 +218,16 @@ export default async function PublicProfilePage(props: { params: Promise<{ id: s
                           <p className="text-[10px] font-black uppercase tracking-wide text-v-white/80">
                             {(s.leagues as any)?.name}
                           </p>
-                          <p className="text-[8px] font-black uppercase text-v-white/30 italic">Jornada {s.gameweek_id}</p>
+                          <p className="text-[8px] font-black uppercase text-v-white/30 italic">{t("profile.gameweek", { number: s.gameweek_id })}</p>
                        </div>
                     </div>
                     <p className="text-sm font-black italic text-v-white/90">
-                      {s.points_earned.toLocaleString()} <span className="text-v-red text-[9px]">pts</span>
+                      {s.points_earned.toLocaleString()} <span className="text-v-red text-[9px]">{t("profile.points")}</span>
                     </p>
                  </div>
                ))
              ) : (
-                <p className="text-[10px] font-black uppercase text-v-white/20 py-10 text-center italic">No hay historial de puntuación</p>
+                <p className="text-[10px] font-black uppercase text-v-white/20 py-10 text-center italic">{t("profile.noScoreHistory")}</p>
              )}
            </div>
         </div>

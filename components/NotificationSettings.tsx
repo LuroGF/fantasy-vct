@@ -6,6 +6,8 @@ import {
   sendTestNotification,
   updateNotificationPreferences,
 } from "@/lib/actions/notifications";
+import { useLocale } from "@/components/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 type Preferences = {
   push_enabled: boolean;
@@ -18,6 +20,7 @@ type Preferences = {
 const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 export function NotificationSettings({ initial }: { initial: Preferences }) {
+  const { t } = useLocale();
   const [preferences, setPreferences] = useState(initial);
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -41,18 +44,18 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
     const result = await updateNotificationPreferences(next);
     setSaving(false);
     if (!result.success) {
-      setMessage(result.error || "No se han podido guardar las preferencias.");
+      setMessage(result.error || t("notifications.saveFailed"));
       return false;
     }
     setPreferences(next);
-    setMessage("Preferencias guardadas.");
+    setMessage(t("notifications.saved"));
     setTimeout(() => setMessage(null), 2500);
     return true;
   }
 
   async function enablePush() {
     if (!supported || !publicVapidKey) {
-      setMessage("Las notificaciones push todavía no están configuradas en este entorno.");
+      setMessage(t("notifications.notConfigured"));
       return;
     }
 
@@ -60,7 +63,7 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        setMessage("El navegador no ha concedido permiso para las notificaciones.");
+        setMessage(t("notifications.permissionDenied"));
         return;
       }
 
@@ -76,17 +79,17 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscription }),
       });
-      if (!response.ok) throw new Error("No se ha podido registrar este dispositivo.");
+      if (!response.ok) throw new Error(t("notifications.deviceFailed"));
 
       const next = { ...preferences, push_enabled: true };
       const result = await updateNotificationPreferences(next);
-      if (!result.success) throw new Error(result.error || "No se han podido activar los avisos.");
+      if (!result.success) throw new Error(result.error || t("notifications.enableFailed"));
 
       setPreferences(next);
       setSubscribed(true);
-      setMessage("Notificaciones push activadas en este dispositivo.");
+      setMessage(t("notifications.enabled"));
     } catch (error) {
-      setMessage(getPushRegistrationError(error));
+      setMessage(getPushRegistrationError(error, t));
     } finally {
       setSaving(false);
     }
@@ -110,7 +113,7 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
       await updateNotificationPreferences(next);
       setPreferences(next);
       setSubscribed(false);
-      setMessage("Notificaciones push desactivadas en este dispositivo.");
+      setMessage(t("notifications.disabled"));
     } finally {
       setSaving(false);
     }
@@ -118,36 +121,36 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
 
   async function testPush() {
     setTesting(true);
-    setMessage("Enviando notificación de prueba...");
+    setMessage(t("notifications.sendingTest"));
     const result = await sendTestNotification();
     setTesting(false);
 
     if (!result.success) {
-      setMessage(result.error || "No se ha podido enviar la prueba.");
+      setMessage(result.error || t("notifications.testFailed"));
       return;
     }
 
     setMessage(
       result.pushStatus === "sent"
-        ? "Prueba enviada. Deberías recibirla en este dispositivo."
-        : "El aviso interno se creó, pero este dispositivo todavía no está recibiendo push.",
+        ? t("notifications.testSent")
+        : t("notifications.internalOnly"),
     );
   }
 
   const categories = [
-    ["market_enabled", "Mercado", "Fichajes, cláusulas, pujas y ofertas"],
-    ["gameweek_enabled", "Jornadas", "Inicio de jornada y revisión del quinteto"],
-    ["social_enabled", "Social", "Solicitudes y actividad de amigos"],
-    ["daily_reward_enabled", "Recompensa diaria", "Recordatorio del bono de 500.000 €"],
+    ["market_enabled", t("notifications.market"), t("notifications.marketDescription")],
+    ["gameweek_enabled", t("notifications.gameweeks"), t("notifications.gameweeksDescription")],
+    ["social_enabled", t("notifications.social"), t("notifications.socialDescription")],
+    ["daily_reward_enabled", t("notifications.dailyReward"), t("notifications.dailyRewardDescription")],
   ] as const;
 
   return (
     <section className="v-panel p-5 space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-sm font-black uppercase italic">Notificaciones push</h2>
+          <h2 className="text-sm font-black uppercase italic">{t("notifications.pushTitle")}</h2>
           <p className="mt-1 text-xs text-v-white/50">
-            Recibe avisos en este móvil u ordenador aunque no tengas la aplicación abierta.
+            {t("notifications.pushDescription")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -158,7 +161,7 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
               onClick={testPush}
               className="border border-v-red/40 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-v-red transition-colors hover:bg-v-red/10 disabled:opacity-40"
             >
-              {testing ? "Enviando..." : "Enviar prueba"}
+              {testing ? t("notifications.sending") : t("notifications.sendTest")}
             </button>
           )}
           <button
@@ -168,9 +171,9 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
             className="v-btn-primary !px-4 !py-2 !text-[10px] disabled:opacity-40"
           >
             {subscribed && preferences.push_enabled ? (
-              <span className="flex items-center gap-2"><BellOff size={14} /> Desactivar</span>
+              <span className="flex items-center gap-2"><BellOff size={14} /> {t("notifications.disable")}</span>
             ) : (
-              <span className="flex items-center gap-2"><BellRing size={14} /> Activar push</span>
+              <span className="flex items-center gap-2"><BellRing size={14} /> {t("notifications.enable")}</span>
             )}
           </button>
         </div>
@@ -195,7 +198,7 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
 
       <div className="flex items-center justify-between gap-4">
         <p className="text-[10px] text-v-white/50">
-          {message || (!supported ? "Este navegador no admite notificaciones push." : "Los avisos internos siempre seguirán disponibles.")}
+          {message || (!supported ? t("notifications.unsupported") : t("notifications.internalAvailable"))}
         </p>
         <button
           type="button"
@@ -203,28 +206,28 @@ export function NotificationSettings({ initial }: { initial: Preferences }) {
           onClick={() => persist(preferences)}
           className="flex shrink-0 items-center gap-2 text-[10px] font-black uppercase tracking-wider text-v-red disabled:opacity-40"
         >
-          <Save size={13} /> Guardar
+          <Save size={13} /> {t("notifications.save")}
         </button>
       </div>
     </section>
   );
 }
 
-function getPushRegistrationError(error: unknown) {
-  const fallback = "No se han podido activar los avisos.";
+function getPushRegistrationError(error: unknown, t: (key: MessageKey) => string) {
+  const fallback = t("notifications.activationFailed");
   const detail = error instanceof Error ? error.message : fallback;
   const normalized = detail.toLowerCase();
 
   if (!window.isSecureContext) {
-    return "Las notificaciones push necesitan HTTPS o ejecutarse desde localhost.";
+    return t("notifications.httpsRequired");
   }
 
   if (Notification.permission === "denied") {
-    return "Las notificaciones están bloqueadas para esta web. Permítelas en los ajustes del sitio y vuelve a intentarlo.";
+    return t("notifications.blocked");
   }
 
   if ("brave" in navigator && normalized.includes("push service error")) {
-    return "Brave no tiene disponible el servicio push. Activa «Usar los servicios de Google para mensajes push» en Ajustes > Privacidad y seguridad, reinicia Brave y vuelve a intentarlo.";
+    return t("notifications.braveHelp");
   }
 
   return detail;

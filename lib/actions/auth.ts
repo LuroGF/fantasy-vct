@@ -342,11 +342,11 @@ export async function verifyAccountDeletionPassword(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (userError || !user?.email) {
-    return { success: false, error: "La sesión ya no es válida." };
+    return { success: false, error: authMessage(formData, "profile.sessionInvalid") };
   }
 
   if (!password) {
-    return { success: false, error: "Introduce tu contraseña actual." };
+    return { success: false, error: authMessage(formData, "profile.passwordRequired") };
   }
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -355,7 +355,7 @@ export async function verifyAccountDeletionPassword(formData: FormData) {
   });
 
   if (error) {
-    return { success: false, error: "La contraseña no es correcta." };
+    return { success: false, error: authMessage(formData, "profile.passwordIncorrect") };
   }
 
   return { success: true };
@@ -374,18 +374,18 @@ export async function deleteAccount(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (userError || !user?.email) {
-    return { success: false, error: "La sesión ya no es válida." };
+    return { success: false, error: authMessage(formData, "profile.sessionInvalid") };
   }
 
   if (confirmation !== "ELIMINAR") {
     return {
       success: false,
-      error: "Escribe ELIMINAR para confirmar el borrado definitivo.",
+      error: authMessage(formData, "profile.deleteConfirmationFailed"),
     };
   }
 
   if (!password) {
-    return { success: false, error: "Introduce tu contraseña actual." };
+    return { success: false, error: authMessage(formData, "profile.passwordRequired") };
   }
 
   const { error: passwordError } = await supabase.auth.signInWithPassword({
@@ -394,7 +394,7 @@ export async function deleteAccount(formData: FormData) {
   });
 
   if (passwordError) {
-    return { success: false, error: "La contraseña no es correcta." };
+    return { success: false, error: authMessage(formData, "profile.passwordIncorrect") };
   }
 
   const { error: deletionError } = await supabaseAdmin.rpc(
@@ -406,8 +406,7 @@ export async function deleteAccount(formData: FormData) {
     console.error("[AUTH] Account deletion failed:", deletionError.message);
     return {
       success: false,
-      error:
-        "No se ha podido eliminar la cuenta. Inténtalo de nuevo o contacta con soporte.",
+      error: authMessage(formData, "profile.deleteFailed"),
     };
   }
 

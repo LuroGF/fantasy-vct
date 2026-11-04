@@ -6,10 +6,12 @@ import {
   deleteAccount,
   verifyAccountDeletionPassword,
 } from "@/lib/actions/auth";
+import { useLocale } from "@/components/LocaleProvider";
 
 type Step = "closed" | "password" | "confirm";
 
 export function DeleteAccountSection() {
+  const { locale, t } = useLocale();
   const [step, setStep] = useState<Step>("closed");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -48,11 +50,12 @@ export function DeleteAccountSection() {
 
     const formData = new FormData();
     formData.set("password", password);
+    formData.set("locale", locale);
     const result = await verifyAccountDeletionPassword(formData);
 
     setLoading(false);
     if (!result.success) {
-      setError(result.error || "No se ha podido comprobar la contraseña.");
+      setError(result.error || t("profile.passwordCheckFailed"));
       return;
     }
 
@@ -67,6 +70,7 @@ export function DeleteAccountSection() {
     const formData = new FormData();
     formData.set("password", password);
     formData.set("confirmation", confirmation);
+    formData.set("locale", locale);
     const result = await deleteAccount(formData);
 
     if (result?.error) {
@@ -92,17 +96,17 @@ export function DeleteAccountSection() {
         {step === "password" ? (
           <form onSubmit={handlePasswordSubmit} className="space-y-5">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-v-red">Paso 1 de 2</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-v-red">{t("profile.stepOne")}</p>
               <h2 id="delete-account-title" className="mt-2 text-2xl font-black italic uppercase">
-                Confirma tu identidad
+                {t("profile.confirmIdentity")}
               </h2>
               <p className="mt-2 text-xs leading-relaxed text-v-white/45">
-                Introduce tu contraseña actual antes de continuar con la eliminación.
+                {t("profile.passwordPrompt")}
               </p>
             </div>
 
             <label className="block space-y-2">
-              <span className="text-[9px] font-black uppercase tracking-widest text-v-white/40">Contraseña actual</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-v-white/40">{t("profile.currentPassword")}</span>
               <input
                 type="password"
                 required
@@ -118,28 +122,28 @@ export function DeleteAccountSection() {
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button type="button" disabled={loading} onClick={closeModal} className="v-btn-secondary px-5 py-3 text-[9px]">
-                Cancelar
+                {t("profile.cancel")}
               </button>
               <button type="submit" disabled={loading} className="v-btn-primary px-5 py-3 text-[9px] disabled:cursor-wait disabled:opacity-50">
-                {loading ? "Comprobando…" : "Continuar"}
+                {loading ? t("profile.checking") : t("profile.continue")}
               </button>
             </div>
           </form>
         ) : (
           <form onSubmit={handleDeletionSubmit} className="space-y-5">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-v-red">Paso 2 de 2</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-v-red">{t("profile.stepTwo")}</p>
               <h2 id="delete-account-title" className="mt-2 text-2xl font-black italic uppercase text-v-red">
-                Esta acción es definitiva
+                {t("profile.definitive")}
               </h2>
               <p className="mt-2 text-xs leading-relaxed text-v-white/55">
-                Se eliminarán tu cuenta, perfil, plantillas, pujas y notificaciones. Abandonarás todas tus ligas y el liderazgo se transferirá cuando corresponda.
+                {t("profile.deletionConsequences")}
               </p>
             </div>
 
             <label className="block space-y-2">
               <span className="text-[9px] font-black uppercase tracking-widest text-v-white/40">
-                Escribe ELIMINAR para continuar
+                {t("profile.typeDelete")}
               </span>
               <input
                 type="text"
@@ -156,14 +160,14 @@ export function DeleteAccountSection() {
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button type="button" disabled={loading} onClick={closeModal} className="v-btn-secondary px-5 py-3 text-[9px]">
-                Conservar mi cuenta
+                {t("profile.keepAccount")}
               </button>
               <button
                 type="submit"
                 disabled={loading || confirmation.trim().toUpperCase() !== "ELIMINAR"}
                 className="bg-v-red px-5 py-3 text-[9px] font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {loading ? "Eliminando…" : "Eliminar definitivamente"}
+                {loading ? t("profile.deleting") : t("profile.deleteForever")}
               </button>
             </div>
           </form>
@@ -177,9 +181,9 @@ export function DeleteAccountSection() {
       <section className="v-panel border-v-red/20 p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-black italic uppercase text-v-red">Eliminar cuenta</h2>
+            <h2 className="text-lg font-black italic uppercase text-v-red">{t("profile.deleteAccount")}</h2>
             <p className="mt-1 max-w-xl text-xs leading-relaxed text-v-white/45">
-              El borrado es definitivo y elimina todos los datos asociados a tu cuenta.
+              {t("profile.deleteSummary")}
             </p>
           </div>
           <button
@@ -187,7 +191,7 @@ export function DeleteAccountSection() {
             onClick={() => setStep("password")}
             className="v-btn-secondary shrink-0 border-v-red/30 px-5 py-3 text-[9px] text-v-red"
           >
-            Eliminar mi cuenta
+            {t("profile.deleteMine")}
           </button>
         </div>
       </section>
