@@ -143,16 +143,43 @@ export default function TopBar() {
             
             <div className="flex items-center gap-4 relative z-10">
                  <div className="flex flex-col">
-                    <span className="text-[11px] font-black italic text-v-red leading-none tracking-wider sm:text-xs">VCT Fantasy 2027</span>
-                    <div className="flex items-center gap-2 mt-1">
+                    <span className="hidden text-[11px] font-black italic text-v-red leading-none tracking-wider sm:inline sm:text-xs">VCT Fantasy 2027</span>
+                    <span className="text-[10px] font-black italic text-v-red leading-none tracking-wider sm:hidden">VCT 27</span>
+                    <div className="mt-1 hidden items-center gap-2 sm:flex">
                         <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
                         <span className="text-[7px] font-black uppercase text-green-500/60 tracking-[0.3em] font-sans">{t("header.activeSession")}</span>
                     </div>
                  </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-4 relative z-10">
+            <div className="flex items-center gap-1.5 sm:gap-4 relative z-10">
                 <LanguageSelector />
+
+                <div className="hidden h-6 w-px bg-white/5 sm:block" />
+
+                <div className="text-right">
+                    <span className="block text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">{t("header.user")}</span>
+                    <span className="block whitespace-nowrap text-[10px] font-black uppercase italic text-white leading-tight sm:text-xs">{user.username}</span>
+                </div>
+
+                <Link
+                    href="/more/profile"
+                    aria-label={t("header.openProfile")}
+                    className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 text-[10px] font-black uppercase text-v-white transition hover:border-v-red sm:h-9 sm:w-9"
+                >
+                    {user.avatar_url ? (
+                        <Image
+                            src={user.avatar_url}
+                            alt=""
+                            fill
+                            sizes="36px"
+                            className="object-cover"
+                        />
+                    ) : (
+                        user.username.slice(0, 2).toUpperCase()
+                    )}
+                </Link>
+
                 <div className="relative">
                     <button 
                         onClick={() => {
@@ -319,30 +346,6 @@ export default function TopBar() {
                     </AnimatePresence>
                 </div>
 
-                <div className="hidden h-6 w-px bg-white/5 sm:block" />
-
-                <div className="min-w-0 text-right">
-                    <span className="block text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">{t("header.user")}</span>
-                    <span className="block max-w-20 truncate text-[11px] font-black uppercase italic text-white leading-tight sm:max-w-32 sm:text-xs">{user.username}</span>
-                </div>
-
-                <Link
-                    href="/more/profile"
-                    aria-label={t("header.openProfile")}
-                    className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 text-[10px] font-black uppercase text-v-white transition hover:border-v-red"
-                >
-                    {user.avatar_url ? (
-                        <Image
-                            src={user.avatar_url}
-                            alt=""
-                            fill
-                            sizes="36px"
-                            className="object-cover"
-                        />
-                    ) : (
-                        user.username.slice(0, 2).toUpperCase()
-                    )}
-                </Link>
             </div>
         </header>
     );
