@@ -145,6 +145,27 @@ export const messages = {
       archiveFailed: "No se pudo archivar", codeCopied: "Código copiado", shareFailed: "No se pudo compartir",
       noRole: "Sin rol", starter: "Titular",
     },
+    team: {
+      title: "Mi equipo", chooseLeague: "Elige tu liga", budget: "Presupuesto", players: "Jugadores",
+      lockedTitle: "Quinteto bloqueado", preseasonTitle: "Pretemporada · Quinteto abierto", openTitle: "Quinteto abierto",
+      defaultGameweek: "La jornada", lockedDescription: "{name} ya ha comenzado. Esta alineación no puede modificarse.",
+      openDescription: "{name} comienza el {date}. Puedes ajustar los titulares hasta entonces.",
+      preseasonDescription: "Puedes preparar tu quinteto mientras se publica el calendario de 2027.",
+      incompleteWarning: "Necesitas cinco titulares para puntuar y recibir premio de jornada.", startingFive: "Quinteto titular",
+      toBench: "A suplentes", sell: "Vender", emptyStarter: "Espacio titular", substitutes: "Suplentes próx. jornada",
+      promote: "Ascender a titular", noSubstitutes: "Sin suplentes", promoteTitle: "Ascender a titular", benchTitle: "Mover al banquillo",
+      moveConfirm: "¿Deseas mover a {name} a {destination}?", starters: "Titulares", substitutesDestination: "Suplentes",
+      limitReached: "Límite alcanzado", maxStarters: "Máximo 5 titulares.", lineupUpdateFailed: "No se pudo actualizar la alineación.",
+      playerPromoted: "Jugador ascendido", playerBenched: "Jugador al banquillo", promotedDescription: "{name} ahora forma parte del quinteto titular.",
+      benchedDescription: "{name} ha pasado al banquillo.", lineupChangeFailed: "No se pudo cambiar la alineación",
+      operationFailed: "No se pudo completar la operación.", playerSessionMissing: "No se ha encontrado el jugador o la sesión no es válida.",
+      invalidMarketValue: "El valor de mercado del jugador no es válido.", validPriceRequired: "Introduce un precio válido en millones de euros.",
+      priceRangeError: "El precio debe estar entre {min} y {max} M € (100%–115%).", listingFailed: "No se pudo poner el jugador en venta.",
+      listed: "Jugador puesto en venta", listedDescription: "{name} ya puede recibir ofertas.", listForSale: "Poner en venta",
+      salePrice: "Precio de venta (M €)", range: "Rango", cancel: "Cancelar", publishing: "Publicando...", confirmListing: "Poner en venta",
+      confirmation: "Confirmación", performAction: "Realizar acción", assignment: "Valor", releaseClause: "Cláusula",
+      points: "Puntos", protected: "Protegido", captain: "Capitán", activeBoost: "Analista activo", freeAgent: "Sin equipo", assign: "Asignar",
+    },
   },
   en: {
     nav: {
@@ -256,6 +277,24 @@ export const messages = {
       reportSentDescription: "The league leader can now review it.", reportFailed: "The report could not be sent", reportArchived: "Report archived",
       archiveFailed: "The report could not be archived", codeCopied: "Code copied", shareFailed: "Could not share",
       noRole: "No role", starter: "Starter",
+    },
+    team: {
+      title: "My team", chooseLeague: "Choose your league", budget: "Budget", players: "Players",
+      lockedTitle: "Lineup locked", preseasonTitle: "Preseason · Lineup open", openTitle: "Lineup open", defaultGameweek: "The gameweek",
+      lockedDescription: "{name} has started. This lineup can no longer be changed.", openDescription: "{name} starts on {date}. You can adjust your starters until then.",
+      preseasonDescription: "You can prepare your lineup while the 2027 schedule is published.", incompleteWarning: "You need five starters to score and receive a gameweek reward.",
+      startingFive: "Starting five", toBench: "To bench", sell: "Sell", emptyStarter: "Empty starter slot", substitutes: "Next gameweek substitutes",
+      promote: "Promote to starter", noSubstitutes: "No substitutes", promoteTitle: "Promote to starter", benchTitle: "Move to bench",
+      moveConfirm: "Move {name} to {destination}?", starters: "Starters", substitutesDestination: "Substitutes", limitReached: "Limit reached",
+      maxStarters: "Maximum of 5 starters.", lineupUpdateFailed: "The lineup could not be updated.", playerPromoted: "Player promoted",
+      playerBenched: "Player moved to bench", promotedDescription: "{name} is now in the starting five.", benchedDescription: "{name} has moved to the bench.",
+      lineupChangeFailed: "The lineup could not be changed", operationFailed: "The operation could not be completed.",
+      playerSessionMissing: "The player could not be found or the session is invalid.", invalidMarketValue: "The player's market value is invalid.",
+      validPriceRequired: "Enter a valid price in millions of euros.", priceRangeError: "The price must be between {min} and {max} M € (100%–115%).",
+      listingFailed: "The player could not be listed for sale.", listed: "Player listed for sale", listedDescription: "{name} can now receive offers.",
+      listForSale: "List for sale", salePrice: "Sale price (€M)", range: "Range", cancel: "Cancel", publishing: "Publishing...",
+      confirmListing: "List for sale", confirmation: "Confirmation", performAction: "Perform action", assignment: "Value", releaseClause: "Clause",
+      points: "Points", protected: "Protected", captain: "Captain", activeBoost: "Active analyst", freeAgent: "Free agent", assign: "Assign",
     },
   },
   fr: {
@@ -369,6 +408,27 @@ export const messages = {
       reportArchived: "Signalement archivé", archiveFailed: "Impossible d’archiver", codeCopied: "Code copié", shareFailed: "Impossible de partager",
       noRole: "Sans rôle", starter: "Titulaire",
     },
+    team: {
+      title: "Mon équipe", chooseLeague: "Choisissez votre ligue", budget: "Budget", players: "Joueurs",
+      lockedTitle: "Composition verrouillée", preseasonTitle: "Pré-saison · Composition ouverte", openTitle: "Composition ouverte",
+      defaultGameweek: "La journée", lockedDescription: "{name} a commencé. Cette composition ne peut plus être modifiée.",
+      openDescription: "{name} commence le {date}. Vous pouvez modifier les titulaires jusque-là.",
+      preseasonDescription: "Vous pouvez préparer votre cinq pendant la publication du calendrier 2027.",
+      incompleteWarning: "Cinq titulaires sont nécessaires pour marquer des points et recevoir la récompense de journée.", startingFive: "Cinq titulaire",
+      toBench: "Remplaçant", sell: "Vendre", emptyStarter: "Place de titulaire", substitutes: "Remplaçants prochaine journée",
+      promote: "Promouvoir titulaire", noSubstitutes: "Aucun remplaçant", promoteTitle: "Promouvoir titulaire", benchTitle: "Mettre sur le banc",
+      moveConfirm: "Déplacer {name} vers {destination} ?", starters: "Titulaires", substitutesDestination: "Remplaçants", limitReached: "Limite atteinte",
+      maxStarters: "Maximum 5 titulaires.", lineupUpdateFailed: "Impossible de mettre à jour la composition.", playerPromoted: "Joueur promu",
+      playerBenched: "Joueur mis sur le banc", promotedDescription: "{name} fait maintenant partie du cinq titulaire.",
+      benchedDescription: "{name} a été placé sur le banc.", lineupChangeFailed: "Impossible de modifier la composition",
+      operationFailed: "Impossible de terminer l’opération.", playerSessionMissing: "Le joueur est introuvable ou la session n’est pas valide.",
+      invalidMarketValue: "La valeur marchande du joueur n’est pas valide.", validPriceRequired: "Saisissez un prix valide en millions d’euros.",
+      priceRangeError: "Le prix doit être compris entre {min} et {max} M € (100 %–115 %).", listingFailed: "Impossible de mettre le joueur en vente.",
+      listed: "Joueur mis en vente", listedDescription: "{name} peut maintenant recevoir des offres.", listForSale: "Mettre en vente",
+      salePrice: "Prix de vente (M €)", range: "Fourchette", cancel: "Annuler", publishing: "Publication...", confirmListing: "Mettre en vente",
+      confirmation: "Confirmation", performAction: "Confirmer l’action", assignment: "Valeur", releaseClause: "Clause",
+      points: "Points", protected: "Protégé", captain: "Capitaine", activeBoost: "Analyste actif", freeAgent: "Sans équipe", assign: "Assigner",
+    },
   },
 } as const satisfies Record<Locale, Record<string, Record<string, string>>>;
 
@@ -378,7 +438,8 @@ export type MessageKey =
   | `landing.${keyof (typeof messages)["es"]["landing"]}`
   | `auth.${keyof (typeof messages)["es"]["auth"]}`
   | `dashboard.${keyof (typeof messages)["es"]["dashboard"]}`
-  | `leagues.${keyof (typeof messages)["es"]["leagues"]}`;
+  | `leagues.${keyof (typeof messages)["es"]["leagues"]}`
+  | `team.${keyof (typeof messages)["es"]["team"]}`;
 
 export function translateMessage(
   locale: Locale,

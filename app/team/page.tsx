@@ -7,6 +7,7 @@ import {
 import { redirect } from "next/navigation";
 import TeamView from "./TeamView";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function TeamPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const { t } = await getServerTranslator();
   const session = await getSession();
   if (!session) return redirect("/login");
 
@@ -54,7 +56,7 @@ export default async function TeamPage({
         <div className="flex items-end justify-between px-1">
           <div>
             <h1 className="text-4xl leading-none italic uppercase cursor-default">
-              Mi Equipo
+              {t("team.title")}
             </h1>
           </div>
         </div>

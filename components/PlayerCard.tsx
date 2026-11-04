@@ -1,6 +1,7 @@
 import { getTeamLogo } from "@/lib/vlr-shared";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useLocale } from "./LocaleProvider";
 
 interface PlayerCardProps {
   player: {
@@ -38,7 +39,7 @@ interface PlayerCardProps {
 export function PlayerCard({ 
   player, 
   onAction, 
-  actionLabel = "Asignar",
+  actionLabel,
   actionSubLabel,
   actionDisabled = false,
   actionClassName = "v-btn-primary",
@@ -53,6 +54,7 @@ export function PlayerCard({
 
   const stats = player.stats || { acs: 0, kd: 0, avgPoints: 0 };
   const router = useRouter();
+  const { t } = useLocale();
 
   const roleColors = {
     'Duelista': 'border-role-duelista',
@@ -122,9 +124,9 @@ export function PlayerCard({
                   <h3 className="text-xl sm:text-2xl tracking-wider flex items-center gap-2">
                     <span className="truncate pr-4">{player.nickname}</span>
                     <div className="flex gap-1 shrink-0">
-                      {isLocked && <span title="Protegido" className="text-v-red animate-pulse text-xs">🛡️</span>}
-                      {isCaptain && <span title="Capitán" className="text-role-iniciador text-xs">©️</span>}
-                      {isBoosted && <span title="Analista Activo" className="text-amber-500 text-[8px] border border-amber-500/30 px-1 font-black animate-pulse">BOOST</span>}
+                      {isLocked && <span title={t("team.protected")} className="text-v-red animate-pulse text-xs">🛡️</span>}
+                      {isCaptain && <span title={t("team.captain")} className="text-role-iniciador text-xs">©️</span>}
+                      {isBoosted && <span title={t("team.activeBoost")} className="text-amber-500 text-[8px] border border-amber-500/30 px-1 font-black animate-pulse">BOOST</span>}
                       {inAuction && <span className="text-[7px] bg-v-red text-white px-1.5 py-0.5 rounded-sm tracking-widest font-black self-center uppercase shrink-0">DRAFT</span>}
                     </div>
                   </h3>
@@ -132,7 +134,7 @@ export function PlayerCard({
               </div>
               <div className="flex items-center gap-2 mt-0.5 ml-16 lg:ml-16 overflow-hidden">
                 <span className="text-[9px] font-black uppercase tracking-[0.15em] text-v-red truncate">
-                  {player.pro_teams?.tag || "Free Agent"}
+                  {player.pro_teams?.tag || t("team.freeAgent")}
                 </span>
                 <span className="text-white/10 text-[10px]">|</span>
                 <span className={`text-[9px] font-black uppercase tracking-[0.15em] text-role-${player.role} truncate`}>
@@ -142,10 +144,10 @@ export function PlayerCard({
             </div>
 
             <div className="text-right shrink-0">
-              <p className="text-[7px] font-black uppercase text-white/30 tracking-widest mb-0.5">Asignación</p>
+              <p className="text-[7px] font-black uppercase text-white/30 tracking-widest mb-0.5">{t("team.assignment")}</p>
               <p className="text-lg font-black italic leading-none whitespace-nowrap">{(player.market_value / 1000000).toFixed(1)}M <span className="text-[9px]">€</span></p>
               {player.releaseClause && (
-                 <p className="text-[10px] font-bold italic text-v-red mt-1 whitespace-nowrap">Reasig: {(player.releaseClause / 1000000).toFixed(1)}M</p>
+                 <p className="text-[10px] font-bold italic text-v-red mt-1 whitespace-nowrap">{t("team.releaseClause")}: {(player.releaseClause / 1000000).toFixed(1)}M</p>
               )}
             </div>
           </div>
@@ -153,7 +155,7 @@ export function PlayerCard({
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-1 bg-white/5 rounded-sm p-2 mt-3">
              <div className="text-center">
-                <span className="block text-[6px] uppercase text-white/40 font-black tracking-wider">Points</span>
+                <span className="block text-[6px] uppercase text-white/40 font-black tracking-wider">{t("team.points")}</span>
                 <span className="text-xs font-black italic text-v-red">{stats.avgPoints ?? 0}</span>
              </div>
              <div className="text-center border-x border-white/5">
@@ -176,7 +178,7 @@ export function PlayerCard({
               className={`${actionClassName}  flex-1 lg:flex lg:flex-col sm:flex-none px-3! py-2! text-[10px]! cursor-pointer disabled:opacity-30 disabled:grayscale`}
             >
                 <span className="text-[10px] font-black uppercase tracking-wider">
-                  {actionLabel}
+                  {actionLabel || t("team.assign")}
                 </span>
 
                 {!!actionSubLabel && (
