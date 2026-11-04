@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { createClient } from "@/utils/supabase/server";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 const VCT_SEASON_YEAR = 2027;
 const MAX_LIVE_AGE_MS = 12 * 60 * 60 * 1000;
@@ -12,6 +13,8 @@ function relation<T>(value: T | T[] | null): T | null {
 }
 
 export async function DashboardMatchList() {
+  const { locale, t } = await getServerTranslator();
+  const dateLocale = locale === "es" ? "es-ES" : locale === "fr" ? "fr-FR" : "en-GB";
   const supabase = await createClient();
   const [matchesResult, seasonTeamsResult] = await Promise.all([
     supabase
@@ -89,12 +92,12 @@ export async function DashboardMatchList() {
       <div className="flex items-end justify-between px-1">
         <div>
           <p className="text-[9px] font-black uppercase tracking-[0.25em] text-v-white/30">
-            Esta semana
+            {t("dashboard.thisWeek")}
           </p>
-          <h2 className="text-2xl">Próximos partidos VCT</h2>
+          <h2 className="text-2xl">{t("dashboard.upcomingMatches")}</h2>
         </div>
         <Link href="/schedule" className="mb-1 text-[10px] font-black uppercase text-v-red hover:tracking-widest">
-          Ver agenda
+          {t("dashboard.viewSchedule")}
         </Link>
       </div>
 
@@ -128,7 +131,7 @@ export async function DashboardMatchList() {
                     {isLive
                       ? "LIVE"
                       : validDate
-                        ? new Intl.DateTimeFormat("es-ES", {
+                        ? new Intl.DateTimeFormat(dateLocale, {
                             timeZone: "Europe/Madrid",
                             hour: "2-digit",
                             minute: "2-digit",
@@ -137,7 +140,7 @@ export async function DashboardMatchList() {
                   </span>
                   <span className="mt-1 text-[7px] font-black uppercase text-v-white/35">
                     {validDate
-                      ? new Intl.DateTimeFormat("es-ES", {
+                      ? new Intl.DateTimeFormat(dateLocale, {
                           timeZone: "Europe/Madrid",
                           weekday: "short",
                           day: "numeric",
@@ -169,8 +172,8 @@ export async function DashboardMatchList() {
           <div className="v-panel border-white/5 py-10 text-center">
             <p className="text-xs text-v-white/40">
               {error
-                ? "No se han podido cargar los partidos en este momento."
-                : "No hay partidos VCT programados para esta semana."}
+                ? t("dashboard.matchesError")
+                : t("dashboard.noMatches")}
             </p>
           </div>
         )}

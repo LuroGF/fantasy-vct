@@ -12,6 +12,7 @@ import { RecentActivity } from "@/components/RecentActivity";
 import { DashboardLeagueSwitcher } from "@/components/DashboardLeagueSwitcher";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { createClient } from "@/utils/supabase/server";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ function leagueData(participation: any) {
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
+  const { t } = await getServerTranslator();
   const supabase = await createClient();
   const {
     data: { user },
@@ -105,30 +107,30 @@ export default async function DashboardPage({
   }
 
   const username =
-    profile?.username || user.email?.split("@")[0] || "Entrenador";
+    profile?.username || user.email?.split("@")[0] || t("dashboard.coachFallback");
   const metrics = [
     {
-      label: "Posición",
+      label: t("dashboard.position"),
       value: rank > 0 ? `#${rank}` : "—",
-      detail: participantCount > 0 ? `de ${participantCount}` : "Sin clasificación",
+      detail: participantCount > 0 ? t("dashboard.of", { count: participantCount }) : t("dashboard.unranked"),
       icon: Trophy,
     },
     {
-      label: "Puntos",
+      label: t("dashboard.points"),
       value: String(selectedParticipation?.total_points ?? 0),
-      detail: `+${gameweekPoints} esta jornada`,
+      detail: t("dashboard.thisGameweek", { points: gameweekPoints }),
       icon: Target,
     },
     {
-      label: "Saldo",
+      label: t("dashboard.balance"),
       value: money(selectedParticipation?.current_budget),
-      detail: "Disponible",
+      detail: t("dashboard.available"),
       icon: CircleDollarSign,
     },
     {
-      label: "Quinteto",
+      label: t("dashboard.lineup"),
       value: `${starterCount}/5`,
-      detail: `${rosterCount} jugadores en plantilla`,
+      detail: t("dashboard.rosterPlayers", { count: rosterCount }),
       icon: ShieldCheck,
     },
   ];
@@ -140,9 +142,9 @@ export default async function DashboardPage({
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">
             VCT Fantasy 2027
           </p>
-          <h1 className="text-4xl leading-none sm:text-5xl">Hola, {username}</h1>
+          <h1 className="text-4xl leading-none sm:text-5xl">{t("dashboard.hello", { name: username })}</h1>
           <p className="text-sm text-v-white/50">
-            Revisa tu jornada, tu plantilla y los próximos partidos.
+            {t("dashboard.intro")}
           </p>
         </header>
 
@@ -161,13 +163,13 @@ export default async function DashboardPage({
         {!selectedParticipation || !selectedLeague ? (
           <section className="v-panel space-y-5 py-10 text-center">
             <div>
-              <h2 className="text-2xl">Empieza tu primera liga</h2>
+              <h2 className="text-2xl">{t("dashboard.startFirstLeague")}</h2>
               <p className="mt-2 text-sm text-v-white/50">
-                Crea una liga o únete con un código para recibir jugadores y competir.
+                {t("dashboard.noLeagueDescription")}
               </p>
             </div>
             <Link href="/leagues" className="v-btn-primary inline-flex text-xs">
-              Ir a ligas
+              {t("dashboard.goLeagues")}
             </Link>
           </section>
         ) : (
@@ -176,12 +178,12 @@ export default async function DashboardPage({
               <div className="flex items-end justify-between px-1">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-[0.25em] text-v-white/30">
-                    Liga seleccionada
+                    {t("dashboard.selectedLeague")}
                   </p>
                   <h2 className="text-2xl">{selectedLeague.name}</h2>
                 </div>
                 <Link href="/leagues" className="text-[10px] font-black uppercase text-v-red hover:tracking-widest">
-                  Ver liga
+                  {t("dashboard.viewLeague")}
                 </Link>
               </div>
 
@@ -207,23 +209,23 @@ export default async function DashboardPage({
             <section className="v-panel flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.25em] text-v-red">
-                  Tu jornada
+                  {t("dashboard.yourGameweek")}
                 </p>
                 <h2 className="mt-1 text-2xl">
-                  {activeGameweek?.name ?? "Sin jornada activa"}
+                  {activeGameweek?.name ?? t("dashboard.noActiveGameweek")}
                 </h2>
                 <p className="mt-2 text-xs text-v-white/45">
                   {activeGameweek
                     ? activeGameweek.is_locked
-                      ? "La alineación está bloqueada."
+                      ? t("dashboard.lineupLocked")
                       : starterCount === 5
-                        ? "Tu quinteto está completo."
-                        : `Tienes ${starterCount} de 5 titulares seleccionados.`
-                    : "Te avisaremos cuando se abra la próxima jornada."}
+                        ? t("dashboard.lineupComplete")
+                        : t("dashboard.selectedStarters", { count: starterCount })
+                    : t("dashboard.nextGameweekNotice")}
                 </p>
               </div>
               <Link href="/team" className="v-btn-primary shrink-0 text-xs">
-                Revisar equipo
+                {t("dashboard.reviewTeam")}
               </Link>
             </section>
           </>

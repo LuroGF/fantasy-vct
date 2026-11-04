@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { defaultLocale, isLocale, localeCookieName, type Locale } from "@/lib/i18n/config";
-import { messages, type MessageKey } from "@/lib/i18n/messages";
+import { translateMessage, type MessageKey } from "@/lib/i18n/messages";
 
 type Variables = Record<string, string | number>;
 type LocaleContextValue = {
@@ -40,14 +40,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback(
     (key: MessageKey, variables: Variables = {}) => {
-      const [group, name] = key.split(".") as ["nav" | "header", string];
-      const groupMessages = messages[locale][group] as Record<string, string>;
-      const fallbackMessages = messages[defaultLocale][group] as Record<string, string>;
-      const template = groupMessages[name] || fallbackMessages[name] || key;
-      return Object.entries(variables).reduce(
-        (result, [variable, value]) => result.replaceAll(`{${variable}}`, String(value)),
-        template,
-      );
+      return translateMessage(locale, key, variables);
     },
     [locale],
   );

@@ -1,8 +1,10 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { UserPlus, UserMinus, Zap } from "lucide-react";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 export async function RecentActivity({ profileId }: { profileId: string }) {
+  const { locale, t } = await getServerTranslator();
   const supabase = await createClient();
 
   // 1. Get user's leagues
@@ -27,27 +29,27 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
   if (error || !actions || actions.length === 0) {
     return (
       <div className="v-panel border-dashed border-white/5 py-8 text-center opacity-30">
-        <p className="text-[10px] font-black uppercase tracking-widest italic">Sin actividad reciente en tus ligas</p>
+        <p className="text-[10px] font-black uppercase tracking-widest italic">{t("dashboard.noRecentActivity")}</p>
       </div>
     );
   }
 
   const getActionDetails = (type: string) => {
     switch (type) {
-      case 'buy': return { icon: UserPlus, color: 'text-green-400', label: 'Reclutamiento' };
-      case 'sell': return { icon: UserMinus, color: 'text-v-red', label: 'Baja' };
-      case 'clause_paid': return { icon: Zap, color: 'text-v-role-iniciador', label: 'Reasignación' };
-      case 'trade': return { icon: UserPlus, color: 'text-blue-400', label: 'Intercambio' };
-      case 'auction_sold': return { icon: Zap, color: 'text-amber-400', label: 'Subasta' };
-      default: return { icon: UserPlus, color: 'text-v-white/50', label: 'Operación' };
+      case 'buy': return { icon: UserPlus, color: 'text-green-400', label: t("dashboard.recruitment") };
+      case 'sell': return { icon: UserMinus, color: 'text-v-red', label: t("dashboard.departure") };
+      case 'clause_paid': return { icon: Zap, color: 'text-v-role-iniciador', label: t("dashboard.reassignment") };
+      case 'trade': return { icon: UserPlus, color: 'text-blue-400', label: t("dashboard.trade") };
+      case 'auction_sold': return { icon: Zap, color: 'text-amber-400', label: t("dashboard.auction") };
+      default: return { icon: UserPlus, color: 'text-v-white/50', label: t("dashboard.operation") };
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between px-1">
-        <h2 className="text-2xl italic tracking-tighter uppercase">Actividad de Ligas</h2>
-        <span className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-1">Últimos Movimientos</span>
+        <h2 className="text-2xl italic tracking-tighter uppercase">{t("dashboard.leagueActivity")}</h2>
+        <span className="text-[8px] font-black uppercase text-v-white/30 tracking-widest mb-1">{t("dashboard.latestMoves")}</span>
       </div>
 
       <div className="grid gap-2">
@@ -63,7 +65,7 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-[9px] font-black uppercase tracking-tighter text-v-white truncate">
-                    {action.profiles?.username || "Sistema"}
+                    {action.profiles?.username || t("dashboard.system")}
                   </span>
                   <div className="w-1 h-1 bg-white/20 rounded-full" />
                   <span className={`text-[8px] font-black uppercase ${details.color}`}>
@@ -71,7 +73,7 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
                   </span>
                 </div>
                 <h4 className="text-xs font-black italic uppercase text-v-white tracking-tight truncate">
-                   {action.pro_players?.nickname || "Item"} en <span className="text-v-red/80">{action.leagues?.name}</span>
+                   {action.pro_players?.nickname || t("dashboard.item")} {t("dashboard.inLeague")} <span className="text-v-red/80">{action.leagues?.name}</span>
                 </h4>
               </div>
 
@@ -80,7 +82,7 @@ export async function RecentActivity({ profileId }: { profileId: string }) {
                   {(action.price / 1000000).toFixed(1)}M <span className="text-[8px] lg:text-[10px] text-v-red/50">€</span>
                 </p>
                 <p className="text-[7px] lg:text-[9px] text-v-white/20 font-black uppercase mt-1">
-                  {new Date(action.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(action.created_at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>

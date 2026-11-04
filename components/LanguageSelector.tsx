@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Languages } from "lucide-react";
 import { supportedLocales, type Locale } from "@/lib/i18n/config";
 import { useLocale } from "./LocaleProvider";
@@ -40,6 +41,7 @@ function Flag({ locale }: { locale: Locale }) {
 
 export function LanguageSelector() {
   const { locale, setLocale, t } = useLocale();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +65,7 @@ export function LanguageSelector() {
   function chooseLocale(nextLocale: Locale) {
     setLocale(nextLocale);
     setOpen(false);
+    router.refresh();
   }
 
   return (

@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signIn } from "@/lib/actions/auth";
 import { sileo } from "sileo";
+import { useLocale } from "@/components/LocaleProvider";
+import { PublicLanguageSelector } from "@/components/PublicLanguageSelector";
 
 export default function LoginPage() {
+  const { locale, t } = useLocale();
   const [loading, setLoading] = useState(false);
   const deletionToastShown = useRef(false);
 
@@ -15,14 +18,14 @@ export default function LoginPage() {
 
     deletionToastShown.current = true;
     sileo.success({
-      title: "Cuenta eliminada",
-      description: "Tu cuenta y sus datos asociados se han eliminado correctamente.",
+      title: t("auth.accountDeleted"),
+      description: t("auth.accountDeletedDescription"),
       duration: 5000,
     });
 
     url.searchParams.delete("accountDeleted");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-  }, []);
+  }, [t]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,7 +36,7 @@ export default function LoginPage() {
 
     if (result?.error) {
       sileo.error({
-        title: "Acceso denegado",
+        title: t("auth.accessDenied"),
         description: result.error,
         duration: 3000,
       });
@@ -44,6 +47,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-v-navy">
+      <PublicLanguageSelector />
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
         <video
           className="h-full w-full scale-105 object-cover blur-md"
@@ -71,16 +75,17 @@ export default function LoginPage() {
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-8 bg-v-red" />
                 <h1 className="text-4xl sm:text-5xl italic tracking-tighter uppercase">
-                  Iniciar sesión
+                  {t("auth.signInTitle")}
                 </h1>
               </div>
             </div>
 
             <div className="v-panel p-6 space-y-6">
               <form onSubmit={handleSubmit} className="grid gap-6">
+                <input type="hidden" name="locale" value={locale} />
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
-                    Correo
+                    {t("auth.email")}
                   </label>
                   <input
                     name="email"
@@ -93,7 +98,7 @@ export default function LoginPage() {
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-v-white/30 ml-1">
-                    Contraseña
+                    {t("auth.password")}
                   </label>
                   <input
                     name="password"
@@ -107,7 +112,7 @@ export default function LoginPage() {
                       href="/forgot-password"
                       className="text-[10px] font-black uppercase tracking-wider text-v-red hover:underline"
                     >
-                      He olvidado mi contraseña
+                      {t("auth.forgotPassword")}
                     </Link>
                   </div>
                 </div>
@@ -118,7 +123,7 @@ export default function LoginPage() {
                   className="v-btn-primary w-full py-4 text-sm mt-4 shadow-xl shadow-v-red/20 cursor-pointer group disabled:opacity-50"
                 >
                   <span className="flex items-center justify-center gap-2">
-                    {loading ? "VERIFICANDO..." : "Iniciar Sesión"}
+                    {loading ? t("auth.verifying").toUpperCase() : t("auth.signIn")}
                     {!loading && (
                       <svg
                         className="w-4 h-4 group-hover:translate-x-1 transition-transform"
@@ -141,12 +146,12 @@ export default function LoginPage() {
             </div>
 
             <p className="text-center text-xs text-v-white/40 font-medium tracking-tight">
-              ¿Aún no tienes una cuenta?{" "}
+              {t("auth.noAccount")}{" "}
               <Link
                 href="/register"
                 className="text-v-red font-black uppercase hover:underline ml-1"
               >
-                Regístrate aquí
+                {t("auth.registerHere")}
               </Link>
             </p>
 

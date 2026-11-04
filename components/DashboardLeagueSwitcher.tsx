@@ -2,6 +2,7 @@
 
 import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "./LocaleProvider";
 
 type LeagueOption = {
   id: string;
@@ -16,6 +17,7 @@ export function DashboardLeagueSwitcher({
   activeLeagueId: string | null;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function DashboardLeagueSwitcher({
     <div className="space-y-2">
       <nav
         className={`flex gap-2 overflow-x-auto pb-1 transition-opacity ${pending ? "opacity-55" : "opacity-100"}`}
-        aria-label="Seleccionar liga"
+        aria-label={t("dashboard.selectLeague")}
         aria-busy={pending}
       >
         {leagues.map((league) => {
@@ -56,7 +58,7 @@ export function DashboardLeagueSwitcher({
       </nav>
       {pending && (
         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-v-red" role="status">
-          Cambiando de liga…
+          {t("dashboard.changingLeague")}
         </p>
       )}
     </div>

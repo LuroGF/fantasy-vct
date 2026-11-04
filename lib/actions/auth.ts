@@ -4,9 +4,20 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { defaultLocale, isLocale } from "@/lib/i18n/config";
+import { translateMessage, type MessageKey } from "@/lib/i18n/messages";
 
 function validEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function getFormLocale(formData: FormData) {
+  const value = String(formData.get("locale") || "");
+  return isLocale(value) ? value : defaultLocale;
+}
+
+function authMessage(formData: FormData, key: MessageKey) {
+  return translateMessage(getFormLocale(formData), key);
 }
 
 async function getRequestOrigin() {
@@ -37,7 +48,7 @@ export async function signUp(formData: FormData) {
   if (formData.get("legalAccepted") !== "true") {
     return {
       error:
-        "Debes aceptar los términos, confirmar la política de privacidad y declarar que tienes al menos 16 años.",
+        authMessage(formData, "auth.legalRequired"),
     };
   }
 
@@ -61,21 +72,21 @@ export async function signUp(formData: FormData) {
   ) {
     return {
       error:
-        "Todos los campos son obligatorios",
+        authMessage(formData, "auth.requiredFields"),
     };
   }
 
   if (!validEmail(email)) {
     return {
       error:
-        "El formato del email no es válido",
+        authMessage(formData, "auth.invalidEmail"),
     };
   }
 
   if (password.length < 8) {
     return {
       error:
-        "La contraseña debe tener al menos 8 caracteres",
+        authMessage(formData, "auth.passwordMin"),
     };
   }
 
@@ -85,7 +96,7 @@ export async function signUp(formData: FormData) {
   ) {
     return {
       error:
-        "El nombre de usuario debe tener entre 3 y 20 caracteres",
+        authMessage(formData, "auth.usernameLength"),
     };
   }
 
@@ -96,7 +107,7 @@ export async function signUp(formData: FormData) {
   ) {
     return {
       error:
-        "El nombre de usuario solo puede contener letras, números y guiones bajos",
+        authMessage(formData, "auth.usernameCharacters"),
     };
   }
 
@@ -122,10 +133,10 @@ export async function signUp(formData: FormData) {
       error:
         normalizedMessage.includes("already registered") ||
         normalizedMessage.includes("already exists")
-          ? "Ya existe una cuenta con ese correo."
+          ? authMessage(formData, "auth.emailExists")
           : normalizedMessage.includes("rate limit")
-            ? "Se han realizado demasiados intentos. Espera unos minutos."
-            : "No se ha podido crear la cuenta. Inténtalo de nuevo.",
+            ? authMessage(formData, "auth.rateLimit")
+            : authMessage(formData, "auth.createFailed"),
     };
   }
 
@@ -136,7 +147,7 @@ export async function signUp(formData: FormData) {
       success: true,
       requiresEmailConfirmation: true,
       message:
-        "Cuenta creada. Revisa tu correo para confirmar la cuenta antes de iniciar sesión.",
+        authMessage(formData, "auth.confirmationSent"),
     };
   }
 
@@ -153,7 +164,7 @@ export async function requestPasswordReset(formData: FormData) {
     .toLowerCase();
 
   if (!validEmail(email)) {
-    return { success: false, error: "Introduce un correo electrónico válido." };
+    return { success: false, error: authMessage(formData, "auth.invalidEmail") };
   }
 
   const supabase = await createClient();
@@ -172,13 +183,13 @@ export async function requestPasswordReset(formData: FormData) {
     return {
       success: true,
       message:
-        "Si existe una cuenta con ese correo, recibirás un enlace para cambiar la contraseña.",
+        authMessage(formData, "auth.resetRequestSent"),
     };
   } catch (error) {
     console.error("[AUTH] Password reset request failed:", error);
     return {
       success: false,
-      error: "No se ha podido solicitar el cambio de contraseña. Inténtalo de nuevo.",
+      error: authMessage(formData, "auth.resetRequestFailed"),
     };
   }
 }
@@ -190,12 +201,12 @@ export async function updatePassword(formData: FormData) {
   if (password.length < 8) {
     return {
       success: false,
-      error: "La contraseña debe tener al menos 8 caracteres.",
+      error: authMessage(formData, "auth.passwordMin"),
     };
   }
 
   if (password !== confirmation) {
-    return { success: false, error: "Las contraseñas no coinciden." };
+    return { success: false, error: authMessage(formData, "auth.passwordsMismatch") };
   }
 
   const supabase = await createClient();
@@ -206,7 +217,7 @@ export async function updatePassword(formData: FormData) {
   if (!user) {
     return {
       success: false,
-      error: "El enlace ha caducado. Solicita uno nuevo.",
+      error: authMessage(formData, "auth.expiredLink"),
     };
   }
 
@@ -215,7 +226,7 @@ export async function updatePassword(formData: FormData) {
     console.error("[AUTH] Password update failed:", error.message);
     return {
       success: false,
-      error: "No se ha podido actualizar la contraseña. Solicita un enlace nuevo e inténtalo otra vez.",
+      error: authMessage(formData, "auth.passwordUpdateFailed"),
     };
   }
 
@@ -244,7 +255,7 @@ export async function signIn(
   if (!email || !password) {
     return {
       error:
-        "Email y contraseña requeridos",
+        authMessage(formData, "auth.credentialsRequired"),
     };
   }
 
@@ -272,7 +283,7 @@ export async function signIn(
     ) {
       return {
         error:
-          "Debes confirmar tu correo antes de iniciar sesión.",
+          authMessage(formData, "auth.emailNotConfirmed"),
       };
     }
 
@@ -285,19 +296,19 @@ export async function signIn(
     ) {
       return {
         error:
-          "Email o contraseña incorrectos.",
+          authMessage(formData, "auth.incorrectCredentials"),
       };
     }
 
     return {
-      error: "No se ha podido iniciar sesión. Inténtalo de nuevo.",
+      error: authMessage(formData, "auth.signInFailed"),
     };
   }
 
   if (!data.user) {
     return {
       error:
-        "No se ha podido recuperar el usuario.",
+        authMessage(formData, "auth.userUnavailable"),
     };
   }
 
