@@ -4,6 +4,7 @@ import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
 import { getSession } from "@/lib/actions/auth";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { getMarketDashboard } from "@/lib/actions/market";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 type SearchParams = Promise<{ league?: string }>;
 
@@ -12,6 +13,7 @@ export default async function MarketPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const { t } = await getServerTranslator();
   const session = await getSession();
   if (!session) return redirect("/login");
 
@@ -20,7 +22,7 @@ export default async function MarketPage({
   if (!leagues.length) {
     return (
       <div className="flex flex-col items-center justify-center py-20 opacity-50 italic">
-        <p>Debes unirte a una liga para acceder al mercado.</p>
+        <p>{t("market.noLeague")}</p>
       </div>
     );
   }
@@ -43,7 +45,7 @@ export default async function MarketPage({
       <div className="mx-auto w-full max-w-md sm:max-w-xl lg:max-w-5xl px-4 sm:px-6 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 py-6">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl leading-none italic uppercase">Mercado</h1>
+            <h1 className="text-4xl leading-none italic uppercase">{t("market.title")}</h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">
               Fantasy VCT 2027
             </p>

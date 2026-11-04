@@ -20,6 +20,7 @@ import {
   updatePlayerListingPrice,
   updateManagerOffer,
 } from "@/lib/actions/market";
+import { useLocale } from "@/components/LocaleProvider";
 
 type Tab = "market" | "rivals" | "sales" | "offers";
 
@@ -41,12 +42,13 @@ const notifyError = (title: string, description?: string) =>
   } as any);
 
 function PlayerImage({ player }: { player: any }) {
+  const { t } = useLocale();
   return (
     <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-white/5">
       {player?.photo_url ? (
         <Image
           src={player.photo_url}
-          alt={player.nickname || "Jugador"}
+          alt={player.nickname || t("market.playerFallback")}
           fill
           sizes="64px"
           className="object-cover object-top"
@@ -61,6 +63,7 @@ function PlayerImage({ player }: { player: any }) {
 }
 
 function Countdown({ endsAt }: { endsAt: string }) {
+  const { t } = useLocale();
   const [now, setNow] = useState(0);
 
   useEffect(() => {
@@ -78,10 +81,11 @@ function Countdown({ endsAt }: { endsAt: string }) {
   const hours = Math.floor(diff / 3_600_000);
   const mins = Math.floor((diff % 3_600_000) / 60_000);
 
-  return <>{diff <= 0 ? "Cerrando…" : `${hours}h ${mins}m`}</>;
+  return <>{diff <= 0 ? t("market.closing") : `${hours}h ${mins}m`}</>;
 }
 
 function ListingCountdown({ expiresAt }: { expiresAt: string }) {
+  const { t } = useLocale();
   const [now, setNow] = useState(0);
 
   useEffect(() => {
@@ -97,7 +101,7 @@ function ListingCountdown({ expiresAt }: { expiresAt: string }) {
 
   const diff = Math.max(0, new Date(expiresAt).getTime() - now);
 
-  if (diff <= 0) return <>Caducando…</>;
+  if (diff <= 0) return <>{t("market.expiring")}</>;
 
   const days = Math.floor(diff / 86_400_000);
   const hours = Math.floor((diff % 86_400_000) / 3_600_000);
@@ -112,6 +116,7 @@ export default function MarketView({
   profileId,
   initialData,
 }: Props) {
+  const { t } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -132,6 +137,17 @@ export default function MarketView({
   const [bidDialog, setBidDialog] = useState<any>(null);
   const [offerDialog, setOfferDialog] = useState<any>(null);
   const [editPriceDialog, setEditPriceDialog] = useState<any>(null);
+
+  function offerStatusLabel(status: string) {
+    switch (status) {
+      case "pending": return t("market.statusPending");
+      case "accepted": return t("market.statusAccepted");
+      case "rejected": return t("market.statusRejected");
+      case "cancelled": return t("market.statusCancelled");
+      case "expired": return t("market.statusExpired");
+      default: return status;
+    }
+  }
 
   const activeLeague = useMemo(
     () =>
@@ -157,13 +173,13 @@ export default function MarketView({
       setData(next);
     } catch (error: any) {
       notifyError(
-        "Error al cargar el mercado",
-        error?.message || "No se pudieron actualizar los datos",
+        t("market.loadError"),
+        error?.message || t("market.refreshError"),
       );
     } finally {
       setLoading(false);
     }
-  }, [activeLeagueId, profileId]);
+  }, [activeLeagueId, profileId, t]);
 
   useEffect(() => {
     const auctions = data?.auctions || [];
@@ -221,7 +237,7 @@ export default function MarketView({
       const result = await fn();
 
       if (!result?.success) {
-        throw new Error(result?.error || "No se pudo completar la operación.");
+        throw new Error(result?.error || t("market.operationFailed"));
       }
 
       // Primero actualizamos la información.
@@ -247,8 +263,8 @@ export default function MarketView({
       }
 
       sileo.error({
-        title: "Error",
-        description: error?.message || "No se pudo completar la operación.",
+        title: t("market.error"),
+        description: error?.message || t("market.operationFailed"),
         duration: 9000,
       } as any);
     } finally {
@@ -261,30 +277,30 @@ export default function MarketView({
     if (!bidDialog) return;
     const amount = Number(bidDialog.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      notifyError("Puja no válida", "Introduce un importe válido.");
+      notifyError(t("market.invalidBid"), t("market.validAmount"));
       return;
     }
 
     if (amount > availableForCurrentBid) {
       notifyError(
-        "Saldo comprometido",
-        `Puedes destinar como máximo ${money(availableForCurrentBid)} a esta puja.`,
+        t("market.committedBalance"),
+        t("market.maxBidDescription", { amount: money(availableForCurrentBid) }),
       );
       return;
     }
 
     const auctionId = bidDialog.auction.id;
     const editingBid = Boolean(bidDialog.auction.my_bid);
-    const playerName = bidDialog.auction.player?.nickname || "el jugador";
+    const playerName = bidDialog.auction.player?.nickname || t("market.genericPlayer");
 
     setBidDialog(null);
     await runAction(
       () => placeBid(auctionId, profileId, Math.round(amount)),
-      editingBid ? "Puja modificada" : "Puja realizada",
+      editingBid ? t("market.bidChanged") : t("market.bidPlaced"),
       editingBid
-        ? `Tu nueva puja por ${playerName} es de ${money(amount)}.`
-        : `Has pujado ${money(amount)} por ${playerName}.`,
-      editingBid ? "Actualizando tu puja…" : "Registrando tu puja…",
+        ? t("market.bidChangedDescription", { name: playerName, amount: money(amount) })
+        : t("market.bidPlacedDescription", { name: playerName, amount: money(amount) }),
+      editingBid ? t("market.updatingBid") : t("market.registeringBid"),
     );
   }
 
@@ -293,7 +309,7 @@ export default function MarketView({
 
     const amount = Number(offerDialog.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      notifyError("Oferta no válida", "Introduce un importe válido.");
+      notifyError(t("market.invalidOffer"), t("market.validAmount"));
       return;
     }
 
@@ -305,16 +321,16 @@ export default function MarketView({
       await runAction(
         () =>
           updateManagerOffer(existingOffer.id, Math.round(amount), profileId),
-        "Oferta modificada",
-        `Tu nueva oferta por ${offerDialog.player?.nickname} es de ${money(amount)}.`,
+        t("market.offerChanged"),
+        t("market.offerChangedDescription", { name: offerDialog.player?.nickname, amount: money(amount) }),
       );
       return;
     }
 
     await runAction(
       () => makeManagerOffer(listingId, Math.round(amount), profileId),
-      "Oferta enviada",
-      `Has ofrecido ${money(amount)} por ${offerDialog.player?.nickname}.`,
+      t("market.offerSent"),
+      t("market.offerSentDescription", { amount: money(amount), name: offerDialog.player?.nickname }),
     );
   }
 
@@ -327,14 +343,14 @@ export default function MarketView({
     const maxPrice = Math.floor(minPrice * 1.15);
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      notifyError("Precio no válido", "Introduce un importe válido.");
+      notifyError(t("market.invalidPrice"), t("market.validAmount"));
       return;
     }
 
     if (amount < minPrice || amount > maxPrice) {
       notifyError(
-        "Precio fuera de rango",
-        `Debe estar entre ${money(minPrice)} y ${money(maxPrice)}.`,
+        t("market.priceOutOfRange"),
+        t("market.priceRange", { min: money(minPrice), max: money(maxPrice) }),
       );
       return;
     }
@@ -343,16 +359,16 @@ export default function MarketView({
 
     await runAction(
       () => updatePlayerListingPrice(listing.id, Math.round(amount), profileId),
-      "Precio actualizado",
-      `${listing.player?.nickname} ahora está listado por ${money(amount)}.`,
+      t("market.priceUpdated"),
+      t("market.priceUpdatedDescription", { name: listing.player?.nickname, amount: money(amount) }),
     );
   }
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "market", label: "Mercado" },
-    { id: "rivals", label: "Rivales" },
-    { id: "sales", label: "Mis ventas" },
-    { id: "offers", label: "Ofertas" },
+    { id: "market", label: t("market.tabMarket") },
+    { id: "rivals", label: t("market.tabRivals") },
+    { id: "sales", label: t("market.tabSales") },
+    { id: "offers", label: t("market.tabOffers") },
   ];
 
   return (
@@ -361,7 +377,7 @@ export default function MarketView({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="mb-1 text-[8px] font-black uppercase tracking-[0.22em] text-white/35">
-              Liga activa
+              {t("market.activeLeague")}
             </p>
             <button
               type="button"
@@ -369,7 +385,7 @@ export default function MarketView({
               className="flex max-w-full items-center gap-2 text-left text-lg font-black italic uppercase text-white transition hover:text-v-red"
             >
               <span className="truncate">
-                {activeLeague?.leagues?.name || activeLeague?.name || "Liga"}
+                {activeLeague?.leagues?.name || activeLeague?.name || t("market.leagueFallback")}
               </span>
               <span className="text-xs text-v-red">⌄</span>
             </button>
@@ -403,7 +419,7 @@ export default function MarketView({
           <div className="grid w-full shrink-0 grid-cols-4 gap-x-3 gap-y-2 text-right sm:w-auto sm:gap-x-4">
             <div>
               <p className="text-[7px] font-black uppercase text-white/30">
-                Saldo
+                {t("market.balance")}
               </p>
               <p className="text-sm font-black italic text-white">
                 {money(data?.participant?.current_budget)}
@@ -411,7 +427,7 @@ export default function MarketView({
             </div>
             <div>
               <p className="text-[7px] font-black uppercase text-white/30">
-                Disponible
+                {t("market.available")}
               </p>
               <p className="text-sm font-black italic text-v-red">
                 {money(availableBudget)}
@@ -419,7 +435,7 @@ export default function MarketView({
             </div>
             <div>
               <p className="text-[7px] font-black uppercase text-white/30">
-                Pujas
+                {t("market.bids")}
               </p>
               <p className="text-sm font-black italic text-white">
                 {data?.stats?.activeBids || 0}
@@ -427,7 +443,7 @@ export default function MarketView({
             </div>
             <div>
               <p className="text-[7px] font-black uppercase text-white/30">
-                Exposición
+                {t("market.exposure")}
               </p>
               <p className="text-sm font-black italic text-v-red">
                 {money(data?.stats?.bidExposure)}
@@ -458,7 +474,7 @@ export default function MarketView({
 
       {loading && !pendingAction && (
         <div className="text-center text-[8px] font-black uppercase tracking-[0.2em] text-white/30">
-          Actualizando…
+          {t("market.updating")}
         </div>
       )}
 
@@ -475,7 +491,7 @@ export default function MarketView({
               {pendingAction}
             </p>
             <p className="mt-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/35">
-              No cierres esta ventana
+              {t("market.dontClose")}
             </p>
           </div>
         </div>
@@ -485,10 +501,10 @@ export default function MarketView({
         <section className="space-y-4">
           <div>
             <h2 className="text-xl font-black italic uppercase">
-              Mercado de hoy
+              {t("market.today")}
             </h2>
             <p className="text-[9px] font-black uppercase tracking-widest text-v-red">
-              10 jugadores · pujas ocultas · cierre automático
+              {t("market.todayCaption")}
             </p>
           </div>
 
@@ -504,7 +520,7 @@ export default function MarketView({
                   <div className="flex gap-4">
                     <Link
                       href={`/players/${player.id}?league=${activeLeagueId}`}
-                      aria-label={`Ver perfil de ${player.nickname}`}
+                      aria-label={t("market.viewProfile", { name: player.nickname })}
                       className="shrink-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
                     >
                       <PlayerImage player={player} />
@@ -526,7 +542,7 @@ export default function MarketView({
                         </div>
                         <div className="text-right">
                           <p className="text-[7px] font-black uppercase text-white/30">
-                            Valor
+                            {t("market.value")}
                           </p>
                           <p className="text-sm font-black italic text-white">
                             {money(
@@ -540,17 +556,17 @@ export default function MarketView({
                       <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/5 pt-3">
                         <div>
                           <p className="text-[7px] font-black uppercase text-white/30">
-                            Tu puja
+                            {t("market.yourBid")}
                           </p>
                           <p
                             className={`text-sm font-black italic ${myBid ? "text-v-red" : "text-white/25"}`}
                           >
-                            {myBid ? money(myBid.amount) : "Sin puja"}
+                            {myBid ? money(myBid.amount) : t("market.noBid")}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="text-[7px] font-black uppercase text-white/30">
-                            Cierra en
+                            {t("market.closesIn")}
                           </p>
                           <p className="text-sm font-black italic text-white">
                             <Countdown endsAt={auction.ends_at} />
@@ -574,7 +590,7 @@ export default function MarketView({
                           }
                           className="v-btn-primary flex-1 py-3! text-[9px]!"
                         >
-                          {myBid ? "Modificar puja" : "Pujar"}
+                          {myBid ? t("market.modifyBid") : t("market.bid")}
                         </button>
                         {myBid && (
                           <button
@@ -582,13 +598,13 @@ export default function MarketView({
                             onClick={() =>
                               runAction(
                                 () => withdrawBid(auction.id, profileId),
-                                "Puja retirada",
-                                `Has retirado tu puja por ${player?.nickname}.`,
+                                t("market.bidWithdrawn"),
+                                t("market.bidWithdrawnDescription", { name: player?.nickname }),
                               )
                             }
                             className="border border-white/10 px-3 text-[8px] font-black uppercase text-white/40 transition hover:border-v-red hover:text-v-red"
                           >
-                            Cancelar
+                            {t("market.cancel")}
                           </button>
                         )}
                       </div>
@@ -601,7 +617,7 @@ export default function MarketView({
 
           {(data?.auctions || []).length === 0 && (
             <div className="v-panel py-14 text-center text-xs font-black uppercase italic text-white/25">
-              No hay mercado activo en esta liga.
+              {t("market.noActiveMarket")}
             </div>
           )}
         </section>
@@ -610,9 +626,9 @@ export default function MarketView({
       {activeTab === "rivals" && (
         <section className="space-y-5">
           <div>
-            <h2 className="text-xl font-black italic uppercase">Rivales</h2>
+            <h2 className="text-xl font-black italic uppercase">{t("market.tabRivals")}</h2>
             <p className="text-[9px] font-black uppercase tracking-widest text-v-red">
-              Cláusulas y ofertas por jugadores en venta
+              {t("market.rivalsSubtitle")}
             </p>
           </div>
 
@@ -623,7 +639,7 @@ export default function MarketView({
                   {rival.username}
                 </p>
                 <span className="text-[8px] font-black uppercase text-white/30">
-                  {rival.roster.length} jugadores
+                  {t("market.playersCount", { count: rival.roster.length })}
                 </span>
               </div>
 
@@ -647,7 +663,7 @@ export default function MarketView({
                     <article key={row.id} className="v-panel flex gap-3 p-3">
                       <Link
                         href={`/players/${p.id}?league=${activeLeagueId}`}
-                        aria-label={`Ver perfil de ${p.nickname}`}
+                        aria-label={t("market.viewProfile", { name: p.nickname })}
                         className="shrink-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
                       >
                         <PlayerImage player={p} />
@@ -669,7 +685,7 @@ export default function MarketView({
                           </div>
                           <div className="text-right">
                             <p className="text-[7px] uppercase text-white/30">
-                              Cláusula
+                              {t("market.clause")}
                             </p>
                             <p className="text-sm font-black italic text-v-red">
                               {money(row.release_clause)}
@@ -684,15 +700,15 @@ export default function MarketView({
                             onClick={() =>
                               runAction(
                                 () => payReleaseClause(row.id, profileId),
-                                "Cláusula ejecutada",
-                                `${p?.nickname} se ha incorporado a tu plantilla.`,
+                                t("market.clausePaid"),
+                                t("market.clausePaidDescription", { name: p?.nickname }),
                               )
                             }
                             className="flex-1 bg-white px-3 py-2 text-[8px] font-black uppercase text-v-navy transition hover:bg-v-red hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
                           >
                             {protectedClause
-                              ? "Protegido 48h"
-                              : "Pagar cláusula"}
+                              ? t("market.protected48h")
+                              : t("market.payClause")}
                           </button>
                           {row.listing && (
                             <button
@@ -714,8 +730,8 @@ export default function MarketView({
                               className="flex-1 border border-white/10 px-3 py-2 text-[8px] font-black uppercase text-white/60 transition hover:border-v-red hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               {myPendingOffer
-                                ? "Editar oferta"
-                                : "Hacer oferta"}
+                                ? t("market.editOffer")
+                                : t("market.makeOffer")}
                             </button>
                           )}
                         </div>
@@ -729,7 +745,7 @@ export default function MarketView({
 
           {(data?.rivals || []).length === 0 && (
             <div className="v-panel py-14 text-center text-xs font-black uppercase italic text-white/25">
-              Aún no hay rivales en esta liga.
+              {t("market.noRivals")}
             </div>
           )}
         </section>
@@ -738,9 +754,9 @@ export default function MarketView({
       {activeTab === "sales" && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-xl font-black italic uppercase">Mis ventas</h2>
+            <h2 className="text-xl font-black italic uppercase">{t("market.tabSales")}</h2>
             <p className="text-[9px] font-black uppercase tracking-widest text-v-red">
-              Jugadores listados y ofertas recibidas
+              {t("market.salesSubtitle")}
             </p>
           </div>
 
@@ -758,7 +774,7 @@ export default function MarketView({
                       <div className="mt-2 grid grid-cols-2 gap-x-5 gap-y-1 sm:grid-cols-3">
                         <div>
                           <p className="text-[7px] font-black uppercase text-white/25">
-                            Precio
+                            {t("market.price")}
                           </p>
                           <p className="text-sm font-black italic text-v-red">
                             {money(listing.asking_price)}
@@ -767,7 +783,7 @@ export default function MarketView({
 
                         <div>
                           <p className="text-[7px] font-black uppercase text-white/25">
-                            Valor mercado
+                            {t("market.marketValue")}
                           </p>
                           <p className="text-sm font-black italic text-white/70">
                             {money(listing.market_value_snapshot)}
@@ -776,7 +792,7 @@ export default function MarketView({
 
                         <div>
                           <p className="text-[7px] font-black uppercase text-white/25">
-                            Tiempo restante
+                            {t("market.remainingTime")}
                           </p>
                           <p className="text-sm font-black italic text-white">
                             {listing.expires_at ? (
@@ -784,7 +800,7 @@ export default function MarketView({
                                 expiresAt={listing.expires_at}
                               />
                             ) : (
-                              "7 días"
+                              t("market.sevenDays")
                             )}
                           </p>
                         </div>
@@ -803,7 +819,7 @@ export default function MarketView({
                         }
                         className="border border-white/10 px-3 py-2 text-[8px] font-black uppercase text-white/55 transition hover:border-white/25 hover:text-white disabled:opacity-30"
                       >
-                        Editar precio
+                        {t("market.editPrice")}
                       </button>
 
                       <button
@@ -812,13 +828,13 @@ export default function MarketView({
                         onClick={() =>
                           runAction(
                             () => withdrawPlayerListing(listing.id, profileId),
-                            "Jugador retirado de la venta",
-                            `${listing.player?.nickname} ya no está en venta.`,
+                            t("market.listingWithdrawn"),
+                            t("market.listingWithdrawnDescription", { name: listing.player?.nickname }),
                           )
                         }
                         className="border border-v-red/30 px-3 py-2 text-[8px] font-black uppercase text-v-red transition hover:bg-v-red hover:text-white disabled:opacity-30"
                       >
-                        Retirar
+                        {t("market.withdraw")}
                       </button>
                     </div>
                   </div>
@@ -828,7 +844,7 @@ export default function MarketView({
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-[8px] font-black uppercase text-v-red">
-                            Oferta de la liga
+                            {t("market.leagueOffer")}
                           </p>
                           <p className="text-lg font-black italic">
                             {money(listing.league_offer.amount)}
@@ -843,13 +859,13 @@ export default function MarketView({
                                     listing.league_offer.id,
                                     profileId,
                                   ),
-                                "Jugador vendido",
-                                `${listing.player?.nickname || "El jugador"} ha sido vendido a la liga por ${money(listing.league_offer.amount)}.`,
+                                t("market.playerSold"),
+                                t("market.soldToLeague", { name: listing.player?.nickname || t("market.playerFallback"), amount: money(listing.league_offer.amount) }),
                               )
                             }
                             className="bg-white px-3 py-2 text-[8px] font-black uppercase text-v-navy"
                           >
-                            Aceptar
+                            {t("market.accept")}
                           </button>
                           <button
                             onClick={() =>
@@ -859,13 +875,13 @@ export default function MarketView({
                                     listing.league_offer.id,
                                     profileId,
                                   ),
-                                "Oferta rechazada",
-                                `Has rechazado la oferta de la liga por ${listing.player?.nickname || "el jugador"}.`,
+                                t("market.offerRejected"),
+                                t("market.leagueOfferRejected", { name: listing.player?.nickname || t("market.genericPlayer") }),
                               )
                             }
                             className="border border-white/10 px-3 py-2 text-[8px] font-black uppercase text-white/50"
                           >
-                            Rechazar
+                            {t("market.reject")}
                           </button>
                         </div>
                       </div>
@@ -893,25 +909,25 @@ export default function MarketView({
                               onClick={() =>
                                 runAction(
                                   () => acceptManagerOffer(offer.id, profileId),
-                                  "Jugador vendido",
-                                  `${listing.player?.nickname} ha sido vendido a ${offer.from_username} por ${money(offer.amount)}.`,
+                                  t("market.playerSold"),
+                                  t("market.soldToManager", { name: listing.player?.nickname, manager: offer.from_username, amount: money(offer.amount) }),
                                 )
                               }
                               className="bg-white px-3 py-2 text-[8px] font-black uppercase text-v-navy"
                             >
-                              Aceptar
+                              {t("market.accept")}
                             </button>
                             <button
                               onClick={() =>
                                 runAction(
                                   () => rejectManagerOffer(offer.id, profileId),
-                                  "Oferta rechazada",
-                                  `Has rechazado la oferta de ${offer.from_username}.`,
+                                  t("market.offerRejected"),
+                                  t("market.managerOfferRejected", { manager: offer.from_username }),
                                 )
                               }
                               className="border border-white/10 px-3 py-2 text-[8px] font-black uppercase text-white/50"
                             >
-                              Rechazar
+                              {t("market.reject")}
                             </button>
                           </div>
                         </div>
@@ -924,7 +940,7 @@ export default function MarketView({
 
           {(data?.myListings || []).length === 0 && (
             <div className="v-panel py-14 text-center text-xs font-black uppercase italic text-white/25">
-              No tienes jugadores puestos en venta.
+              {t("market.noListings")}
             </div>
           )}
         </section>
@@ -933,9 +949,9 @@ export default function MarketView({
       {activeTab === "offers" && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-xl font-black italic uppercase">Ofertas</h2>
+            <h2 className="text-xl font-black italic uppercase">{t("market.tabOffers")}</h2>
             <p className="text-[9px] font-black uppercase tracking-widest text-v-red">
-              Historial de ofertas entre managers
+              {t("market.offersSubtitle")}
             </p>
           </div>
 
@@ -950,18 +966,18 @@ export default function MarketView({
                   <div className="min-w-0">
                     <p className="text-[8px] font-black uppercase text-white/35">
                       {sent
-                        ? `Enviada a ${offer.to_username}`
-                        : `Recibida de ${offer.from_username}`}
+                        ? t("market.sentTo", { name: offer.to_username })
+                        : t("market.receivedFrom", { name: offer.from_username })}
                     </p>
                     <h3 className="truncate pr-2 text-lg font-black italic uppercase">
-                      {offer.player?.nickname || "Jugador"}
+                      {offer.player?.nickname || t("market.playerFallback")}
                     </h3>
                     <p className="text-sm font-black italic text-v-red">
                       {money(offer.amount)}
                     </p>
                   </div>
                   <span className="shrink-0 border border-white/10 px-2 py-1 text-[8px] font-black uppercase text-white/45">
-                    {offer.status}
+                    {offerStatusLabel(offer.status)}
                   </span>
                 </article>
               );
@@ -970,7 +986,7 @@ export default function MarketView({
 
           {(data?.managerOffers || []).length === 0 && (
             <div className="v-panel py-14 text-center text-xs font-black uppercase italic text-white/25">
-              Todavía no hay ofertas entre managers.
+              {t("market.noManagerOffers")}
             </div>
           )}
         </section>
@@ -980,19 +996,18 @@ export default function MarketView({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-v-navy/90 p-4 backdrop-blur-sm">
           <div className="v-panel w-full max-w-sm border-t-4 border-v-red p-6">
             <p className="text-[8px] font-black uppercase tracking-widest text-v-red">
-              Puja oculta
+              {t("market.hiddenBid")}
             </p>
             <h3 className="mt-1 text-2xl font-black italic uppercase">
               {bidDialog.auction.player?.nickname}
             </h3>
             <p className="mt-2 text-xs text-white/45">
-              Nadie podrá ver tu importe. Si modificas la puja, se actualizará
-              su momento de envío.
+              {t("market.hiddenBidDescription")}
             </p>
             <div className="mt-4 grid grid-cols-2 gap-3 border-y border-white/5 py-3">
               <div>
                 <p className="text-[7px] font-black uppercase text-white/25">
-                  Exposición actual
+                  {t("market.currentExposure")}
                 </p>
                 <p className="text-sm font-black italic text-white">
                   {money(bidExposure)}
@@ -1000,7 +1015,7 @@ export default function MarketView({
               </div>
               <div className="text-right">
                 <p className="text-[7px] font-black uppercase text-white/25">
-                  Máximo para esta puja
+                  {t("market.maxBid")}
                 </p>
                 <p className="text-sm font-black italic text-v-red">
                   {money(availableForCurrentBid)}
@@ -1023,14 +1038,14 @@ export default function MarketView({
                 disabled={loading}
                 className="flex-1 border border-white/10 py-3 text-[9px] font-black uppercase text-white/50"
               >
-                Cancelar
+                {t("market.cancel")}
               </button>
               <button
                 onClick={submitBid}
                 disabled={loading}
                 className="flex-1 bg-v-red py-3 text-[9px] font-black uppercase text-white disabled:cursor-wait disabled:opacity-50"
               >
-                Guardar puja
+                {t("market.saveBid")}
               </button>
             </div>
           </div>
@@ -1041,7 +1056,7 @@ export default function MarketView({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-v-navy/90 p-4 backdrop-blur-sm">
           <div className="v-panel w-full max-w-sm border-t-4 border-v-red p-6">
             <p className="text-[8px] font-black uppercase tracking-widest text-v-red">
-              Editar precio de venta
+              {t("market.editSalePrice")}
             </p>
 
             <h3 className="mt-1 text-2xl font-black italic uppercase">
@@ -1051,7 +1066,7 @@ export default function MarketView({
             <div className="mt-4 grid grid-cols-2 gap-3 border-y border-white/5 py-3">
               <div>
                 <p className="text-[7px] font-black uppercase text-white/25">
-                  Mínimo
+                  {t("market.minimum")}
                 </p>
                 <p className="text-sm font-black italic text-white">
                   {money(editPriceDialog.listing.market_value_snapshot)}
@@ -1060,7 +1075,7 @@ export default function MarketView({
 
               <div className="text-right">
                 <p className="text-[7px] font-black uppercase text-white/25">
-                  Máximo
+                  {t("market.maximum")}
                 </p>
                 <p className="text-sm font-black italic text-white">
                   {money(
@@ -1075,7 +1090,7 @@ export default function MarketView({
             </div>
 
             <p className="mt-3 text-xs text-white/45">
-              Cambiar el precio no reinicia los 7 días de publicación.
+              {t("market.priceKeepsExpiry")}
             </p>
 
             <input
@@ -1102,7 +1117,7 @@ export default function MarketView({
                 onClick={() => setEditPriceDialog(null)}
                 className="flex-1 border border-white/10 py-3 text-[9px] font-black uppercase text-white/50"
               >
-                Cancelar
+                {t("market.cancel")}
               </button>
 
               <button
@@ -1110,7 +1125,7 @@ export default function MarketView({
                 onClick={submitEditListingPrice}
                 className="flex-1 bg-v-red py-3 text-[9px] font-black uppercase text-white"
               >
-                Guardar precio
+                {t("market.savePrice")}
               </button>
             </div>
           </div>
@@ -1121,15 +1136,15 @@ export default function MarketView({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-v-navy/90 p-4 backdrop-blur-sm">
           <div className="v-panel w-full max-w-sm border-t-4 border-white p-6">
             <p className="text-[8px] font-black uppercase tracking-widest text-v-red">
-              {offerDialog.offer ? "Editar oferta" : "Oferta al manager"}
+              {offerDialog.offer ? t("market.editOffer") : t("market.offerToManager")}
             </p>
             <h3 className="mt-1 text-2xl font-black italic uppercase">
               {offerDialog.player?.nickname}
             </h3>
             <p className="mt-2 text-xs text-white/45">
               {offerDialog.offer
-                ? "Ya tienes una oferta pendiente por este jugador. Al guardar, se modificará esa misma oferta."
-                : "La oferta es solo económica. El propietario podrá aceptarla o rechazarla."}
+                ? t("market.existingOfferDescription")
+                : t("market.newOfferDescription")}
             </p>
             <input
               type="number"
@@ -1144,13 +1159,13 @@ export default function MarketView({
                 onClick={() => setOfferDialog(null)}
                 className="flex-1 border border-white/10 py-3 text-[9px] font-black uppercase text-white/50"
               >
-                Cancelar
+                {t("market.cancel")}
               </button>
               <button
                 onClick={submitManagerOffer}
                 className="flex-1 bg-white py-3 text-[9px] font-black uppercase text-v-navy"
               >
-                {offerDialog.offer ? "Guardar cambios" : "Enviar oferta"}
+                {offerDialog.offer ? t("market.saveChanges") : t("market.sendOffer")}
               </button>
             </div>
           </div>
