@@ -5,6 +5,7 @@ import LayoutShell from "@/components/LayoutShell";
 import PWAInstaller from "@/components/PWAInstaller";
 import PushManager from "@/components/PushManager";
 import { Toaster } from "sileo";
+import { LocaleProvider } from "@/components/LocaleProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -62,7 +63,9 @@ export default function RootLayout({
         <PWAInstaller />
         <PushManager />
 
-        <LayoutShell>{children}</LayoutShell>
+        <LocaleProvider>
+          <LayoutShell>{children}</LayoutShell>
+        </LocaleProvider>
         {/* <Toaster richColors closeButton theme="dark" /> */}
         <Toaster
           position="bottom-center"

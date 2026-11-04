@@ -5,6 +5,29 @@ import { getSession } from "./auth";
 import { revalidatePath } from "next/cache";
 import { cleanPlainText, isUuid } from "@/lib/security/validation";
 
+export async function getCurrentHeaderProfile() {
+  const session = await getSession();
+  if (!session) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url")
+    .eq("id", session.user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error loading header profile:", error.message);
+    return null;
+  }
+
+  return {
+    id: session.user.id,
+    username: data?.username || session.user.email?.split("@")[0] || "Entrenador",
+    avatar_url: data?.avatar_url || null,
+  };
+}
+
 export async function updateProfile(data: {
   username?: string;
   bio?: string;

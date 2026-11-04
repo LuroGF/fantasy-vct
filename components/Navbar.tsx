@@ -9,29 +9,31 @@ import { twMerge } from "tailwind-merge";
 import { haptic } from "@/lib/utils/haptics";
 
 import { NotificationBadge } from "./NotificationBadge";
+import { useLocale } from "./LocaleProvider";
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
 const navItems = [
-    { href: "/dashboard", label: "Inicio", icon: Home },
-    { href: "/leagues", label: "Ligas", icon: Trophy },
-    { href: "/team", label: "Equipo", icon: Users },
-    { href: "/market", label: "Mercado", icon: ShoppingCart },
-    { href: "/more", label: "Más", icon: MoreHorizontal },
+    { href: "/dashboard", labelKey: "nav.home" as const, icon: Home },
+    { href: "/leagues", labelKey: "nav.leagues" as const, icon: Trophy },
+    { href: "/team", labelKey: "nav.team" as const, icon: Users },
+    { href: "/market", labelKey: "nav.market" as const, icon: ShoppingCart },
+    { href: "/more", labelKey: "nav.more" as const, icon: MoreHorizontal },
 ];
 
 
 export default function Navbar() {
     const pathname = usePathname();
+    const { t } = useLocale();
 
     return (
         <nav className="fixed bottom-0 left-0 w-full lg:hidden z-50 border-t border-white/10 bg-v-navy/95 backdrop-blur-xl v-safe-area-pb">
             <div className="flex items-center justify-between px-2 h-16">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;
-                    const isMore = item.label === "Más";
+                    const isMore = item.href === "/more";
 
                     return (
                         <Link
@@ -61,7 +63,7 @@ export default function Navbar() {
                                         isActive ? "text-v-white" : "text-v-white/40"
                                     )}
                                 >
-                                    {item.label}
+                                    {t(item.labelKey)}
                                 </span>
                             </div>
 

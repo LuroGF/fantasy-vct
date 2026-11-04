@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSession } from "@/lib/actions/auth";
+import Image from "next/image";
+import Link from "next/link";
+import { getCurrentHeaderProfile } from "@/lib/actions/profile";
 import {
     deleteReadNotification,
     getUnreadCount,
@@ -16,6 +18,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from "@/lib/utils/haptics";
 
 import { useRouter } from "next/navigation";
+import { LanguageSelector } from "./LanguageSelector";
+import { useLocale } from "./LocaleProvider";
 
 type DailyBonusStatus = {
     canClaim: boolean;
@@ -25,9 +29,16 @@ type DailyBonusStatus = {
     nextAvailableAt: string | null;
 };
 
+type HeaderProfile = {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+};
+
 export default function TopBar() {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
+    const { locale, t } = useLocale();
+    const [user, setUser] = useState<HeaderProfile | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [bonusStatus, setBonusStatus] = useState<DailyBonusStatus>({
         canClaim: false,
@@ -43,9 +54,9 @@ export default function TopBar() {
 
     useEffect(() => {
         async function load() {
-            const session = await getSession();
-            if (session) {
-                setUser(session.user);
+            const profile = await getCurrentHeaderProfile();
+            if (profile) {
+                setUser(profile);
                 const {
                     getUserNotifications,
                     syncMyAuctionNotifications,
@@ -135,19 +146,13 @@ export default function TopBar() {
                     <span className="text-[11px] font-black italic text-v-red leading-none tracking-wider sm:text-xs">VCT Fantasy 2027</span>
                     <div className="flex items-center gap-2 mt-1">
                         <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.8)]" />
-                        <span className="text-[7px] font-black uppercase text-green-500/60 tracking-[0.3em] font-sans">Sesión activa</span>
+                        <span className="text-[7px] font-black uppercase text-green-500/60 tracking-[0.3em] font-sans">{t("header.activeSession")}</span>
                     </div>
                  </div>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-6 relative z-10">
-                <div className="flex flex-col items-end">
-                    <span className="text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">Usuario</span>
-                    <span className="text-[11px] font-black uppercase italic text-white leading-tight sm:text-xs">{user.user_metadata?.username || "Entrenador"}</span>
-                </div>
-                
-                <div className="h-6 w-px bg-white/5 hidden sm:block" />
-
+            <div className="flex items-center gap-2 sm:gap-4 relative z-10">
+                <LanguageSelector />
                 <div className="relative">
                     <button 
                         onClick={() => {
@@ -187,9 +192,11 @@ export default function TopBar() {
                                 >
                                     <div className="v-panel bg-v-gray/95 border-v-red/20 shadow-2xl p-0 overflow-hidden">
                                         <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">Notificaciones</h3>
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">{t("header.notifications")}</h3>
                                             <span className="text-[8px] font-black text-white/20">
-                                                {unreadCount > 0 ? `${unreadCount} NUEVA${unreadCount > 1 ? 'S' : ''}` : 'AL DÍA'}
+                                                {unreadCount > 0
+                                                    ? `${unreadCount} ${t(unreadCount > 1 ? "header.newPlural" : "header.newSingle").toUpperCase()}`
+                                                    : t("header.upToDate").toUpperCase()}
                                             </span>
                                         </div>
                                         
@@ -197,7 +204,7 @@ export default function TopBar() {
                                             {/* System Notifications List */}
                                             {notifications.length > 0 && (
                                                 <div className="border-b border-white/5 bg-black/20 px-4 py-2 text-[7px] font-black uppercase tracking-[0.25em] text-white/25">
-                                                    Actividad reciente
+                                                    {t("header.recentActivity")}
                                                 </div>
                                             )}
                                             {notifications.map((n) => (
@@ -205,17 +212,17 @@ export default function TopBar() {
                                                     <div className="flex justify-between items-start gap-3 mb-1">
                                                         <div className="flex items-center gap-1.5">
                                                           <p className="text-[10px] font-black uppercase text-v-red italic">{n.title}</p>
-                                                          {!n.is_read && <span className="text-[7px] px-1 py-0.5 bg-v-red text-white uppercase font-black tracking-wider">Nuevo</span>}
+                                                          {!n.is_read && <span className="text-[7px] px-1 py-0.5 bg-v-red text-white uppercase font-black tracking-wider">{t("header.newBadge")}</span>}
                                                         </div>
                                                         <div className="flex shrink-0 items-center gap-1">
-                                                            <span className="mr-1 text-[7px] text-white/20">{new Date(n.created_at).toLocaleDateString()}</span>
+                                                            <span className="mr-1 text-[7px] text-white/20">{new Date(n.created_at).toLocaleDateString(locale)}</span>
                                                             {!n.is_read ? (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleMarkAsRead(n.id)}
                                                                     className="rounded-sm p-1 text-white/35 transition hover:bg-white/10 hover:text-white"
-                                                                    title="Marcar como leído"
-                                                                    aria-label={`Marcar como leído: ${n.title}`}
+                                                                    title={t("header.markRead")}
+                                                                    aria-label={`${t("header.markRead")}: ${n.title}`}
                                                                 >
                                                                     <Eye size={13} />
                                                                 </button>
@@ -224,8 +231,8 @@ export default function TopBar() {
                                                                     type="button"
                                                                     onClick={() => handleDeleteNotification(n.id)}
                                                                     className="rounded-sm p-1 text-white/25 transition hover:bg-v-red/15 hover:text-v-red"
-                                                                    title="Eliminar notificación"
-                                                                    aria-label={`Eliminar notificación: ${n.title}`}
+                                                                    title={t("header.deleteNotification")}
+                                                                    aria-label={`${t("header.deleteNotification")}: ${n.title}`}
                                                                 >
                                                                     <X size={13} />
                                                                 </button>
@@ -243,7 +250,7 @@ export default function TopBar() {
                                                             }}
                                                             className="mt-2 text-[8px] font-black uppercase tracking-wider text-v-red hover:underline"
                                                         >
-                                                            Abrir
+                                                            {t("header.open")}
                                                         </button>
                                                     )}
                                                 </div>
@@ -258,12 +265,11 @@ export default function TopBar() {
                                                         </div>
                                                         <div className="flex-1 space-y-3">
                                                             <div>
-                                                                <p className="text-[11px] font-black uppercase text-white tracking-wider italic">Recompensa Diaria</p>
+                                                                <p className="text-[11px] font-black uppercase text-white tracking-wider italic">{t("header.dailyReward")}</p>
                                                                 <p className="text-[10px] text-white/50 leading-tight mt-1">
-                                                                    Reclama 500.000 € para fichar
                                                                     {bonusStatus.eligibleLeagues > 1
-                                                                        ? ` en cada una de tus ${bonusStatus.eligibleLeagues} ligas.`
-                                                                        : " en tu liga."}
+                                                                        ? t("header.rewardMultiple", { count: bonusStatus.eligibleLeagues })
+                                                                        : t("header.rewardSingle")}
                                                                 </p>
                                                             </div>
                                                             
@@ -280,7 +286,7 @@ export default function TopBar() {
                                                                     disabled={claiming}
                                                                     className="w-full v-btn-primary !px-0 !py-2 !text-[9px] italic"
                                                                 >
-                                                                    {claiming ? "Reclamando..." : "RECLAMAR 500.000 €"}
+                                                                    {claiming ? t("header.claiming") : t("header.claimReward").toUpperCase()}
                                                                 </button>
                                                             )}
                                                         </div>
@@ -293,7 +299,7 @@ export default function TopBar() {
                                                 <div className="p-10 text-center space-y-3">
                                                     <div className="text-3xl opacity-10">📡</div>
                                                     <p className="text-[9px] uppercase text-white/20 font-black tracking-[0.3em] italic">
-                                                        Sin Notificaciones
+                                                        {t("header.noNotifications")}
                                                     </p>
                                                 </div>
                                             )}
@@ -303,7 +309,7 @@ export default function TopBar() {
                                                 onClick={() => setShowNotifications(false)}
                                                 className="text-[8px] font-black uppercase text-white/20 hover:text-white cursor-pointer transition-colors"
                                             >
-                                                [ CERRAR ]
+                                                [ {t("header.close")} ]
                                             </button>
                                         </div>
                                     </div>
@@ -312,6 +318,31 @@ export default function TopBar() {
                         )}
                     </AnimatePresence>
                 </div>
+
+                <div className="hidden h-6 w-px bg-white/5 sm:block" />
+
+                <div className="min-w-0 text-right">
+                    <span className="block text-[7px] font-black uppercase text-white/30 tracking-widest leading-none">{t("header.user")}</span>
+                    <span className="block max-w-20 truncate text-[11px] font-black uppercase italic text-white leading-tight sm:max-w-32 sm:text-xs">{user.username}</span>
+                </div>
+
+                <Link
+                    href="/more/profile"
+                    aria-label={t("header.openProfile")}
+                    className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 text-[10px] font-black uppercase text-v-white transition hover:border-v-red"
+                >
+                    {user.avatar_url ? (
+                        <Image
+                            src={user.avatar_url}
+                            alt=""
+                            fill
+                            sizes="36px"
+                            className="object-cover"
+                        />
+                    ) : (
+                        user.username.slice(0, 2).toUpperCase()
+                    )}
+                </Link>
             </div>
         </header>
     );
