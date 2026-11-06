@@ -1,28 +1,34 @@
-"use client";
-
 import Link from "next/link";
+import { getServerTranslator } from "@/lib/i18n/server";
 
-export default function RulesPage() {
+export default async function RulesPage() {
+  const { locale, t } = await getServerTranslator();
+  const numberLocale = locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "es-ES";
+  const euroFormatter = new Intl.NumberFormat(numberLocale, {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  });
   const scoringRules = [
-    { label: "Por cada kill", points: "+2 pts" },
-    { label: "Por cada muerte", points: "-1 pt" },
-    { label: "Por cada asistencia", points: "+1 pt" },
-    { label: "Por cada clutch", points: "+3 pts" },
-    { label: "Por cada Primera Sangre (FB)", points: "+2 pts" },
-    { label: "Por cada Primera Muerte (FD)", points: "-1 pt" },
-    { label: "ACS 300 o más", points: "+5 pts" },
-    { label: "ACS entre 250 y 299", points: "+3 pts" },
-    { label: "ACS entre 200 y 249", points: "+1 pt" },
-    { label: "ACS entre 150 y 199", points: "0 pts" },
-    { label: "ACS inferior a 150", points: "-1 pt" },
-    { label: "MVP del partido", points: "+5 pts" },
+    { label: t("rules.kill"), points: "+2 pts" },
+    { label: t("rules.death"), points: "-1 pt" },
+    { label: t("rules.assist"), points: "+1 pt" },
+    { label: t("rules.clutch"), points: "+3 pts" },
+    { label: t("rules.firstBlood"), points: "+2 pts" },
+    { label: t("rules.firstDeath"), points: "-1 pt" },
+    { label: t("rules.acs300"), points: "+5 pts" },
+    { label: t("rules.acs250"), points: "+3 pts" },
+    { label: t("rules.acs200"), points: "+1 pt" },
+    { label: t("rules.acs150"), points: "0 pts" },
+    { label: t("rules.acsLow"), points: "-1 pt" },
+    { label: t("rules.mvp"), points: "+5 pts" },
   ];
 
   const gameweekRewards = [
-    { label: "1.º puesto", amount: "2.000.000 €" },
-    { label: "2.º puesto", amount: "1.250.000 €" },
-    { label: "3.º puesto", amount: "750.000 €" },
-    { label: "4.º puesto en adelante", amount: "500.000 €" },
+    { label: t("rules.firstPlace"), amount: euroFormatter.format(2_000_000) },
+    { label: t("rules.secondPlace"), amount: euroFormatter.format(1_250_000) },
+    { label: t("rules.thirdPlace"), amount: euroFormatter.format(750_000) },
+    { label: t("rules.fourthOnward"), amount: euroFormatter.format(500_000) },
   ];
 
   return (
@@ -53,20 +59,17 @@ export default function RulesPage() {
               />
             </svg>
           </div>
-          <h1 className="text-4xl leading-none italic uppercase">Reglas</h1>
+          <h1 className="text-4xl leading-none italic uppercase">{t("rules.title")}</h1>
         </div>
       </Link>
 
       <div className="v-panel p-6 space-y-6">
         <div className="space-y-4">
           <h2 className="text-2xl italic tracking-tighter uppercase border-b border-v-red w-fit">
-            Puntuación
+            {t("rules.scoring")}
           </h2>
           <p className="text-xs text-v-white/60 leading-relaxed italic">
-            El sistema calcula automáticamente el rendimiento de todos los
-            jugadores con la misma fórmula, sin modificadores por rol.
-            MVP y clutches solo se contabilizan cuando la fuente ofrece esos
-            datos de forma fiable.
+            {t("rules.scoringDescription")}
           </p>
         </div>
 
@@ -88,11 +91,10 @@ export default function RulesPage() {
 
         <div className="v-panel border-white/5 bg-v-white/5 p-4 mt-8">
           <p className="text-[10px] font-black uppercase tracking-widest text-v-red mb-2">
-            Actualización de puntos
+            {t("rules.pointsUpdate")}
           </p>
           <p className="text-[10px] text-v-white/40 leading-relaxed italic">
-            Los puntos se actualizan cada 30 minutos mientras los partidos están
-            en vivo. Los resultados finales se confirman al terminar la serie.
+            {t("rules.pointsUpdateDescription")}
           </p>
         </div>
       </div>
@@ -100,12 +102,10 @@ export default function RulesPage() {
       <div className="v-panel p-6 space-y-6">
         <div className="space-y-3">
           <h2 className="text-2xl italic tracking-tighter uppercase border-b border-v-red w-fit">
-            Recompensas
+            {t("rules.rewards")}
           </h2>
           <p className="text-xs text-v-white/60 leading-relaxed italic">
-            Los puntos determinan la clasificación y no se convierten directamente
-            en dinero. Para cobrar una jornada debes haber presentado cinco
-            titulares válidos antes del cierre.
+            {t("rules.rewardsDescription")}
           </p>
         </div>
 
@@ -127,12 +127,10 @@ export default function RulesPage() {
 
         <div className="border border-white/5 bg-v-white/5 p-4 space-y-2">
           <p className="text-[10px] font-black uppercase tracking-widest text-v-red">
-            Actividad diaria
+            {t("rules.dailyActivity")}
           </p>
           <p className="text-[10px] text-v-white/40 leading-relaxed italic">
-            Puedes reclamar 500.000 € una vez al día desde la campana. No se
-            acumula si un día no entras. En caso de empate, se reparten las bolsas
-            de las posiciones afectadas.
+            {t("rules.dailyDescription")}
           </p>
         </div>
       </div>

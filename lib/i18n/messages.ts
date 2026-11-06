@@ -272,6 +272,34 @@ export const messages = {
       copiedDescription: "El código {code} se ha copiado al portapapeles.", copyFailed: "No se ha podido copiar el código.", share: "Compartir",
       shareText: "Únete a mi liga {league} con el código {code}.", noLeagues: "Aún no perteneces a ninguna liga que puedas compartir.", createLeague: "Crear o unirme a una liga",
     },
+    rules: {
+      title: "Reglas", scoring: "Puntuación", scoringDescription: "El sistema calcula automáticamente el rendimiento de todos los jugadores con la misma fórmula, sin modificadores por rol. MVP y clutches solo se contabilizan cuando la fuente ofrece esos datos de forma fiable.",
+      kill: "Por cada kill", death: "Por cada muerte", assist: "Por cada asistencia", clutch: "Por cada clutch", firstBlood: "Por cada Primera Sangre (FB)", firstDeath: "Por cada Primera Muerte (FD)",
+      acs300: "ACS 300 o más", acs250: "ACS entre 250 y 299", acs200: "ACS entre 200 y 249", acs150: "ACS entre 150 y 199", acsLow: "ACS inferior a 150", mvp: "MVP del partido",
+      pointsUpdate: "Actualización de puntos", pointsUpdateDescription: "Los puntos se actualizan cada 30 minutos mientras los partidos están en vivo. Los resultados finales se confirman al terminar la serie.",
+      rewards: "Recompensas", rewardsDescription: "Los puntos determinan la clasificación y no se convierten directamente en dinero. Para cobrar una jornada debes haber presentado cinco titulares válidos antes del cierre.",
+      firstPlace: "1.º puesto", secondPlace: "2.º puesto", thirdPlace: "3.º puesto", fourthOnward: "4.º puesto en adelante", dailyActivity: "Actividad diaria",
+      dailyDescription: "Puedes reclamar 500.000 € una vez al día desde la campana. No se acumula si un día no entras. En caso de empate, se reparten las bolsas de las posiciones afectadas.",
+    },
+    support: {
+      title: "Ayuda", faq: "Preguntas frecuentes", exactFormula: "¿Buscas la fórmula exacta?", formulaDescription: "Consulta el desglose de puntuación, premios y recompensa diaria.", viewRules: "Ver reglas",
+      gettingStarted: "Primeros pasos", startQ: "¿Cómo empiezo a jugar?", startA: "Crea una liga o únete con su código. Al entrar recibirás presupuesto y una plantilla inicial. Antes de cada jornada revisa que tengas cinco titulares válidos.",
+      competitionsQ: "¿Qué competiciones y jugadores aparecen?", competitionsA: "La temporada está preparada para VCT 2027 con las cuatro regiones: EMEA, Americas, Pacific y China. Solo entran equipos franquiciados de la temporada. Las plantillas provisionales se sustituyen cuando los fichajes se hacen oficiales.",
+      multipleLeaguesQ: "¿Puedo estar en varias ligas?", multipleLeaguesA: "Sí. Cada liga mantiene de forma independiente tu plantilla, presupuesto, pujas, clasificación y recompensas.",
+      squadGameweeks: "Plantilla y jornadas", whoScoresQ: "¿Quién puntúa en una jornada?", whoScoresA: "Solo puntúan los cinco jugadores que figuren como titulares cuando comienza la jornada. Los suplentes permanecen en tu plantilla y pueden aparecer en el mercado, pero no suman puntos mientras estén en el banquillo.",
+      lineupChangesQ: "¿Puedo cambiar la alineación después del inicio?", lineupChangesA: "No. La alineación se bloquea al comenzar la jornada y se guarda una copia inmutable. Los cambios posteriores se aplicarán a la siguiente jornada.",
+      substituteQ: "¿Qué ocurre con un jugador suplente o sin equipo?", substituteA: "Un jugador suplente en su club puede permanecer en el mercado, pero no puntuará si no juega. Los jugadores de tu banquillo fantasy siguen en tu plantilla y tampoco puntúan. Un jugador sin equipo elegible no puede escogerse ni aparecer en el mercado.",
+      otherPointsQ: "¿Dónde veo los puntos de otro entrenador?", otherPointsA: "Entra en la clasificación de la liga, abre su plantilla y selecciona la pestaña Puntos. Podrás consultar la alineación congelada y la aportación de cada titular por jornada.",
+      market: "Mercado", bidsQ: "¿Cómo funcionan las pujas?", bidsA: "Las pujas son ocultas. El importe queda comprometido hasta el cierre, aunque el saldo contable no se descuenta hasta ganar. Puedes modificar o retirar una puja mientras la subasta siga abierta.",
+      balanceQ: "¿Qué significa saldo disponible y exposición?", balanceA: "El saldo es tu presupuesto actual. La exposición suma el dinero comprometido en pujas. El disponible es lo que todavía puedes utilizar sin superar tu presupuesto.",
+      clauseQ: "¿Qué es un clausulazo?", clauseA: "Permite fichar a un jugador de un rival pagando su cláusula cuando no está protegido. La operación cambia al jugador de propietario, mueve el dinero de forma atómica y avisa a ambos entrenadores.",
+      missingPlayerQ: "¿Por qué no veo a un jugador en el mercado?", missingPlayerA: "Puede pertenecer ya a una plantilla de esa liga, no estar asociado a un equipo VCT 2027 elegible, estar sin equipo o no formar parte del ciclo de mercado actual.",
+      pointsMoneyAlerts: "Puntos, dinero y avisos", scoringQ: "¿Cómo se calculan los puntos?", scoringA: "Se utilizan kills, muertes, asistencias, primeras bajas, primeras muertes y ACS. MVP y clutches solo se aplican cuando la fuente los ofrece de forma fiable. La fórmula completa está en Reglas y puntuación.",
+      dailyQ: "¿Cómo funciona la recompensa diaria?", dailyA: "Cada día puedes reclamar 500.000 € desde la campana de notificaciones. Debes reclamarla manualmente y no se acumula si un día no entras.",
+      notificationsQ: "¿Qué notificaciones recibiré?", notificationsA: "La app puede avisarte de fichajes, clausulazos, ofertas, actividad de mercado, inicio de jornada, revisión del quinteto y recompensa diaria. Puedes elegir las categorías desde Más > Notificaciones.",
+      changesQ: "¿Los puntos pueden cambiar después de un partido?", changesA: "Los datos en directo son provisionales. La puntuación puede ajustarse si la fuente corrige estadísticas; el resultado se consolida cuando la serie queda finalizada.",
+      privateBeta: "La aplicación está en beta privada", betaDescription: "El canal oficial de soporte se publicará cuando estén definidos el nombre y el dominio. No se promete todavía un tiempo de respuesta.",
+    },
   },
   en: {
     nav: {
@@ -503,6 +531,34 @@ export const messages = {
       selectLeague: "Select league", invitationCode: "Your invitation code", copyCode: "Copy code", copied: "Code copied",
       copiedDescription: "Code {code} was copied to the clipboard.", copyFailed: "The code could not be copied.", share: "Share",
       shareText: "Join my league {league} with code {code}.", noLeagues: "You do not belong to a league that can be shared yet.", createLeague: "Create or join a league",
+    },
+    rules: {
+      title: "Rules", scoring: "Scoring", scoringDescription: "The system automatically calculates every player’s performance using the same formula, with no role modifiers. MVPs and clutches are counted only when the source provides reliable data.",
+      kill: "Per kill", death: "Per death", assist: "Per assist", clutch: "Per clutch", firstBlood: "Per First Blood (FB)", firstDeath: "Per First Death (FD)",
+      acs300: "ACS 300 or higher", acs250: "ACS from 250 to 299", acs200: "ACS from 200 to 249", acs150: "ACS from 150 to 199", acsLow: "ACS below 150", mvp: "Match MVP",
+      pointsUpdate: "Points update", pointsUpdateDescription: "Points are updated every 30 minutes while matches are live. Final results are confirmed when the series ends.",
+      rewards: "Rewards", rewardsDescription: "Points determine the ranking and are not converted directly into money. To receive a gameweek reward, you must have fielded five valid starters before the deadline.",
+      firstPlace: "1st place", secondPlace: "2nd place", thirdPlace: "3rd place", fourthOnward: "4th place onwards", dailyActivity: "Daily activity",
+      dailyDescription: "You can claim €500,000 once a day from the notification bell. It does not accumulate if you miss a day. In a tie, the prize pools for the affected positions are shared.",
+    },
+    support: {
+      title: "Help", faq: "Frequently asked questions", exactFormula: "Looking for the exact formula?", formulaDescription: "See the full scoring, rewards and daily bonus breakdown.", viewRules: "View rules",
+      gettingStarted: "Getting started", startQ: "How do I start playing?", startA: "Create a league or join one with its code. You will receive a budget and an initial squad when you enter. Before every gameweek, make sure you have five valid starters.",
+      competitionsQ: "Which competitions and players are included?", competitionsA: "The season is prepared for VCT 2027 across all four regions: EMEA, Americas, Pacific and China. Only franchised teams from the season are included. Provisional rosters are replaced as signings become official.",
+      multipleLeaguesQ: "Can I join several leagues?", multipleLeaguesA: "Yes. Each league independently maintains your squad, budget, bids, ranking and rewards.",
+      squadGameweeks: "Squad and gameweeks", whoScoresQ: "Who scores in a gameweek?", whoScoresA: "Only the five players listed as starters when the gameweek begins score points. Substitutes remain in your squad and may appear on the market, but they do not score while on your bench.",
+      lineupChangesQ: "Can I change the lineup after the start?", lineupChangesA: "No. The lineup locks when the gameweek begins and an immutable snapshot is saved. Later changes apply to the next gameweek.",
+      substituteQ: "What happens to a substitute or teamless player?", substituteA: "A substitute for their professional team may remain on the market but will not score if they do not play. Players on your fantasy bench also remain in your squad and do not score. A player without an eligible team cannot be selected or appear on the market.",
+      otherPointsQ: "Where can I see another coach’s points?", otherPointsA: "Open the league standings, view their squad and select the Points tab. You can review the frozen lineup and each starter’s contribution by gameweek.",
+      market: "Market", bidsQ: "How do bids work?", bidsA: "Bids are hidden. The amount remains committed until closing, although your balance is not charged unless you win. You can change or withdraw a bid while the auction is open.",
+      balanceQ: "What do available balance and exposure mean?", balanceA: "Your balance is your current budget. Exposure is the money committed in bids. Available funds are what you can still use without exceeding your budget.",
+      clauseQ: "What is a release-clause signing?", clauseA: "It lets you sign a rival’s player by paying their release clause when the player is not protected. The operation changes ownership, moves the money atomically and notifies both coaches.",
+      missingPlayerQ: "Why can’t I see a player on the market?", missingPlayerA: "They may already belong to a squad in that league, lack an eligible VCT 2027 team, be teamless or not be part of the current market cycle.",
+      pointsMoneyAlerts: "Points, money and alerts", scoringQ: "How are points calculated?", scoringA: "The system uses kills, deaths, assists, first bloods, first deaths and ACS. MVPs and clutches apply only when the source provides reliable data. The full formula is available under Rules and scoring.",
+      dailyQ: "How does the daily reward work?", dailyA: "You can claim €500,000 each day from the notification bell. It must be claimed manually and does not accumulate if you miss a day.",
+      notificationsQ: "Which notifications will I receive?", notificationsA: "The app can alert you about signings, release-clause moves, offers, market activity, gameweek starts, lineup reviews and the daily reward. Choose categories under More > Notifications.",
+      changesQ: "Can points change after a match?", changesA: "Live data is provisional. Scores may be adjusted if the source corrects statistics; the result is consolidated when the series is final.",
+      privateBeta: "The application is in private beta", betaDescription: "The official support channel will be published once the final name and domain are defined. No response-time commitment is offered yet.",
     },
   },
   fr: {
@@ -742,6 +798,34 @@ export const messages = {
       copiedDescription: "Le code {code} a été copié dans le presse-papiers.", copyFailed: "Impossible de copier le code.", share: "Partager",
       shareText: "Rejoignez ma ligue {league} avec le code {code}.", noLeagues: "Vous n’appartenez encore à aucune ligue à partager.", createLeague: "Créer ou rejoindre une ligue",
     },
+    rules: {
+      title: "Règles", scoring: "Score", scoringDescription: "Le système calcule automatiquement les performances de tous les joueurs avec la même formule, sans modificateur de rôle. Les MVP et clutches ne sont comptés que lorsque la source fournit des données fiables.",
+      kill: "Par élimination", death: "Par mort", assist: "Par assistance", clutch: "Par clutch", firstBlood: "Par Première élimination (FB)", firstDeath: "Par Première mort (FD)",
+      acs300: "ACS de 300 ou plus", acs250: "ACS entre 250 et 299", acs200: "ACS entre 200 et 249", acs150: "ACS entre 150 et 199", acsLow: "ACS inférieur à 150", mvp: "MVP du match",
+      pointsUpdate: "Mise à jour des points", pointsUpdateDescription: "Les points sont mis à jour toutes les 30 minutes pendant les matchs en direct. Les résultats finaux sont confirmés à la fin de la série.",
+      rewards: "Récompenses", rewardsDescription: "Les points déterminent le classement et ne sont pas directement convertis en argent. Pour recevoir une récompense de journée, vous devez avoir aligné cinq titulaires valides avant la clôture.",
+      firstPlace: "1re place", secondPlace: "2e place", thirdPlace: "3e place", fourthOnward: "À partir de la 4e place", dailyActivity: "Activité quotidienne",
+      dailyDescription: "Vous pouvez réclamer 500 000 € une fois par jour depuis la cloche. La somme ne se cumule pas si vous manquez un jour. En cas d’égalité, les cagnottes des places concernées sont partagées.",
+    },
+    support: {
+      title: "Aide", faq: "Questions fréquentes", exactFormula: "Vous cherchez la formule exacte ?", formulaDescription: "Consultez le détail du score, des récompenses et du bonus quotidien.", viewRules: "Voir les règles",
+      gettingStarted: "Premiers pas", startQ: "Comment commencer à jouer ?", startA: "Créez une ligue ou rejoignez-en une avec son code. Vous recevrez un budget et un effectif initial. Avant chaque journée, vérifiez que vous avez cinq titulaires valides.",
+      competitionsQ: "Quelles compétitions et quels joueurs sont inclus ?", competitionsA: "La saison est préparée pour le VCT 2027 dans les quatre régions : EMEA, Americas, Pacific et China. Seules les équipes franchisées de la saison sont incluses. Les effectifs provisoires sont remplacés lorsque les transferts deviennent officiels.",
+      multipleLeaguesQ: "Puis-je participer à plusieurs ligues ?", multipleLeaguesA: "Oui. Chaque ligue gère indépendamment votre effectif, votre budget, vos enchères, votre classement et vos récompenses.",
+      squadGameweeks: "Effectif et journées", whoScoresQ: "Qui marque des points pendant une journée ?", whoScoresA: "Seuls les cinq joueurs titulaires au début de la journée marquent des points. Les remplaçants restent dans votre effectif et peuvent apparaître sur le marché, mais ne marquent pas depuis le banc.",
+      lineupChangesQ: "Puis-je modifier l’alignement après le début ?", lineupChangesA: "Non. L’alignement est verrouillé au début de la journée et une copie immuable est enregistrée. Les changements ultérieurs s’appliquent à la journée suivante.",
+      substituteQ: "Que se passe-t-il pour un remplaçant ou un joueur sans équipe ?", substituteA: "Un remplaçant de son club professionnel peut rester sur le marché, mais ne marque pas s’il ne joue pas. Les joueurs de votre banc fantasy restent aussi dans votre effectif sans marquer. Un joueur sans équipe éligible ne peut être choisi ni apparaître sur le marché.",
+      otherPointsQ: "Où voir les points d’un autre entraîneur ?", otherPointsA: "Ouvrez le classement de la ligue, consultez son effectif puis l’onglet Points. Vous verrez l’alignement figé et la contribution de chaque titulaire par journée.",
+      market: "Marché", bidsQ: "Comment fonctionnent les enchères ?", bidsA: "Les enchères sont cachées. Le montant reste engagé jusqu’à la clôture, mais le solde n’est débité qu’en cas de victoire. Vous pouvez modifier ou retirer une enchère tant qu’elle est ouverte.",
+      balanceQ: "Que signifient solde disponible et exposition ?", balanceA: "Le solde est votre budget actuel. L’exposition totalise l’argent engagé dans les enchères. Le disponible est ce que vous pouvez encore utiliser sans dépasser votre budget.",
+      clauseQ: "Qu’est-ce qu’un recrutement par clause ?", clauseA: "Il permet de recruter le joueur d’un rival en payant sa clause lorsqu’il n’est pas protégé. L’opération transfère le joueur, déplace l’argent de façon atomique et avertit les deux entraîneurs.",
+      missingPlayerQ: "Pourquoi un joueur n’apparaît-il pas sur le marché ?", missingPlayerA: "Il peut déjà appartenir à un effectif de cette ligue, ne pas être lié à une équipe VCT 2027 éligible, être sans équipe ou ne pas faire partie du cycle de marché actuel.",
+      pointsMoneyAlerts: "Points, argent et alertes", scoringQ: "Comment les points sont-ils calculés ?", scoringA: "Le système utilise les éliminations, morts, assistances, premières éliminations, premières morts et l’ACS. Les MVP et clutches ne s’appliquent que lorsque la source fournit des données fiables. La formule complète se trouve dans Règles et score.",
+      dailyQ: "Comment fonctionne la récompense quotidienne ?", dailyA: "Vous pouvez réclamer 500 000 € chaque jour depuis la cloche de notifications. Elle doit être réclamée manuellement et ne se cumule pas si vous manquez un jour.",
+      notificationsQ: "Quelles notifications vais-je recevoir ?", notificationsA: "L’application peut vous prévenir des recrutements, clauses, offres, activités du marché, débuts de journée, vérifications du cinq et récompenses quotidiennes. Choisissez les catégories dans Plus > Notifications.",
+      changesQ: "Les points peuvent-ils changer après un match ?", changesA: "Les données en direct sont provisoires. Le score peut être ajusté si la source corrige les statistiques ; le résultat est consolidé lorsque la série est terminée.",
+      privateBeta: "L’application est en bêta privée", betaDescription: "Le canal d’assistance officiel sera publié lorsque le nom final et le domaine seront définis. Aucun délai de réponse n’est encore garanti.",
+    },
   },
 } as const satisfies Record<Locale, Record<string, Record<string, string>>>;
 
@@ -758,7 +842,9 @@ export type MessageKey =
   | `notifications.${keyof (typeof messages)["es"]["notifications"]}`
   | `profile.${keyof (typeof messages)["es"]["profile"]}`
   | `stats.${keyof (typeof messages)["es"]["stats"]}`
-  | `community.${keyof (typeof messages)["es"]["community"]}`;
+  | `community.${keyof (typeof messages)["es"]["community"]}`
+  | `rules.${keyof (typeof messages)["es"]["rules"]}`
+  | `support.${keyof (typeof messages)["es"]["support"]}`;
 
 export function translateMessage(
   locale: Locale,

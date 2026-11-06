@@ -131,6 +131,8 @@ Después de desplegar Perfil, se tradujo Rendimiento a ES/EN/FR: estado sin liga
 
 Antes de la siguiente subida se tradujeron Comunidad e Invitaciones a ES/EN/FR. Comunidad localiza buscador, estados, puntos y acceso a perfiles, usando el locale activo para búsqueda y números. Invitaciones dejó de mostrar el código ficticio `FNT-LLE-2026`: ahora requiere sesión, carga las ligas reales mediante `getUserLeagues`, permite escoger liga, copiar el código real o abrir el menú nativo de compartir y ofrece un estado sin ligas. TypeScript y lint del bloque sin errores, 11 tests y build de producción correctos. No requiere migración. Pendiente dentro de «Más»: reglas, soporte, operaciones y legales.
 
+El 06/11/2026 se tradujeron Reglas y puntuación y Soporte/FAQ a ES/EN/FR. Reglas conserva la fórmula V1 y los premios, localiza las cantidades en euros según el idioma y explica actualización, elegibilidad y empates. Soporte traduce sus cuatro bloques completos de preguntas sobre inicio, jornadas, mercado y avisos, manteniendo el aviso de beta privada y sin prometer tiempos de respuesta. TypeScript, lint del bloque, 11 tests y build de producción correctos. No requiere migración. Pendiente dentro de «Más»: operaciones y páginas legales.
+
 ## Cómo retomar
 
 Leer este archivo y el código actual antes de trabajar. Las decisiones nuevas del usuario prevalecen. No editar `sources/` ni archivos sincronizados de este espejo. Mantener este documento actualizado con resultados comprobados y pendientes.
