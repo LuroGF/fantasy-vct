@@ -300,6 +300,18 @@ export const messages = {
       changesQ: "¿Los puntos pueden cambiar después de un partido?", changesA: "Los datos en directo son provisionales. La puntuación puede ajustarse si la fuente corrige estadísticas; el resultado se consolida cuando la serie queda finalizada.",
       privateBeta: "La aplicación está en beta privada", betaDescription: "El canal oficial de soporte se publicará cuando estén definidos el nombre y el dominio. No se promete todavía un tiempo de respuesta.",
     },
+    operations: {
+      back: "Volver", adminOnly: "Solo administración", title: "Operaciones VLR", subtitle: "Estado de la ingesta de partidos, estadísticas y correspondencias del VCT 2027.",
+      vlrMatches: "Partidos VLR 2027", noGameweek: "Sin jornada", live: "En directo", finished: "Finalizados", safeRetry: "Reintento seguro",
+      safeRetryDescription: "Ejecuta los mismos procesos protegidos que utilizan los cron.", missingPlayerIds: "Jugadores sin ID VLR", missingTeamIds: "Equipos sin ID VLR",
+      team: "Equipo", noTeam: "Sin equipo", allLinked: "Todos enlazados.", latestRuns: "Últimas ejecuciones", matchesAndStats: "Partidos y estadísticas",
+      matches: "Partidos", stats: "Estadísticas", finish: "fin {date}", unfinished: "sin finalizar", viewIssues: "Ver {count} incidencias",
+      noRuns: "Todavía no hay ejecuciones registradas. El siguiente cron o reintento aparecerá aquí.", inProgress: "En curso", success: "Correcta", warning: "Con avisos", failed: "Fallida",
+      received: "Recibidos", synced: "Sincronizados", skipped: "Omitidos", errors: "Errores", matchesProcessed: "Partidos procesados",
+      performancesSynced: "Actuaciones guardadas", playerIdsLinked: "IDs VLR enlazados", playersByAlias: "Jugadores por alias", playersSkipped: "Jugadores omitidos", mapsSkipped: "Mapas omitidos",
+      syncComplete: "Sincronización completada", syncFailed: "No se pudo sincronizar", tryAgain: "Inténtalo de nuevo.", syncing: "Sincronizando…",
+      retryMatches: "Reintentar partidos", retryStats: "Reintentar estadísticas",
+    },
   },
   en: {
     nav: {
@@ -559,6 +571,17 @@ export const messages = {
       notificationsQ: "Which notifications will I receive?", notificationsA: "The app can alert you about signings, release-clause moves, offers, market activity, gameweek starts, lineup reviews and the daily reward. Choose categories under More > Notifications.",
       changesQ: "Can points change after a match?", changesA: "Live data is provisional. Scores may be adjusted if the source corrects statistics; the result is consolidated when the series is final.",
       privateBeta: "The application is in private beta", betaDescription: "The official support channel will be published once the final name and domain are defined. No response-time commitment is offered yet.",
+    },
+    operations: {
+      back: "Back", adminOnly: "Administration only", title: "VLR operations", subtitle: "VCT 2027 match, statistics and mapping ingestion status.",
+      vlrMatches: "VLR 2027 matches", noGameweek: "No gameweek", live: "Live", finished: "Finished", safeRetry: "Safe retry",
+      safeRetryDescription: "Runs the same protected processes used by the cron jobs.", missingPlayerIds: "Players without a VLR ID", missingTeamIds: "Teams without a VLR ID",
+      team: "Team", noTeam: "No team", allLinked: "All linked.", latestRuns: "Latest runs", matchesAndStats: "Matches and statistics",
+      matches: "Matches", stats: "Statistics", finish: "end {date}", unfinished: "unfinished", viewIssues: "View {count} issues",
+      noRuns: "No runs have been recorded yet. The next cron job or retry will appear here.", inProgress: "In progress", success: "Successful", warning: "With warnings", failed: "Failed",
+      received: "Received", synced: "Synced", skipped: "Skipped", errors: "Errors", matchesProcessed: "Matches processed",
+      performancesSynced: "Performances saved", playerIdsLinked: "VLR IDs linked", playersByAlias: "Players by alias", playersSkipped: "Players skipped", mapsSkipped: "Maps skipped",
+      syncComplete: "Sync completed", syncFailed: "Could not sync", tryAgain: "Try again.", syncing: "Syncing…", retryMatches: "Retry matches", retryStats: "Retry statistics",
     },
   },
   fr: {
@@ -826,6 +849,17 @@ export const messages = {
       changesQ: "Les points peuvent-ils changer après un match ?", changesA: "Les données en direct sont provisoires. Le score peut être ajusté si la source corrige les statistiques ; le résultat est consolidé lorsque la série est terminée.",
       privateBeta: "L’application est en bêta privée", betaDescription: "Le canal d’assistance officiel sera publié lorsque le nom final et le domaine seront définis. Aucun délai de réponse n’est encore garanti.",
     },
+    operations: {
+      back: "Retour", adminOnly: "Administration uniquement", title: "Opérations VLR", subtitle: "État de l’importation des matchs, statistiques et correspondances du VCT 2027.",
+      vlrMatches: "Matchs VLR 2027", noGameweek: "Sans journée", live: "En direct", finished: "Terminés", safeRetry: "Nouvelle tentative sécurisée",
+      safeRetryDescription: "Exécute les mêmes processus protégés que les tâches cron.", missingPlayerIds: "Joueurs sans ID VLR", missingTeamIds: "Équipes sans ID VLR",
+      team: "Équipe", noTeam: "Sans équipe", allLinked: "Tous associés.", latestRuns: "Dernières exécutions", matchesAndStats: "Matchs et statistiques",
+      matches: "Matchs", stats: "Statistiques", finish: "fin {date}", unfinished: "non terminée", viewIssues: "Voir {count} incidents",
+      noRuns: "Aucune exécution enregistrée. La prochaine tâche cron ou tentative apparaîtra ici.", inProgress: "En cours", success: "Réussie", warning: "Avec alertes", failed: "Échouée",
+      received: "Reçus", synced: "Synchronisés", skipped: "Ignorés", errors: "Erreurs", matchesProcessed: "Matchs traités",
+      performancesSynced: "Performances enregistrées", playerIdsLinked: "IDs VLR associés", playersByAlias: "Joueurs par alias", playersSkipped: "Joueurs ignorés", mapsSkipped: "Cartes ignorées",
+      syncComplete: "Synchronisation terminée", syncFailed: "Échec de la synchronisation", tryAgain: "Réessayez.", syncing: "Synchronisation…", retryMatches: "Relancer les matchs", retryStats: "Relancer les statistiques",
+    },
   },
 } as const satisfies Record<Locale, Record<string, Record<string, string>>>;
 
@@ -844,7 +878,8 @@ export type MessageKey =
   | `stats.${keyof (typeof messages)["es"]["stats"]}`
   | `community.${keyof (typeof messages)["es"]["community"]}`
   | `rules.${keyof (typeof messages)["es"]["rules"]}`
-  | `support.${keyof (typeof messages)["es"]["support"]}`;
+  | `support.${keyof (typeof messages)["es"]["support"]}`
+  | `operations.${keyof (typeof messages)["es"]["operations"]}`;
 
 export function translateMessage(
   locale: Locale,

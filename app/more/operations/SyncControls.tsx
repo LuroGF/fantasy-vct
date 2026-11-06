@@ -6,10 +6,12 @@ import { RefreshCw } from "lucide-react";
 import { sileo } from "sileo";
 
 import { runVlrSync } from "@/lib/actions/admin-operations";
+import { useLocale } from "@/components/LocaleProvider";
 
 type SyncKind = "matches" | "stats";
 
 export function SyncControls() {
+  const { t } = useLocale();
   const router = useRouter();
   const [pendingKind, setPendingKind] = useState<SyncKind | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -19,12 +21,12 @@ export function SyncControls() {
     startTransition(async () => {
       const result = await runVlrSync(kind);
       if (result.success) {
-        sileo.success({ title: result.message || "Sincronización completada" });
+        sileo.success({ title: result.message || t("operations.syncComplete") });
         router.refresh();
       } else {
         sileo.error({
-          title: "No se pudo sincronizar",
-          description: result.error || "Inténtalo de nuevo.",
+          title: t("operations.syncFailed"),
+          description: result.error || t("operations.tryAgain"),
         });
       }
       setPendingKind(null);
@@ -40,7 +42,7 @@ export function SyncControls() {
         className="v-btn-secondary flex items-center justify-center gap-2 py-3 disabled:opacity-40"
       >
         <RefreshCw className={`h-4 w-4 ${pendingKind === "matches" ? "animate-spin" : ""}`} />
-        {pendingKind === "matches" ? "Sincronizando…" : "Reintentar partidos"}
+        {pendingKind === "matches" ? t("operations.syncing") : t("operations.retryMatches")}
       </button>
       <button
         type="button"
@@ -49,7 +51,7 @@ export function SyncControls() {
         className="v-btn-secondary flex items-center justify-center gap-2 py-3 disabled:opacity-40"
       >
         <RefreshCw className={`h-4 w-4 ${pendingKind === "stats" ? "animate-spin" : ""}`} />
-        {pendingKind === "stats" ? "Sincronizando…" : "Reintentar estadísticas"}
+        {pendingKind === "stats" ? t("operations.syncing") : t("operations.retryStats")}
       </button>
     </div>
   );

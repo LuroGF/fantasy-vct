@@ -133,6 +133,8 @@ Antes de la siguiente subida se tradujeron Comunidad e Invitaciones a ES/EN/FR. 
 
 El 06/11/2026 se tradujeron Reglas y puntuación y Soporte/FAQ a ES/EN/FR. Reglas conserva la fórmula V1 y los premios, localiza las cantidades en euros según el idioma y explica actualización, elegibilidad y empates. Soporte traduce sus cuatro bloques completos de preguntas sobre inicio, jornadas, mercado y avisos, manteniendo el aviso de beta privada y sin prometer tiempos de respuesta. TypeScript, lint del bloque, 11 tests y build de producción correctos. No requiere migración. Pendiente dentro de «Más»: operaciones y páginas legales.
 
+También el 06/11/2026 se cerró el bloque de «Más» traduciendo Operaciones VLR y las páginas de aviso legal, privacidad, términos y cookies a ES/EN/FR. Operaciones localiza métricas, fechas, estados, resúmenes y controles de reintento, manteniendo el acceso exclusivamente administrativo. El contenido jurídico se centralizó en `lib/i18n/legal.ts`, compartiendo presentación y navegación mediante `LegalPage`; se conservaron los marcadores provisionales de nombre, titular, domicilio y correo sin inventar datos. TypeScript, lint del bloque, 11 tests y build de producción correctos. No requiere migración. El bloque principal de «Más» queda traducido; faltan auditar otras rutas secundarias globales fuera de ese menú.
+
 ## Cómo retomar
 
 Leer este archivo y el código actual antes de trabajar. Las decisiones nuevas del usuario prevalecen. No editar `sources/` ni archivos sincronizados de este espejo. Mantener este documento actualizado con resultados comprobados y pendientes.

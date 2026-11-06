@@ -5,6 +5,8 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, Database, Link2Off } fr
 import { getAdminSession } from "@/lib/admin/access";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { SyncControls } from "./SyncControls";
+import { getServerTranslator } from "@/lib/i18n/server";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -31,34 +33,21 @@ type MissingTeam = {
   tag: string;
 };
 
-const summaryLabels: Record<string, string> = {
-  received: "Recibidos",
-  synced: "Sincronizados",
-  skipped: "Omitidos",
-  errors: "Errores",
-  without_gameweek: "Sin jornada",
-  matches_processed: "Partidos procesados",
-  performances_synced: "Actuaciones guardadas",
-  player_ids_linked: "IDs VLR enlazados",
-  players_resolved_by_fallback: "Jugadores por alias",
-  players_skipped: "Jugadores omitidos",
-  maps_skipped: "Mapas omitidos",
+const summaryLabelKeys: Record<string, MessageKey> = {
+  received: "operations.received", synced: "operations.synced", skipped: "operations.skipped", errors: "operations.errors",
+  without_gameweek: "operations.noGameweek", matches_processed: "operations.matchesProcessed", performances_synced: "operations.performancesSynced",
+  player_ids_linked: "operations.playerIdsLinked", players_resolved_by_fallback: "operations.playersByAlias",
+  players_skipped: "operations.playersSkipped", maps_skipped: "operations.mapsSkipped",
 };
 
-function formatDate(value: string | null) {
-  if (!value) return "En curso";
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDate(value: string | null, locale: string, inProgress: string) {
+  if (!value) return inProgress;
+  const dateLocale = locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "es-ES";
+  return new Intl.DateTimeFormat(dateLocale, {
     dateStyle: "short",
     timeStyle: "medium",
     timeZone: "Europe/Madrid",
   }).format(new Date(value));
-}
-
-function statusText(status: SyncRun["status"]) {
-  if (status === "success") return "Correcta";
-  if (status === "warning") return "Con avisos";
-  if (status === "failed") return "Fallida";
-  return "En curso";
 }
 
 function statusClass(status: SyncRun["status"]) {
@@ -69,6 +58,7 @@ function statusClass(status: SyncRun["status"]) {
 }
 
 export default async function OperationsPage() {
+  const { locale, t } = await getServerTranslator();
   const adminSession = await getAdminSession();
   if (!adminSession) notFound();
 
@@ -150,24 +140,24 @@ export default async function OperationsPage() {
   );
 
   const metrics = [
-    { label: "Partidos VLR 2027", value: totalMatchesResult.count || 0, icon: Database },
-    { label: "Sin jornada", value: unmappedMatchesResult.count || 0, icon: AlertTriangle },
-    { label: "En directo", value: liveMatchesResult.count || 0, icon: Clock3 },
-    { label: "Finalizados", value: completedMatchesResult.count || 0, icon: CheckCircle2 },
+    { label: t("operations.vlrMatches"), value: totalMatchesResult.count || 0, icon: Database },
+    { label: t("operations.noGameweek"), value: unmappedMatchesResult.count || 0, icon: AlertTriangle },
+    { label: t("operations.live"), value: liveMatchesResult.count || 0, icon: Clock3 },
+    { label: t("operations.finished"), value: completedMatchesResult.count || 0, icon: CheckCircle2 },
   ];
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-4 py-6 pb-24 sm:px-6">
       <header className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <Link href="/more" className="mt-1 text-v-white/35 transition-colors hover:text-v-white" aria-label="Volver">
+          <Link href="/more" className="mt-1 text-v-white/35 transition-colors hover:text-v-white" aria-label={t("operations.back")}>
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-v-red">Solo administración</p>
-            <h1 className="text-3xl italic uppercase sm:text-4xl">Operaciones VLR</h1>
+            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-v-red">{t("operations.adminOnly")}</p>
+            <h1 className="text-3xl italic uppercase sm:text-4xl">{t("operations.title")}</h1>
             <p className="mt-2 max-w-2xl text-xs text-v-white/45">
-              Estado de la ingesta de partidos, estadísticas y correspondencias del VCT 2027.
+              {t("operations.subtitle")}
             </p>
           </div>
         </div>
@@ -185,9 +175,9 @@ export default async function OperationsPage() {
 
       <section className="v-panel space-y-4 p-5">
         <div>
-          <h2 className="text-xl italic uppercase">Reintento seguro</h2>
+          <h2 className="text-xl italic uppercase">{t("operations.safeRetry")}</h2>
           <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-v-white/30">
-            Ejecuta los mismos procesos protegidos que utilizan los cron.
+            {t("operations.safeRetryDescription")}
           </p>
         </div>
         <SyncControls />
@@ -196,7 +186,7 @@ export default async function OperationsPage() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="v-panel p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-xl italic uppercase">Jugadores sin ID VLR</h2>
+            <h2 className="text-xl italic uppercase">{t("operations.missingPlayerIds")}</h2>
             <span className="text-lg font-black text-v-red">{missingPlayers.length}</span>
           </div>
           <div className="max-h-64 space-y-1 overflow-y-auto pr-1 custom-scrollbar">
@@ -204,17 +194,17 @@ export default async function OperationsPage() {
               <div key={player.id} className="flex items-center justify-between border-b border-white/5 py-2 text-xs">
                 <span className="font-black italic">{player.nickname}</span>
                 <span className="text-[8px] font-black uppercase text-v-white/30">
-                  {player.team_id ? teamNames.get(player.team_id) || "Equipo" : "Sin equipo"}
+                  {player.team_id ? teamNames.get(player.team_id) || t("operations.team") : t("operations.noTeam")}
                 </span>
               </div>
             ))}
-            {missingPlayers.length === 0 && <p className="py-8 text-center text-xs text-emerald-300">Todos enlazados.</p>}
+            {missingPlayers.length === 0 && <p className="py-8 text-center text-xs text-emerald-300">{t("operations.allLinked")}</p>}
           </div>
         </div>
 
         <div className="v-panel p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-xl italic uppercase">Equipos sin ID VLR</h2>
+            <h2 className="text-xl italic uppercase">{t("operations.missingTeamIds")}</h2>
             <span className="text-lg font-black text-v-red">{missingTeams.length}</span>
           </div>
           <div className="max-h-64 space-y-1 overflow-y-auto pr-1 custom-scrollbar">
@@ -224,7 +214,7 @@ export default async function OperationsPage() {
                 <span className="text-[8px] font-black uppercase text-v-white/30">{team.tag}</span>
               </div>
             ))}
-            {missingTeams.length === 0 && <p className="py-8 text-center text-xs text-emerald-300">Todos enlazados.</p>}
+            {missingTeams.length === 0 && <p className="py-8 text-center text-xs text-emerald-300">{t("operations.allLinked")}</p>}
           </div>
         </div>
       </section>
@@ -232,8 +222,8 @@ export default async function OperationsPage() {
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl italic uppercase">Últimas ejecuciones</h2>
-            <p className="text-[9px] font-black uppercase tracking-wider text-v-white/30">Partidos y estadísticas</p>
+            <h2 className="text-2xl italic uppercase">{t("operations.latestRuns")}</h2>
+            <p className="text-[9px] font-black uppercase tracking-wider text-v-white/30">{t("operations.matchesAndStats")}</p>
           </div>
           <Link2Off className="h-5 w-5 text-v-white/20" />
         </div>
@@ -245,21 +235,23 @@ export default async function OperationsPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-lg font-black italic uppercase">
-                    {run.sync_type === "matches" ? "Partidos" : "Estadísticas"}
+                    {run.sync_type === "matches" ? t("operations.matches") : t("operations.stats")}
                   </p>
                   <p className="mt-1 text-[8px] font-black uppercase tracking-wider text-v-white/30">
-                    {formatDate(run.started_at)} · {run.finished_at ? `fin ${formatDate(run.finished_at)}` : "sin finalizar"}
+                    {formatDate(run.started_at, locale, t("operations.inProgress"))} · {run.finished_at
+                      ? t("operations.finish", { date: formatDate(run.finished_at, locale, t("operations.inProgress")) })
+                      : t("operations.unfinished")}
                   </p>
                 </div>
                 <span className={`border px-2 py-1 text-[8px] font-black uppercase tracking-widest ${statusClass(run.status)}`}>
-                  {statusText(run.status)}
+                  {t(run.status === "success" ? "operations.success" : run.status === "warning" ? "operations.warning" : run.status === "failed" ? "operations.failed" : "operations.inProgress")}
                 </span>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {Object.entries(run.summary || {}).map(([key, value]) => (
                   <span key={key} className="border border-white/5 bg-white/[0.025] px-2 py-1 text-[8px] font-black uppercase text-v-white/45">
-                    {summaryLabels[key] || key}: <strong className="text-v-white/80">{String(value)}</strong>
+                    {(summaryLabelKeys[key] ? t(summaryLabelKeys[key]) : key)}: <strong className="text-v-white/80">{String(value)}</strong>
                   </span>
                 ))}
               </div>
@@ -267,7 +259,7 @@ export default async function OperationsPage() {
               {runErrors.length > 0 && (
                 <details className="mt-4 border-t border-white/5 pt-3">
                   <summary className="cursor-pointer text-[9px] font-black uppercase tracking-wider text-v-red">
-                    Ver {runErrors.length} incidencias
+                    {t("operations.viewIssues", { count: runErrors.length })}
                   </summary>
                   <ul className="mt-3 space-y-2 text-[10px] leading-relaxed text-v-white/45">
                     {runErrors.map((error, index) => <li key={`${run.id}-${index}`}>{error}</li>)}
@@ -280,7 +272,7 @@ export default async function OperationsPage() {
 
         {runs.length === 0 && (
           <div className="v-panel py-12 text-center text-xs text-v-white/35">
-            Todavía no hay ejecuciones registradas. El siguiente cron o reintento aparecerá aquí.
+            {t("operations.noRuns")}
           </div>
         )}
       </section>
