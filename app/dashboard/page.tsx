@@ -13,6 +13,7 @@ import { DashboardLeagueSwitcher } from "@/components/DashboardLeagueSwitcher";
 import { getUserLeagues } from "@/lib/actions/leagues";
 import { createClient } from "@/utils/supabase/server";
 import { getServerTranslator } from "@/lib/i18n/server";
+import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function DashboardPage({
   const [{ data: profile }, { data: activeGameweek }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("username")
+      .select("username, onboarding_status")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -138,14 +139,17 @@ export default async function DashboardPage({
   return (
     <ClientRefreshWrapper>
       <div className="mx-auto flex w-full max-w-md flex-col gap-8 px-4 py-6 sm:max-w-xl sm:px-6 sm:pb-44 lg:max-w-4xl">
-        <header className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">
-            VCT Fantasy 2027
-          </p>
-          <h1 className="text-4xl leading-none sm:text-5xl">{t("dashboard.hello", { name: username })}</h1>
-          <p className="text-sm text-v-white/50">
-            {t("dashboard.intro")}
-          </p>
+        <header className="flex items-start justify-between gap-4">
+          <div className="min-w-0 space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">
+              VCT Fantasy 2027
+            </p>
+            <h1 className="text-4xl leading-none sm:text-5xl">{t("dashboard.hello", { name: username })}</h1>
+            <p className="text-sm text-v-white/50">
+              {t("dashboard.intro")}
+            </p>
+          </div>
+          <OnboardingTutorial autoOpen={profile?.onboarding_status === "pending"} />
         </header>
 
         {userLeagues.length > 1 && (

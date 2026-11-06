@@ -62,10 +62,9 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={`${inter.variable} ${oswald.variable}`}>
       <body className="antialiased h-dvh w-full overflow-hidden bg-v-navy text-v-white">
-        <PWAInstaller />
-        <PushManager />
-
         <LocaleProvider initialLocale={locale}>
+          <PWAInstaller />
+          <PushManager />
           <LayoutShell>{children}</LayoutShell>
         </LocaleProvider>
         {/* <Toaster richColors closeButton theme="dark" /> */}
