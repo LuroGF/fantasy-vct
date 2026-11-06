@@ -14,6 +14,7 @@ import {
 import { Line } from "react-chartjs-2";
 import { ArrowDownRight, ArrowUpRight, CircleDollarSign, Target, Trophy, Users } from "lucide-react";
 import { useLocale } from "@/components/LocaleProvider";
+import { translatePlayerRole } from "@/lib/i18n/player";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -247,7 +248,7 @@ export default function StatsView({
                       <div className="min-w-0">
                         <p className="truncate text-[11px] font-black uppercase">{player.nickname}</p>
                         <p className="text-[9px] uppercase text-v-white/35">
-                          {player.pro_teams?.tag || player.role || t("stats.player")}
+                          {player.pro_teams?.tag || translatePlayerRole(player.role, t) || t("stats.player")}
                         </p>
                       </div>
                     </div>

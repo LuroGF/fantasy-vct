@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import { getAdminSession } from "@/lib/admin/access";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 type SyncKind = "matches" | "stats";
 
@@ -21,16 +22,17 @@ async function requestOrigin() {
 }
 
 export async function runVlrSync(kind: SyncKind) {
+  const { t } = await getServerTranslator();
   const adminSession = await getAdminSession();
   if (!adminSession) {
-    return { success: false, error: "No tienes permisos para ejecutar esta operación." };
+    return { success: false, error: t("operations.noPermission") };
   }
 
   const secret = process.env.CRON_SECRET;
   const origin = await requestOrigin();
   if (!secret || !origin) {
     console.error("Manual VLR sync is missing CRON_SECRET or application origin");
-    return { success: false, error: "La sincronización manual no está configurada." };
+    return { success: false, error: t("operations.notConfigured") };
   }
 
   const path = kind === "matches" ? "sync-vlr-matches" : "sync-vlr-stats";
@@ -44,7 +46,7 @@ export async function runVlrSync(kind: SyncKind) {
 
     if (!response.ok) {
       console.error(`Manual VLR ${kind} sync failed with status ${response.status}`);
-      return { success: false, error: "La sincronización no se ha podido completar." };
+      return { success: false, error: t("operations.incomplete") };
     }
 
     const result = (await response.json()) as { status?: string };
@@ -53,7 +55,7 @@ export async function runVlrSync(kind: SyncKind) {
     if (result.status === "skipped") {
       return {
         success: true,
-        message: "Ya hay una sincronización de este tipo en curso.",
+        message: t("operations.alreadyRunning"),
       };
     }
 
@@ -61,11 +63,11 @@ export async function runVlrSync(kind: SyncKind) {
       success: true,
       message:
         kind === "matches"
-          ? "Sincronización de partidos completada."
-          : "Sincronización de estadísticas completada.",
+          ? t("operations.matchesComplete")
+          : t("operations.statsComplete"),
     };
   } catch (error) {
     console.error(`Manual VLR ${kind} sync failed:`, error);
-    return { success: false, error: "La sincronización no se ha podido completar." };
+    return { success: false, error: t("operations.incomplete") };
   }
 }

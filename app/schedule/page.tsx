@@ -3,12 +3,15 @@ import { getSession } from "@/lib/actions/auth";
 import { redirect } from "next/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
 import Link from "next/link";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 const VCT_SEASON_YEAR = 2027;
 
 export const dynamic = "force-dynamic";
 
 export default async function SchedulePage() {
+  const { locale, t } = await getServerTranslator();
+  const dateLocale = locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "es-ES";
   const supabase = await createClient();
   const session = await getSession();
 
@@ -64,17 +67,17 @@ export default async function SchedulePage() {
                   />
                 </svg>
               </div>
-              <h1 className="text-4xl leading-none italic uppercase">Agenda</h1>
+              <h1 className="text-4xl leading-none italic uppercase">{t("schedule.agenda")}</h1>
             </div>
             <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">
-              Jornada Semanal
+              {t("schedule.weeklyGameweek")}
             </p>
           </div>
         </div>
         </Link>
         <div className="v-panel text-center py-20 opacity-40">
           <p className="text-xs italic">
-            Todavía no hay jornadas configuradas.
+            {t("schedule.noGameweeks")}
           </p>
         </div>
       </div>
@@ -133,13 +136,13 @@ export default async function SchedulePage() {
     >
       <div className="flex items-end justify-between px-1">
         <div>
-          <h1 className="text-4xl leading-none italic uppercase">Calendario</h1>
+          <h1 className="text-4xl leading-none italic uppercase">{t("schedule.calendar")}</h1>
           <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">
             {selectedGw.name} {"//"} VCT 2027
           </p>
         </div>
         <StatusBadge
-          label={activeGw ? "EN CURSO" : "PRÓXIMA"}
+          label={activeGw ? t("schedule.ongoing") : t("schedule.upcoming")}
           variant="white"
         />
       </div>
@@ -168,22 +171,22 @@ export default async function SchedulePage() {
               <div className="flex min-w-[92px] flex-col items-center border-x border-white/5 px-3 sm:min-w-[120px] sm:px-6">
                 {isLive ? (
                   <span className="text-xs font-black text-v-red animate-pulse">
-                    EN VIVO
+                    {t("schedule.live")}
                   </span>
                 ) : isFinished ? (
                   <span className="text-xs font-black text-v-white/40">
-                    FINALIZADO
+                    {t("schedule.finished")}
                   </span>
                 ) : (
                   <span className="text-xs font-black text-v-white">
-                    {date?.toLocaleTimeString("es-ES", {
+                    {date?.toLocaleTimeString(dateLocale, {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </span>
                 )}
                 <span className="text-[8px] font-black uppercase text-v-white/20 mt-1">
-                  {date?.toLocaleDateString("es-ES", {
+                  {date?.toLocaleDateString(dateLocale, {
                     weekday: "short",
                     day: "numeric",
                     month: "short",
@@ -206,7 +209,7 @@ export default async function SchedulePage() {
         {(!matches || matches.length === 0) && (
           <div className="v-panel text-center py-12 opacity-40">
             <p className="text-xs italic">
-              Todavía no hay partidos confirmados para esta jornada.
+              {t("schedule.noMatches")}
             </p>
           </div>
         )}
@@ -216,7 +219,7 @@ export default async function SchedulePage() {
         href="/dashboard"
         className="v-btn-secondary w-full py-3 text-[10px]"
       >
-        Volver al inicio
+        {t("schedule.backHome")}
       </Link>
     </div>
   );

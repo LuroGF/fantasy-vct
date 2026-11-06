@@ -1,10 +1,13 @@
-export default function MoreLoading() {
+import { getServerTranslator } from "@/lib/i18n/server";
+
+export default async function MoreLoading() {
+  const { t } = await getServerTranslator();
   return (
     <div
       className="mx-auto flex w-full max-w-md flex-col gap-8 px-4 py-6 sm:max-w-xl sm:px-6 lg:max-w-4xl"
       role="status"
       aria-live="polite"
-      aria-label="Cargando sección Más"
+      aria-label={t("system.loadingMoreSection")}
     >
       <div className="space-y-2">
         <div className="h-10 w-32 animate-pulse bg-white/10" />
@@ -28,7 +31,7 @@ export default function MoreLoading() {
 
       <div className="flex items-center justify-center gap-3 text-[9px] font-black uppercase tracking-[0.25em] text-v-white/35">
         <span className="h-3 w-3 animate-spin rounded-full border-2 border-v-red/25 border-t-v-red" />
-        Cargando perfil y preferencias…
+        {t("system.loadingProfile")}
       </div>
     </div>
   );

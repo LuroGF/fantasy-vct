@@ -8,6 +8,8 @@ import { getLeagueClassification } from "@/lib/actions/leagues";
 import { getTeamLogo } from "@/lib/vlr-shared";
 import { sileo } from "sileo";
 import Image from "next/image";
+import { useLocale } from "@/components/LocaleProvider";
+import { translatePlayerRole } from "@/lib/i18n/player";
 
 interface RankingViewProps {
   initialStandings: any[];
@@ -24,6 +26,11 @@ export function RankingView({
   initialLeagues,
   initialLeagueId,
 }: RankingViewProps) {
+  const { locale, t } = useLocale();
+  const numberLocale = locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "es-ES";
+  const money = (value: number) => new Intl.NumberFormat(numberLocale, {
+    style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1,
+  }).format(value);
   const [activeLeagueId, setActiveLeagueId] = useState(initialLeagueId);
   const [standings, setStandings] = useState(initialStandings);
   const [activeLocks, setActiveLocks] = useState(initialLocks);
@@ -50,15 +57,15 @@ export function RankingView({
       } catch (error) {
         console.error("Error loading classification:", error);
         sileo.error({
-          title: "Error al cargar clasificación",
-          description: "No se pudieron actualizar los standings",
+          title: t("ranking.loadingError"),
+          description: t("ranking.updateError"),
         });
       }
       setLoading(false);
     }
 
     loadClassification();
-  }, [activeLeagueId]);
+  }, [activeLeagueId, t]);
 
   const isPlayerLocked = (playerId: string) => {
     return activeLocks.includes(playerId);
@@ -75,24 +82,24 @@ export function RankingView({
         payReleaseClause(player.roster_id, profileId),
         {
           loading: {
-            title: "Ejecutando cláusula...",
+            title: t("ranking.executing"),
           },
           success: (res) => {
             if (!res.success) {
-              throw new Error(res.error || "Error al pagar cláusula");
+              throw new Error(res.error || t("ranking.clauseError"));
             }
 
             return {
-              title: "Cláusula ejecutada",
-              description: `${player.nickname} fichado correctamente`,
+              title: t("ranking.clauseDone"),
+              description: t("ranking.signed", { player: player.nickname }),
             };
           },
           error: (err) => {
             haptic.error();
             return {
-              title: "Error al pagar cláusula",
+              title: t("ranking.clauseError"),
               description:
-                err instanceof Error ? err.message : "Error inesperado",
+                err instanceof Error ? err.message : t("ranking.unexpectedError"),
             };
           },
         },
@@ -121,7 +128,7 @@ export function RankingView({
       {/* League Selector */}
       <div className="v-panel p-4 space-y-2">
         <label className="text-[8px] font-black uppercase text-v-white/40 ml-1 tracking-[0.2em]">
-          Visualizando Liga:
+          {t("ranking.viewingLeague")}:
         </label>
         <select
           value={activeLeagueId}
@@ -146,7 +153,7 @@ export function RankingView({
       >
         <div className="flex items-center justify-between mb-4">
           <span className="text-[10px] font-black uppercase tracking-widest text-v-white/50">
-            Standings en Vivo
+            {t("ranking.liveStandings")}
           </span>
           <div className="h-2 w-2 rounded-full bg-v-red animate-pulse" />
         </div>
@@ -181,7 +188,7 @@ export function RankingView({
                       }`}
                     >
                       {row.profiles.username}
-                      {row.profile_id === profileId && " (Tú)"}
+                      {row.profile_id === profileId && ` (${t("ranking.you")})`}
                     </span>
                   </div>
                   <div className="flex gap-1 mt-1 overflow-hidden">
@@ -214,14 +221,14 @@ export function RankingView({
                   {row.total_points}
                 </span>
                 <span className="text-[10px] font-black uppercase text-v-white/20 ml-1 italic">
-                  Pts
+                  {t("ranking.points")}
                 </span>
               </div>
             </div>
           ))}
           {standings.length === 0 && (
             <div className="py-10 text-center opacity-30 italic text-xs font-black uppercase">
-              No hay participantes en esta liga
+              {t("ranking.noParticipants")}
             </div>
           )}
         </div>
@@ -234,17 +241,17 @@ export function RankingView({
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-black italic uppercase leading-none">
-                  Equipo de {selectedTeam.profiles.username}
+                  {t("ranking.teamOf", { coach: selectedTeam.profiles.username })}
                 </h2>
                 <p className="text-[8px] uppercase tracking-widest text-v-red font-black mt-1">
-                  Inteligencia de Mercado
+                  {t("ranking.marketIntel")}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedTeam(null)}
                 className="v-btn-secondary px-3 py-1 text-[8px]"
               >
-                Cerrar
+                {t("ranking.close")}
               </button>
             </div>
 
@@ -265,7 +272,7 @@ export function RankingView({
                         {player.nickname}
                         {locked && (
                           <span className="text-[8px] bg-v-red text-v-white px-1 leading-tight py-0.5 shrink-0">
-                            🛡️ BLINDADO
+                            🛡️ {t("ranking.protected")}
                           </span>
                         )}
                       </span>
@@ -283,20 +290,17 @@ export function RankingView({
                           ) : null;
                         })()}
                         <span className="text-[9px] text-v-white/40 font-bold uppercase tracking-widest leading-none">
-                          {player.role} {"//"} {player.pro_teams?.tag || "FA"}
+                          {translatePlayerRole(player.role, t)} {"//"} {player.pro_teams?.tag || "FA"}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-right">
                       <div className="shrink-0">
                         <p className="text-[8px] font-black uppercase text-v-white/30 tracking-widest">
-                          Rescisión
+                          {t("ranking.releaseClause")}
                         </p>
                         <p className="text-sm font-black italic text-v-white">
-                          {(
-                            Number(player.release_clause || 0) / 1000000
-                          ).toFixed(1)}
-                          M €
+                          {money(Number(player.release_clause || 0))}
                         </p>
                       </div>
                       <button
@@ -308,7 +312,7 @@ export function RankingView({
                             : "bg-v-white text-v-navy hover:bg-v-red hover:text-v-white"
                         }`}
                       >
-                        {locked ? "Lock" : "Fichar"}
+                        {locked ? t("ranking.protected") : t("ranking.sign")}
                       </button>
                     </div>
                   </div>
@@ -325,24 +329,16 @@ export function RankingView({
           <div className="v-panel max-w-xs w-full p-6 text-center space-y-6 border-t-4 border-v-red">
             <div className="space-y-2 text-center">
               <p className="text-[10px] font-black uppercase text-v-red tracking-[0.3em]">
-                Confirmación
+                {t("ranking.confirmation")}
               </p>
               <h3 className="text-xl font-black italic uppercase leading-tight">
-                Ejecutar Cláusula
+                {t("ranking.executeClause")}
               </h3>
               <p className="text-xs text-v-white/60">
-                ¿Pagar rescisión de{" "}
-                <span className="text-v-white font-black">
-                  {(
-                    Number(confirmPay.player.release_clause || 0) / 1000000
-                  ).toFixed(1)}
-                  M €
-                </span>{" "}
-                por{" "}
-                <span className="text-v-red font-black uppercase">
-                  {confirmPay.player.nickname}
-                </span>
-                ?
+                {t("ranking.payClause", {
+                  amount: money(Number(confirmPay.player.release_clause || 0)),
+                  player: confirmPay.player.nickname,
+                })}
               </p>
             </div>
             <div className="flex flex-col gap-2">
@@ -351,13 +347,13 @@ export function RankingView({
                 disabled={loading}
                 className="w-full cursor-pointer py-4 bg-v-white text-v-navy text-[10px] font-black uppercase tracking-[0.2em] hover:bg-v-red hover:text-v-white transition-all italic shadow-xl shadow-v-red/10"
               >
-                Autorizar Pago
+                {t("ranking.authorizePayment")}
               </button>
               <button
                 onClick={() => setConfirmPay(null)}
                 className="w-full py-2 text-[8px] cursor-pointer font-black uppercase text-v-white/20 hover:text-v-white transition-colors tracking-widest"
               >
-                Cancelar
+                {t("ranking.cancel")}
               </button>
             </div>
           </div>

@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { PlayerCard } from "@/components/PlayerCard";
 import { Search, TrendingUp, DollarSign, Award } from "lucide-react";
+import { useLocale } from "@/components/LocaleProvider";
+import { translatePlayerRole } from "@/lib/i18n/player";
 
 interface PlayersViewProps {
   initialPlayers: any[];
@@ -11,6 +13,7 @@ interface PlayersViewProps {
 const PAGE_SIZE = 10;
 
 export default function PlayersView({ initialPlayers }: PlayersViewProps) {
+  const { t } = useLocale();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"points" | "acs" | "value">("points");
@@ -72,10 +75,10 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-4xl font-black italic uppercase text-v-white tracking-tighter">
-          Jugadores VCT
+          {t("players.title")}
         </h1>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-v-red">
-          Rendimiento, valor de mercado y estadísticas
+          {t("players.subtitle")}
         </p>
       </div>
 
@@ -85,7 +88,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-v-white/20 group-focus-within:text-v-red transition-colors" />
           <input
             type="text"
-            placeholder="BUSCAR JUGADOR O EQUIPO..."
+            placeholder={t("players.searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -105,7 +108,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
               !activeRole ? "border-v-red bg-v-red/10 text-v-red" : "border-white/10 text-v-white/40"
             }`}
           >
-            Todos
+            {t("players.all")}
           </button>
 
           {roles.map((role) => (
@@ -119,7 +122,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
                 role === activeRole ? "border-v-red bg-v-red/10 text-v-red" : "border-white/10 text-v-white/40"
               }`}
             >
-              {role}
+              {translatePlayerRole(role, t)}
             </button>
           ))}
         </div>
@@ -134,7 +137,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
               sortBy === "points" ? "bg-v-white text-v-navy" : "text-v-white/40 hover:text-v-white"
             }`}
           >
-            <Award className="w-3 h-3" /> Puntos Avg
+            <Award className="w-3 h-3" /> {t("players.averagePoints")}
           </button>
 
           <button
@@ -146,7 +149,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
               sortBy === "acs" ? "bg-v-white text-v-navy" : "text-v-white/40 hover:text-v-white"
             }`}
           >
-            <TrendingUp className="w-3 h-3" /> ACS Máx
+            <TrendingUp className="w-3 h-3" /> {t("players.maxAcs")}
           </button>
 
           <button
@@ -158,7 +161,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
               sortBy === "value" ? "bg-v-white text-v-navy" : "text-v-white/40 hover:text-v-white"
             }`}
           >
-            <DollarSign className="w-3 h-3" /> Valor Mercado
+            <DollarSign className="w-3 h-3" /> {t("players.marketValue")}
           </button>
         </div>
       </div>
@@ -175,7 +178,7 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
               <Search className="w-8 h-8 text-v-red/20" />
             </div>
             <p className="text-[10px] font-black uppercase italic text-v-white/20">
-              No se encontraron jugadores en la base de datos
+              {t("players.noneFound")}
             </p>
           </div>
         )}
@@ -185,11 +188,11 @@ export default function PlayersView({ initialPlayers }: PlayersViewProps) {
           <div ref={loadMoreRef} className="py-6 flex justify-center">
             {hasMore ? (
               <p className="text-[10px] font-black uppercase italic text-v-white/20">
-                Cargando más jugadores...
+                {t("players.loadingMore")}
               </p>
             ) : (
               <p className="text-[10px] font-black uppercase italic text-v-white/10">
-                No hay más jugadores
+                {t("players.noMore")}
               </p>
             )}
           </div>

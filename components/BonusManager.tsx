@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { getBonusStatus, claimDailyBonus } from "@/lib/actions/bonus";
 import { haptic } from "@/lib/utils/haptics";
+import { useLocale } from "@/components/LocaleProvider";
 
 export default function BonusManager() {
+    const { t } = useLocale();
     const [canClaim, setCanClaim] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [claiming, setClaiming] = useState(false);
@@ -43,8 +45,8 @@ export default function BonusManager() {
                             <span className="text-white text-xl">🎁</span>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black uppercase text-white tracking-widest">SUMINISTROS DISPONIBLES</p>
-                            <p className="text-[12px] font-black italic text-v-white/60 leading-tight">Reclama 500.000 € diarios</p>
+                            <p className="text-[10px] font-black uppercase text-white tracking-widest">{t("system.supplies")}</p>
+                            <p className="text-[12px] font-black italic text-v-white/60 leading-tight">{t("system.claimDaily")}</p>
                         </div>
                     </div>
                     <button 
@@ -52,7 +54,7 @@ export default function BonusManager() {
                         disabled={claiming}
                         className="w-full py-2 bg-v-red text-white text-[10px] font-black uppercase tracking-widest hover:bg-v-red/80 transition-all disabled:opacity-50"
                     >
-                        {claiming ? "Reclamando..." : "RECLAMAR 500.000 €"}
+                        {claiming ? t("system.claiming") : t("system.claim")}
                     </button>
                 </div>
             ) : (
@@ -62,7 +64,7 @@ export default function BonusManager() {
                         <span className="text-white text-xl">💰</span>
                     </div>
                     <div>
-                        <p className="text-[10px] font-black uppercase text-white tracking-widest">TRANSACCIÓN COMPLETADA</p>
+                        <p className="text-[10px] font-black uppercase text-white tracking-widest">{t("system.transactionDone")}</p>
                         <p className="text-[12px] font-black italic text-green-500 leading-tight mt-1">{message}</p>
                     </div>
                     <button 

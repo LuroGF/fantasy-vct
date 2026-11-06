@@ -2,6 +2,7 @@ import { getTeamLogo } from "@/lib/vlr-shared";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLocale } from "./LocaleProvider";
+import { translatePlayerRole } from "@/lib/i18n/player";
 
 interface PlayerCardProps {
   player: {
@@ -138,7 +139,7 @@ export function PlayerCard({
                 </span>
                 <span className="text-white/10 text-[10px]">|</span>
                 <span className={`text-[9px] font-black uppercase tracking-[0.15em] text-role-${player.role} truncate`}>
-                  {player.role}
+                  {translatePlayerRole(player.role, t)}
                 </span>
               </div>
             </div>

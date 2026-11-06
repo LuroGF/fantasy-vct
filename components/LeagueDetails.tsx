@@ -15,6 +15,7 @@ import { haptic } from "@/lib/utils/haptics";
 import { sileo } from "sileo";
 import { Crown, Flag, UserMinus } from "lucide-react";
 import { useLocale } from "./LocaleProvider";
+import { translatePlayerRole } from "@/lib/i18n/player";
 
 interface LeagueDetailsProps {
   leagueId: string;
@@ -255,13 +256,13 @@ export default function LeagueDetails({
       console.error(err);
 
       sileo.error({
-        title: "No se pudieron cargar las jornadas",
-        description: "Inténtalo de nuevo.",
+        title: t("leagues.loadGameweeksFailed"),
+        description: t("leagues.tryAgain"),
       });
     } finally {
       setGameweekLoading(false);
     }
-  }, [leagueId]);
+  }, [leagueId, t]);
 
   useEffect(() => {
     if (viewMode !== "gameweeks") {
@@ -312,16 +313,17 @@ export default function LeagueDetails({
   // ============================================================
 
   async function handleShareInviteCode() {
-    const shareText = `Únete a mi liga${
-      leagueName ? ` "${leagueName}"` : ""
-    } con este código: ${inviteCode}`;
+    const shareText = t("leagues.shareInviteText", {
+      league: leagueName ? `"${leagueName}"` : "",
+      code: inviteCode,
+    });
 
     try {
       if (navigator.share) {
         haptic.light();
 
         await navigator.share({
-          title: leagueName ? `Liga ${leagueName}` : "Invitación a liga",
+          title: leagueName ? t("leagues.shareLeagueTitle", { league: leagueName }) : t("leagues.leagueInvitation"),
 
           text: shareText,
         });
@@ -335,7 +337,7 @@ export default function LeagueDetails({
 
       sileo.success({
         title: t("leagues.codeCopied"),
-        description: `Código ${inviteCode} copiado al portapapeles`,
+        description: t("leagues.codeCopiedDescription", { code: inviteCode }),
       });
     } catch (err) {
       console.error(err);
@@ -614,7 +616,7 @@ export default function LeagueDetails({
 
               <div className="overflow-hidden border border-white/5">
                 {data.map((manager, index) => {
-                  const username = manager.profiles?.username || "Manager";
+                  const username = manager.profiles?.username || t("leagues.coachFallback");
 
                   const rosterValue = manager.roster.reduce(
                     (sum, player) => sum + Number(player.market_value || 0),
@@ -651,7 +653,7 @@ export default function LeagueDetails({
                            <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-black uppercase tracking-wider text-v-white transition-colors group-hover:text-v-red sm:text-[15px]">
                               <span className="truncate">{username}</span>
                               {manager.profile_id === leaderId && (
-                                <Crown className="h-3 w-3 shrink-0 text-v-red" aria-label="Líder de la liga" />
+                                <Crown className="h-3 w-3 shrink-0 text-v-red" aria-label={t("leagues.leaderAria")} />
                               )}
                             </p>
 
@@ -716,7 +718,7 @@ export default function LeagueDetails({
                   </p>
 
                   <h3 className="text-xl font-black italic uppercase tracking-tighter">
-                    {gameweekData?.selectedGameweek?.name ?? "Jornadas"}
+                    {gameweekData?.selectedGameweek?.name ?? t("leagues.gameweeksDefault")}
                   </h3>
                 </div>
 
@@ -751,20 +753,20 @@ export default function LeagueDetails({
               {gameweekLoading ? (
                 <div className="py-14 text-center">
                   <p className="animate-pulse text-[9px] font-black uppercase tracking-[0.3em] text-v-white/25">
-                    Cargando jornada...
+                    {t("leagues.loadingGameweek")}
                   </p>
                 </div>
               ) : !gameweekData?.selectedGameweek ? (
                 <div className="py-14 text-center">
                   <p className="text-[9px] font-black uppercase tracking-[0.3em] text-v-white/25">
-                    Todavía no hay jornadas
+                    {t("leagues.noGameweeks")}
                   </p>
                 </div>
               ) : (
                 <>
                   <div className="mb-3 grid grid-cols-[1fr_auto_auto] items-end gap-5 px-2">
                     <h3 className="text-xl italic uppercase tracking-tighter">
-                      Clasificación jornada
+                      {t("leagues.gameweekStandings")}
                     </h3>
 
                     <span className="hidden text-[8px] font-black uppercase tracking-[0.2em] text-v-white/25 sm:block">
@@ -772,13 +774,13 @@ export default function LeagueDetails({
                     </span>
 
                     <span className="text-[8px] font-black uppercase tracking-[0.2em] text-v-white/25">
-                      Jornada
+                      {t("leagues.gameweekLabel")}
                     </span>
                   </div>
 
                   <div className="overflow-hidden border border-white/5">
                     {gameweekData.standings.map((manager, index) => {
-                      const username = manager.profiles?.username || "Manager";
+                      const username = manager.profiles?.username || t("leagues.coachFallback");
 
                       return (
                         <button
@@ -851,7 +853,7 @@ export default function LeagueDetails({
                     {gameweekData.standings.length === 0 && (
                       <div className="py-14 text-center">
                         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-v-white/25">
-                          No hay resultados para esta jornada
+                          {t("leagues.noGameweekResults")}
                         </p>
                       </div>
                     )}
@@ -947,7 +949,7 @@ export default function LeagueDetails({
                 </p>
 
                 <h3 className="truncate text-3xl font-black italic uppercase tracking-tighter text-v-white">
-                  {selectedManager.profiles?.username || "Manager"}
+                  {selectedManager.profiles?.username || t("leagues.coachFallback")}
                 </h3>
 
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
@@ -1087,13 +1089,13 @@ export default function LeagueDetails({
                   )}
 
                   {gameweekLoading ? (
-                    <p className="py-14 text-center text-[9px] font-black uppercase tracking-[0.25em] text-v-white/30">Cargando jornada...</p>
+                    <p className="py-14 text-center text-[9px] font-black uppercase tracking-[0.25em] text-v-white/30">{t("leagues.loadingGameweek")}</p>
                   ) : selectedManagerGameweek ? (
                     <>
                       <div className="flex items-end justify-between border-b border-white/5 pb-4">
                         <div>
-                          <p className="text-[8px] font-black uppercase tracking-wider text-v-white/30">Resultado de la jornada</p>
-                          <p className="mt-1 text-2xl font-black italic text-v-red">{selectedManagerGameweek.gameweek_points.toLocaleString()} pts</p>
+                          <p className="text-[8px] font-black uppercase tracking-wider text-v-white/30">{t("leagues.gameweekResult")}</p>
+                          <p className="mt-1 text-2xl font-black italic text-v-red">{selectedManagerGameweek.gameweek_points.toLocaleString()} {t("leagues.pts")}</p>
                         </div>
                         <p className="text-sm font-black italic">#{selectedManagerGameweek.gameweek_rank ?? "-"}</p>
                       </div>
@@ -1109,18 +1111,18 @@ export default function LeagueDetails({
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate pr-1 text-sm font-black italic uppercase">{player.nickname}</p>
-                              <p className="mt-1 text-[8px] font-black uppercase text-v-white/30">{player.pro_teams?.tag || "FA"} · {player.role || "Sin rol"}</p>
+                              <p className="mt-1 text-[8px] font-black uppercase text-v-white/30">{player.pro_teams?.tag || "FA"} · {translatePlayerRole(player.role, t)}</p>
                             </div>
-                            <span className="shrink-0 text-sm font-black italic text-v-red">{player.gameweek_points.toLocaleString()} pts</span>
+                            <span className="shrink-0 text-sm font-black italic text-v-red">{player.gameweek_points.toLocaleString()} {t("leagues.pts")}</span>
                           </Link>
                         ))}
                       </div>
                       {selectedManagerGameweek.lineup.length === 0 && (
-                        <p className="py-14 text-center text-[9px] font-black uppercase tracking-[0.25em] text-v-white/25">Sin alineación congelada para esta jornada</p>
+                        <p className="py-14 text-center text-[9px] font-black uppercase tracking-[0.25em] text-v-white/25">{t("leagues.frozenLineupEmpty")}</p>
                       )}
                     </>
                   ) : (
-                    <p className="py-14 text-center text-[9px] font-black uppercase tracking-[0.25em] text-v-white/25">Todavía no hay puntos para esta jornada</p>
+                    <p className="py-14 text-center text-[9px] font-black uppercase tracking-[0.25em] text-v-white/25">{t("leagues.noGameweekPoints")}</p>
                   )}
                 </div>
               )}
@@ -1147,28 +1149,28 @@ export default function LeagueDetails({
             <div className="flex shrink-0 items-start justify-between border-b border-white/5 p-5 sm:p-6">
               <div>
                 <p className="mb-1 text-[8px] font-black uppercase tracking-[0.25em] text-v-red">
-                  Alineación de la jornada
+                  {t("leagues.gameweekLineup")}
                 </p>
 
                 <h3 className="text-3xl font-black italic uppercase tracking-tighter">
-                  {selectedGameweekManager.profiles?.username || "Manager"}
+                  {selectedGameweekManager.profiles?.username || t("leagues.coachFallback")}
                 </h3>
 
                 <div className="mt-3 flex gap-6">
                   <div>
                     <p className="text-[7px] font-black uppercase tracking-widest text-v-white/25">
-                      Jornada
+                      {t("leagues.gameweekLabel")}
                     </p>
 
                     <p className="mt-0.5 text-sm font-black italic text-v-red">
                       {selectedGameweekManager.gameweek_points.toLocaleString()}{" "}
-                      pts
+                      {t("leagues.pts")}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-[7px] font-black uppercase tracking-widest text-v-white/25">
-                      Posición
+                      {t("leagues.position")}
                     </p>
 
                     <p className="mt-0.5 text-sm font-black italic">
@@ -1191,11 +1193,11 @@ export default function LeagueDetails({
               <div className="mb-4 flex items-end justify-between">
                 <div>
                   <h4 className="text-lg font-black italic uppercase tracking-tight">
-                    Titulares
+                    {t("leagues.starters")}
                   </h4>
 
                   <p className="text-[7px] font-black uppercase tracking-[0.18em] text-v-red">
-                    Alineación congelada de la jornada
+                    {t("leagues.frozenLineup")}
                   </p>
                 </div>
 
@@ -1209,7 +1211,7 @@ export default function LeagueDetails({
                   <Link
                     key={player.id}
                     href={`/players/${player.id}?league=${leagueId}`}
-                    aria-label={`Ver perfil de ${player.nickname}`}
+                    aria-label={t("leagues.viewPlayer", { player: player.nickname })}
                     className="group flex min-w-0 items-center gap-4 overflow-hidden border border-white/5 bg-black/15 p-3 transition-colors hover:border-v-red/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
                   >
                     <div className="h-16 w-16 shrink-0 overflow-hidden border border-white/10 bg-black/20">
@@ -1225,12 +1227,12 @@ export default function LeagueDetails({
 
                           <p className="mt-1 truncate text-[8px] font-black uppercase tracking-[0.1em] text-v-white/35">
                             {player.pro_teams?.tag || "FA"} ·{" "}
-                            {player.role || "Sin rol"}
+                            {translatePlayerRole(player.role, t)}
                           </p>
                         </div>
 
                         <span className="shrink-0 bg-v-red/10 px-2 py-1 text-[9px] font-black italic text-v-red">
-                          {player.gameweek_points.toLocaleString()} pts
+                          {player.gameweek_points.toLocaleString()} {t("leagues.pts")}
                         </span>
                       </div>
                     </div>
@@ -1241,7 +1243,7 @@ export default function LeagueDetails({
               {selectedGameweekManager.lineup.length === 0 && (
                 <div className="py-14 text-center">
                   <p className="text-[9px] font-black uppercase tracking-[0.3em] text-v-white/25">
-                    No hay snapshot de alineación para esta jornada
+                    {t("leagues.noLineupSnapshot")}
                   </p>
                 </div>
               )}
@@ -1372,7 +1374,7 @@ function RosterSection({
           <Link
             key={player.id}
             href={`/players/${player.id}?league=${leagueId}`}
-            aria-label={`Ver perfil de ${player.nickname}`}
+            aria-label={`${t("leagues.viewPlayer")}: ${player.nickname}`}
             className="group flex min-w-0 items-center gap-4 overflow-hidden border border-white/5 bg-black/15 p-3 transition-colors hover:border-v-red/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v-red"
           >
             <div className="h-16 w-16 shrink-0 overflow-hidden border border-white/10 bg-black/20">
@@ -1399,7 +1401,7 @@ function RosterSection({
 
                     <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-v-white/35">
                       {player.pro_teams?.tag || "FA"} ·{" "}
-                      {player.role || t("leagues.noRole")}
+                      {translatePlayerRole(player.role, t)}
                     </p>
                   </div>
                 </div>

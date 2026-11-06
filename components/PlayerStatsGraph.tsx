@@ -9,16 +9,18 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useLocale } from "./LocaleProvider";
 
 interface PlayerStatsGraphProps {
   data: number[];
 }
 
 export function PlayerStatsGraph({ data }: PlayerStatsGraphProps) {
+  const { t } = useLocale();
   if (!data?.length) return null;
 
   const chartData = data.map((points, index) => ({
-    match: `P${index + 1}`,
+    match: t("system.matchShort", { number: index + 1 }),
     puntos: points,
   }));
 
@@ -46,7 +48,7 @@ export function PlayerStatsGraph({ data }: PlayerStatsGraphProps) {
             width={34}
           />
           <Tooltip
-            formatter={(value) => [`${value} pts`, "Fantasy"]}
+            formatter={(value) => [`${value} pts`, t("system.fantasyPoints")]}
             contentStyle={{
               backgroundColor: "#111111",
               borderColor: "rgba(214,178,94,0.35)",

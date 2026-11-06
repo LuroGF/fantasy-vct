@@ -1,15 +1,17 @@
 "use client";
 
 import Image from "next/image";
+import { useLocale } from "@/components/LocaleProvider";
 
 interface MatchHistoryListProps {
   matches: any[];
   playerTeamId?: string | null;
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "Fecha pendiente";
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDate(value: string | null | undefined, locale: string, pending: string) {
+  if (!value) return pending;
+  const dateLocale = locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "es-ES";
+  return new Intl.DateTimeFormat(dateLocale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -24,6 +26,7 @@ export function MatchHistoryList({
   matches,
   playerTeamId,
 }: MatchHistoryListProps) {
+  const { locale, t } = useLocale();
   const recentMatches = (matches ?? []).slice(0, 5);
 
   return (
@@ -43,7 +46,7 @@ export function MatchHistoryList({
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-[7px] font-black uppercase tracking-[0.18em] text-v-white/25">
-                  {formatDate(match.match_date)} · {performance.maps_played} mapas
+                  {formatDate(match.match_date, locale, t("players.datePending"))} · {t("players.maps", { count: performance.maps_played })}
                 </p>
                 <div className="mt-1 flex items-center gap-2">
                   {opponent?.logo_url ? (
@@ -56,7 +59,7 @@ export function MatchHistoryList({
                     />
                   ) : null}
                   <p className="truncate text-base font-black italic uppercase">
-                    vs {opponent?.tag || opponent?.name || "Rival"}
+                    vs {opponent?.tag || opponent?.name || t("players.opponent")}
                   </p>
                   {match.team_a_score !== null && match.team_b_score !== null ? (
                     <span className="text-[10px] font-black text-v-white/35">
@@ -65,7 +68,7 @@ export function MatchHistoryList({
                   ) : null}
                 </div>
                 <p className="mt-1 truncate text-[8px] font-black uppercase tracking-wider text-v-white/30">
-                  {performance.map_names?.join(" · ") || "Mapas pendientes"}
+                  {performance.map_names?.join(" · ") || t("players.mapsPending")}
                 </p>
               </div>
 
@@ -91,7 +94,7 @@ export function MatchHistoryList({
                     {performance.fantasy_points}
                   </p>
                   <p className="text-[7px] font-black uppercase tracking-widest text-v-white/30">
-                    Puntos
+                    {t("players.points")}
                   </p>
                 </div>
               </div>
@@ -99,29 +102,29 @@ export function MatchHistoryList({
 
             <details className="group border-t border-white/5 bg-black/10">
               <summary className="cursor-pointer list-none px-4 py-2 text-[8px] font-black uppercase tracking-[0.16em] text-v-white/30 transition hover:text-v-red">
-                Ver cálculo de puntos
+                {t("players.viewCalculation")}
               </summary>
               <div className="grid grid-cols-2 gap-2 border-t border-white/5 px-4 py-3 text-[9px] sm:grid-cols-4">
                 <div>
-                  <p className="text-v-white/30">Kills y muertes</p>
+                  <p className="text-v-white/30">{t("players.killsDeaths")}</p>
                   <p className="font-black text-v-white/70">
                     {signed(Number(breakdown.combat ?? 0))}
                   </p>
                 </div>
                 <div>
-                  <p className="text-v-white/30">Asistencias</p>
+                  <p className="text-v-white/30">{t("players.assists")}</p>
                   <p className="font-black text-v-white/70">
                     {signed(Number(breakdown.assists ?? 0))}
                   </p>
                 </div>
                 <div>
-                  <p className="text-v-white/30">Primeros duelos</p>
+                  <p className="text-v-white/30">{t("players.firstDuels")}</p>
                   <p className="font-black text-v-white/70">
                     {signed(Number(breakdown.first_duels ?? 0))}
                   </p>
                 </div>
                 <div>
-                  <p className="text-v-white/30">Bonus ACS</p>
+                  <p className="text-v-white/30">{t("players.acsBonus")}</p>
                   <p className="font-black text-v-white/70">
                     {signed(Number(breakdown.acs ?? 0))}
                   </p>

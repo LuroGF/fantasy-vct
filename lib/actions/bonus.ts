@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "./auth";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 const DAILY_BONUS_AMOUNT = 500_000;
 
@@ -63,8 +64,9 @@ export async function getBonusStatus(): Promise<DailyBonusStatus> {
 }
 
 export async function claimDailyBonus() {
+  const { t } = await getServerTranslator();
   const session = await getSession();
-  if (!session) return { success: false, error: "No autorizado" };
+  if (!session) return { success: false, error: t("system.unauthorized") };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("claim_daily_bonus");
@@ -73,7 +75,7 @@ export async function claimDailyBonus() {
     console.error("Error claiming daily bonus:", error);
     return {
       success: false,
-      error: "No se ha podido reclamar la recompensa. Inténtalo de nuevo.",
+      error: t("system.claimFailed"),
     };
   }
 
@@ -81,7 +83,7 @@ export async function claimDailyBonus() {
   if (!row?.claimed) {
     return {
       success: false,
-      error: "La recompensa de hoy ya ha sido reclamada.",
+      error: t("system.alreadyClaimed"),
     };
   }
 
@@ -100,7 +102,7 @@ export async function claimDailyBonus() {
     claimedAt: row.claimed_at,
     message:
       leaguesRewarded === 1
-        ? "+500.000 € añadidos a tu liga"
-        : `+500.000 € en cada una de tus ${leaguesRewarded} ligas`,
+        ? t("system.rewardOneLeague")
+        : t("system.rewardMultipleLeagues", { count: leaguesRewarded }),
   };
 }

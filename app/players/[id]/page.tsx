@@ -14,16 +14,25 @@ import {
   TrendingUp,
 } from "lucide-react";
 import BackLink from "@/components/BackLink";
+import { getServerTranslator } from "@/lib/i18n/server";
+import { translatePlayerRole } from "@/lib/i18n/player";
 
 export const dynamic = "force-dynamic";
 
-function money(value?: number | string | null) {
-  return `${(Number(value ?? 0) / 1_000_000).toFixed(1)}M €`;
+function money(value: number | string | null | undefined, locale: string) {
+  const numberLocale = locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "es-ES";
+  return new Intl.NumberFormat(numberLocale, {
+    style: "currency",
+    currency: "EUR",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value ?? 0));
 }
 
-function dateTime(value?: string | null) {
-  if (!value) return "Pendiente";
-  return new Intl.DateTimeFormat("es-ES", {
+function dateTime(value: string | null | undefined, locale: string, pending: string) {
+  if (!value) return pending;
+  const dateLocale = locale === "en" ? "en-GB" : locale === "fr" ? "fr-FR" : "es-ES";
+  return new Intl.DateTimeFormat(dateLocale, {
     timeZone: "Europe/Madrid",
     day: "2-digit",
     month: "short",
@@ -40,6 +49,7 @@ export default async function PlayerPage(props: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ league?: string }>;
 }) {
+  const { locale, t } = await getServerTranslator();
   const [params, searchParams] = await Promise.all([
     props.params,
     props.searchParams,
@@ -53,13 +63,13 @@ export default async function PlayerPage(props: {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
         <p className="font-black uppercase tracking-widest text-v-white/50">
-          Jugador no encontrado
+          {t("players.notFound")}
         </p>
         <Link
           href="/market"
           className="text-xs font-bold uppercase text-v-red hover:underline"
         >
-          Volver al mercado
+          {t("players.backMarket")}
         </Link>
       </div>
     );
@@ -87,19 +97,19 @@ export default async function PlayerPage(props: {
   const trend =
     stats.trend === "up"
       ? {
-          label: `Sube ${stats.trend_delta} pts`,
+          label: t("players.formUp", { points: stats.trend_delta ?? 0 }),
           icon: TrendingUp,
           color: "text-emerald-400",
         }
       : stats.trend === "down"
         ? {
-            label: `Baja ${Math.abs(stats.trend_delta ?? 0)} pts`,
+            label: t("players.formDown", { points: Math.abs(stats.trend_delta ?? 0) }),
             icon: TrendingDown,
             color: "text-rose-400",
           }
         : stats.trend === "stable"
-          ? { label: "Forma estable", icon: Minus, color: "text-v-white/50" }
-          : { label: "Esperando datos", icon: Minus, color: "text-v-white/30" };
+          ? { label: t("players.stableForm"), icon: Minus, color: "text-v-white/50" }
+          : { label: t("players.waitingData"), icon: Minus, color: "text-v-white/30" };
   const TrendIcon = trend.icon;
 
   return (
@@ -108,7 +118,7 @@ export default async function PlayerPage(props: {
         <div className="flex items-center gap-2 px-1 text-v-white/40 transition hover:text-v-white/75">
           <ChevronLeft className="h-5 w-5" />
           <h1 className="pr-1 text-xl font-black italic uppercase tracking-wider">
-            Perfil del jugador
+            {t("players.profile")}
           </h1>
         </div>
       </BackLink>
@@ -172,11 +182,11 @@ export default async function PlayerPage(props: {
                   {player.nickname}
                 </h2>
                 <span className="border border-v-red/25 bg-v-red/10 px-2 py-1 text-[7px] font-black uppercase tracking-widest text-v-red">
-                  {provisional ? "Plantilla provisional" : "Elegible VCT 2027"}
+                  {provisional ? t("players.provisionalRoster") : t("players.eligible")}
                 </span>
               </div>
               <p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-v-white/45">
-                {player.pro_teams?.name || "Sin equipo"} · {player.role}
+                {player.pro_teams?.name || t("players.noTeam")} · {translatePlayerRole(player.role, t)}
                 {player.pro_teams?.region
                   ? ` · ${String(player.pro_teams.region).toUpperCase()}`
                   : ""}
@@ -186,10 +196,10 @@ export default async function PlayerPage(props: {
 
           <div className="border-l-2 border-v-red pl-4 sm:text-right">
             <p className="text-[7px] font-black uppercase tracking-widest text-v-white/30">
-              Valor de mercado
+              {t("players.marketValue")}
             </p>
             <p className="mt-1 text-2xl font-black italic text-v-red">
-              {money(player.market_value)}
+              {money(player.market_value, locale)}
             </p>
           </div>
         </div>
@@ -200,16 +210,16 @@ export default async function PlayerPage(props: {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[7px] font-black uppercase tracking-[0.2em] text-v-red">
-                {leagueContext.league?.name || "Liga activa"}
+                {leagueContext.league?.name || t("players.activeLeague")}
               </p>
               <h3 className="mt-1 text-lg font-black italic uppercase">
                 {leagueContext.auction
-                  ? "Disponible en el mercado"
+                  ? t("players.availableMarket")
                   : leagueContext.roster
                     ? leagueContext.is_mine
-                      ? "Jugador de tu plantilla"
-                      : `Pertenece a ${leagueContext.owner?.username || "otro entrenador"}`
-                    : "Disponible para próximos mercados"}
+                      ? t("players.yourSquad")
+                      : t("players.belongsTo", { coach: leagueContext.owner?.username || t("players.anotherCoach") })
+                    : t("players.futureMarkets")}
               </h3>
             </div>
 
@@ -218,28 +228,28 @@ export default async function PlayerPage(props: {
                 <>
                   <div>
                     <p className="text-[7px] font-black uppercase text-v-white/25">
-                      Precio base
+                      {t("players.basePrice")}
                     </p>
                     <p className="text-sm font-black italic">
-                      {money(leagueContext.auction.market_value_snapshot)}
+                      {money(leagueContext.auction.market_value_snapshot, locale)}
                     </p>
                   </div>
                   <div>
                     <p className="text-[7px] font-black uppercase text-v-white/25">
-                      Tu puja
+                      {t("players.yourBid")}
                     </p>
                     <p className="text-sm font-black italic text-v-red">
                       {leagueContext.my_bid
-                        ? money(leagueContext.my_bid.amount)
-                        : "Sin puja"}
+                        ? money(leagueContext.my_bid.amount, locale)
+                        : t("players.noBid")}
                     </p>
                   </div>
                   <div className="col-span-2">
                     <p className="text-[7px] font-black uppercase text-v-white/25">
-                      Cierra
+                      {t("players.closes")}
                     </p>
                     <p className="text-sm font-black italic">
-                      {dateTime(leagueContext.auction.ends_at)}
+                      {dateTime(leagueContext.auction.ends_at, locale, t("players.pending"))}
                     </p>
                   </div>
                 </>
@@ -247,27 +257,27 @@ export default async function PlayerPage(props: {
                 <>
                   <div>
                     <p className="text-[7px] font-black uppercase text-v-white/25">
-                      Cláusula
+                      {t("players.clause")}
                     </p>
                     <p className="text-sm font-black italic text-v-red">
-                      {money(leagueContext.roster.release_clause)}
+                      {money(leagueContext.roster.release_clause, locale)}
                     </p>
                   </div>
                   <div>
                     <p className="text-[7px] font-black uppercase text-v-white/25">
-                      Estado
+                      {t("players.status")}
                     </p>
                     <p className="text-sm font-black italic uppercase">
-                      {leagueContext.roster.is_starter ? "Titular" : "Suplente"}
+                      {leagueContext.roster.is_starter ? t("players.starter") : t("players.substitute")}
                     </p>
                   </div>
                   {leagueContext.listing ? (
                     <div className="col-span-2">
                       <p className="text-[7px] font-black uppercase text-v-white/25">
-                        En venta por
+                        {t("players.listedFor")}
                       </p>
                       <p className="text-sm font-black italic">
-                        {money(leagueContext.listing.asking_price)}
+                        {money(leagueContext.listing.asking_price, locale)}
                       </p>
                     </div>
                   ) : null}
@@ -276,10 +286,10 @@ export default async function PlayerPage(props: {
                     new Date() ? (
                     <div className="col-span-2">
                       <p className="text-[7px] font-black uppercase text-v-white/25">
-                        Cláusula protegida hasta
+                        {t("players.protectedUntil")}
                       </p>
                       <p className="text-sm font-black italic">
-                        {dateTime(leagueContext.roster.clause_protected_until)}
+                        {dateTime(leagueContext.roster.clause_protected_until, locale, t("players.pending"))}
                       </p>
                     </div>
                   ) : null}
@@ -288,7 +298,7 @@ export default async function PlayerPage(props: {
             </div>
 
             <Link href={marketUrl} className="v-btn-primary px-5 py-3 text-center text-[9px]">
-              {leagueContext.auction ? "Ir a pujar" : "Volver al mercado"}
+              {leagueContext.auction ? t("players.goBid") : t("players.backMarket")}
             </Link>
           </div>
         </section>
@@ -296,10 +306,10 @@ export default async function PlayerPage(props: {
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          ["Media por partido", statValue(stats.avg_points), "Promedio VCT 2027"],
-          ["Últimos 5", statValue(stats.last_5_avg), "Media reciente"],
-          ["Mejor partido", statValue(stats.best_points), "Máxima puntuación"],
-          ["Partidos", String(stats.total_matches), "Muestra registrada"],
+          [t("players.averagePerMatch"), statValue(stats.avg_points), t("players.seasonAverage")],
+          [t("players.lastFive"), statValue(stats.last_5_avg), t("players.recentAverage")],
+          [t("players.bestMatch"), statValue(stats.best_points), t("players.maxScore")],
+          [t("players.matches"), String(stats.total_matches), t("players.recordedSample")],
         ].map(([label, value, hint]) => (
           <div key={label} className="v-panel p-4">
             <p className="text-[7px] font-black uppercase tracking-[0.16em] text-v-white/30">
@@ -314,7 +324,7 @@ export default async function PlayerPage(props: {
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="v-panel p-4 text-center">
           <p className="text-[7px] font-black uppercase tracking-widest text-v-white/30">
-            Puntos totales
+            {t("players.totalPoints")}
           </p>
           <p className="mt-1 text-xl font-black italic text-v-red">
             {stats.has_data ? stats.total_points : "—"}
@@ -322,7 +332,7 @@ export default async function PlayerPage(props: {
         </div>
         <div className="v-panel p-4 text-center">
           <p className="text-[7px] font-black uppercase tracking-widest text-v-white/30">
-            K/D acumulado
+            {t("players.cumulativeKd")}
           </p>
           <p className="mt-1 text-xl font-black italic">
             {statValue(stats.avg_kd)}
@@ -330,7 +340,7 @@ export default async function PlayerPage(props: {
         </div>
         <div className="v-panel p-4 text-center">
           <p className="text-[7px] font-black uppercase tracking-widest text-v-white/30">
-            ACS medio
+            {t("players.averageAcs")}
           </p>
           <p className="mt-1 text-xl font-black italic">
             {statValue(stats.avg_acs)}
@@ -346,15 +356,15 @@ export default async function PlayerPage(props: {
             </div>
             <div className="min-w-0">
               <p className="text-[7px] font-black uppercase tracking-[0.18em] text-v-red">
-                Próximo partido
+                {t("players.nextMatch")}
               </p>
               <p className="truncate pr-1 text-base font-black italic uppercase">
-                vs {opponent?.name || opponent?.tag || "Rival por confirmar"}
+                vs {opponent?.name || opponent?.tag || t("players.opponentPending")}
               </p>
             </div>
           </div>
           <p className="shrink-0 text-right text-sm font-black italic text-v-white/65">
-            {dateTime(nextMatch.match_date)}
+            {dateTime(nextMatch.match_date, locale, t("players.pending"))}
           </p>
         </section>
       ) : null}
@@ -365,10 +375,10 @@ export default async function PlayerPage(props: {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-black italic uppercase">
-                  Forma reciente
+                  {t("players.recentForm")}
                 </h3>
                 <p className="text-[7px] font-black uppercase tracking-[0.16em] text-v-white/25">
-                  Puntos Fantasy · últimos cinco partidos
+                  {t("players.fantasyLastFive")}
                 </p>
               </div>
               <div className={`flex items-center gap-1 text-[9px] font-black uppercase ${trend.color}`}>
@@ -382,10 +392,10 @@ export default async function PlayerPage(props: {
           <section className="space-y-3">
             <div>
               <h3 className="text-sm font-black italic uppercase">
-                Últimos partidos
+                {t("players.latestMatches")}
               </h3>
               <p className="text-[7px] font-black uppercase tracking-[0.16em] text-v-white/25">
-                Estadísticas agregadas de todos los mapas
+                {t("players.allMapsStats")}
               </p>
             </div>
             <MatchHistoryList
@@ -397,12 +407,10 @@ export default async function PlayerPage(props: {
       ) : (
         <section className="v-panel px-6 py-12 text-center">
           <p className="text-lg font-black italic uppercase text-v-white/55">
-            Aún no hay rendimiento de VCT 2027
+            {t("players.noPerformance")}
           </p>
           <p className="mx-auto mt-2 max-w-lg text-sm text-v-white/30">
-            Las medias, la tendencia y el historial aparecerán cuando este jugador
-            dispute sus primeros mapas oficiales. Los guiones no representan una
-            puntuación de cero.
+            {t("players.noPerformanceDescription")}
           </p>
         </section>
       )}

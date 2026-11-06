@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { ArrowUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocale } from "./LocaleProvider";
 
 export function ScrollToTopButton() {
+  const { t } = useLocale();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -38,6 +40,7 @@ export function ScrollToTopButton() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
           onClick={scrollToTop}
+          aria-label={t("system.scrollTop")}
           className="fixed bottom-24 right-4 z-50 p-3 bg-v-red text-white shadow-lg shadow-v-red/20 active:scale-90 transition-transform"
           style={{
             clipPath: "polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%)",

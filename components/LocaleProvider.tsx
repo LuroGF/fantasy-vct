@@ -22,8 +22,8 @@ function readStoredLocale() {
   return isLocale(cookie) ? cookie : defaultLocale;
 }
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, updateLocale] = useState<Locale>(defaultLocale);
+export function LocaleProvider({ children, initialLocale = defaultLocale }: { children: React.ReactNode; initialLocale?: Locale }) {
+  const [locale, updateLocale] = useState<Locale>(initialLocale);
 
   useEffect(() => {
     const storedLocale = readStoredLocale();

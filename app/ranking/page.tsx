@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { getLeagueClassification, getUserLeagues } from "@/lib/actions/leagues";
 import { RankingView } from "./RankingView";
 import ClientRefreshWrapper from "@/components/ClientRefreshWrapper";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 export default async function RankingPage() {
+  const { t } = await getServerTranslator();
   const session = await getSession();
   if (!session) return redirect("/login");
 
@@ -16,7 +18,7 @@ export default async function RankingPage() {
   if (!activeLeagueId) {
     return (
       <div className="p-10 text-center opacity-40 italic">
-        Debes unirte a una liga para ver la clasificación.
+        {t("ranking.joinLeague")}
       </div>
     );
   }
@@ -28,8 +30,8 @@ export default async function RankingPage() {
       <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-4xl py-6 flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="flex items-end justify-between px-4 sm:px-6">
           <div>
-            <h1 className="text-4xl leading-none italic uppercase font-black">Clasificación</h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">Líderes de Operación</p>
+            <h1 className="text-4xl leading-none italic uppercase font-black">{t("ranking.title")}</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-v-red">{t("ranking.subtitle")}</p>
           </div>
         </div>
 

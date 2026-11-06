@@ -89,7 +89,7 @@ export default function TopBar() {
         
         if (res.success) {
             haptic.success();
-            setClaimMessage(res.message || "Recompensa reclamada");
+            setClaimMessage(res.message || t("system.rewardClaimed"));
             setBonusStatus((current) => ({ ...current, canClaim: false }));
             router.refresh();
 
@@ -100,7 +100,7 @@ export default function TopBar() {
             }, 2000);
         } else {
             haptic.error();
-            setClaimMessage(res.error || "Error");
+            setClaimMessage(res.error || t("system.genericError"));
             setTimeout(() => setClaimMessage(null), 2000);
         }
         setClaiming(false);
