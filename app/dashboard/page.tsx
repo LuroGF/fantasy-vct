@@ -241,7 +241,7 @@ export default async function DashboardPage({
 
         {userLeagues.length > 0 && (
           <Suspense fallback={<div className="h-32 v-panel animate-pulse bg-white/5" />}>
-            <RecentActivity profileId={user.id} />
+            <RecentActivity leagueId={selectedParticipation?.league_id} />
           </Suspense>
         )}
       </div>

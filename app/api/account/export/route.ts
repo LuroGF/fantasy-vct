@@ -69,6 +69,10 @@ export async function GET() {
       .from("league_reports")
       .select("league_id, reporter_id, target_profile_id, reason, details, status, created_at, resolved_at")
       .or(`reporter_id.eq.${profileId},target_profile_id.eq.${profileId}`),
+    supabaseAdmin
+      .from("league_activity_events")
+      .select("league_id, event_type, actor_profile_id, target_profile_id, player_id, amount, created_at")
+      .or(`actor_profile_id.eq.${profileId},target_profile_id.eq.${profileId}`),
   ]) as QueryResult[];
 
   const failed = results.find((result) => result.error);
@@ -121,6 +125,7 @@ export async function GET() {
     market_bids: results[9].data ?? [],
     manager_offers: managerOffers,
     league_reports: reports,
+    league_activity: results[12].data ?? [],
     excluded_for_security: [
       "password hashes",
       "authentication tokens",

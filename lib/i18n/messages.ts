@@ -7,6 +7,7 @@ export const messages = {
       leagues: "Ligas",
       team: "Mi equipo",
       market: "Mercado",
+      activity: "Actividad",
       more: "Más",
       logout: "Cerrar sesión",
     },
@@ -111,7 +112,7 @@ export const messages = {
       matchesError: "No se han podido cargar los partidos en este momento.", noMatches: "No hay partidos VCT programados para esta semana.",
       noRecentActivity: "Sin actividad reciente en tus ligas", leagueActivity: "Actividad de ligas", latestMoves: "Últimos movimientos",
       recruitment: "Reclutamiento", departure: "Baja", reassignment: "Reasignación", trade: "Intercambio",
-      auction: "Subasta", operation: "Operación", system: "Sistema", item: "Jugador", inLeague: "en",
+      auction: "Subasta", operation: "Operación", system: "Sistema", item: "Jugador", inLeague: "en", viewAllActivity: "Ver toda",
       tutorialOpen: "Cómo jugar", tutorialEyebrow: "Guía para entrenadores", tutorialStep: "Paso {current} de {total}",
       tutorialSkip: "Omitir tutorial", tutorialBack: "Anterior", tutorialNext: "Siguiente", tutorialFinish: "Terminar guía", tutorialSaving: "Guardando…",
       tutorialSaveFailed: "No se ha podido guardar el estado del tutorial. Inténtalo de nuevo.", tutorialGoTo: "Ir a {section}",
@@ -220,10 +221,21 @@ export const messages = {
       statusCancelled: "Cancelada", statusExpired: "Caducada",
     },
     more: {
-      title: "Más", subtitle: "Perfil y preferencias", profile: "Perfil", performance: "Rendimiento", community: "Comunidad",
+      title: "Más", subtitle: "Perfil y preferencias", profile: "Perfil", performance: "Rendimiento", community: "Comunidad", activity: "Actividad de liga",
       notifications: "Notificaciones", invite: "Invitar amigos", rules: "Reglas y puntuación", support: "Ayuda y FAQ",
       privacyTerms: "Privacidad y términos", operations: "Operaciones VLR", logout: "Cerrar sesión", legalNotice: "Aviso legal",
       privacy: "Privacidad", terms: "Términos", cookies: "Cookies",
+    },
+    activity: {
+      title: "Actividad", subtitle: "Todo lo que ocurre en tu liga", selectLeague: "Seleccionar liga", noLeagues: "Únete a una liga para ver su actividad.",
+      goLeagues: "Ir a ligas", filterAll: "Todo", filterLeague: "Liga", filterMarket: "Mercado", filterTransfers: "Fichajes", empty: "Todavía no hay actividad en esta liga.",
+      today: "Hoy", yesterday: "Ayer", eventsCount: "{count} movimientos", actorFallback: "Un entrenador", playerFallback: "un jugador", system: "Sistema",
+      leagueCreated: "{actor} creó la liga", memberJoined: "{actor} se unió a la liga", memberLeft: "{actor} dejó de formar parte de la liga",
+      playerBought: "{actor} fichó a {player} por {amount}", playerSold: "{actor} vendió a {player} por {amount}",
+      releaseClauseFull: "{actor} pagó a {target} la cláusula de {player} por {amount}", releaseClause: "{actor} fichó a {player} pagando {amount} de cláusula",
+      tradeFull: "{actor} incorporó a {player} en un intercambio con {target}", trade: "{actor} incorporó a {player} mediante un intercambio",
+      auctionWon: "{actor} ganó la puja por {player} con {amount}", transferFull: "{player} pasó de {target} a {actor}", transfer: "{actor} incorporó a {player}",
+      marketOperation: "{actor} completó una operación por {player}", viewPlayer: "Ver perfil de {player}", loading: "Cargando actividad…",
     },
     notifications: {
       title: "Avisos", markAllRead: "Marcar todo como leído", newCount: "{count} avisos nuevos", newSingle: "1 aviso nuevo",
@@ -383,6 +395,7 @@ export const messages = {
       leagues: "Leagues",
       team: "My team",
       market: "Market",
+      activity: "Activity",
       more: "More",
       logout: "Log out",
     },
@@ -455,7 +468,7 @@ export const messages = {
       upcomingMatches: "Upcoming VCT matches", viewSchedule: "View schedule", matchesError: "Matches could not be loaded right now.",
       noMatches: "There are no VCT matches scheduled this week.", noRecentActivity: "No recent activity in your leagues",
       leagueActivity: "League activity", latestMoves: "Latest moves", recruitment: "Signing", departure: "Departure",
-      reassignment: "Transfer", trade: "Trade", auction: "Auction", operation: "Operation", system: "System", item: "Player", inLeague: "in",
+      reassignment: "Transfer", trade: "Trade", auction: "Auction", operation: "Operation", system: "System", item: "Player", inLeague: "in", viewAllActivity: "View all",
       tutorialOpen: "How to play", tutorialEyebrow: "Coach guide", tutorialStep: "Step {current} of {total}", tutorialSkip: "Skip tutorial",
       tutorialBack: "Back", tutorialNext: "Next", tutorialFinish: "Finish guide", tutorialSaving: "Saving…", tutorialSaveFailed: "The tutorial status could not be saved. Please try again.", tutorialGoTo: "Go to {section}",
       tutorialWelcomeTitle: "Welcome to the dugout", tutorialWelcomeDescription: "Build a squad with VCT 2027 players, compete against other coaches and earn points from their real performances.",
@@ -557,10 +570,21 @@ export const messages = {
       statusCancelled: "Cancelled", statusExpired: "Expired",
     },
     more: {
-      title: "More", subtitle: "Profile and preferences", profile: "Profile", performance: "Performance", community: "Community",
+      title: "More", subtitle: "Profile and preferences", profile: "Profile", performance: "Performance", community: "Community", activity: "League activity",
       notifications: "Notifications", invite: "Invite friends", rules: "Rules and scoring", support: "Help and FAQ",
       privacyTerms: "Privacy and terms", operations: "VLR operations", logout: "Log out", legalNotice: "Legal notice",
       privacy: "Privacy", terms: "Terms", cookies: "Cookies",
+    },
+    activity: {
+      title: "Activity", subtitle: "Everything happening in your league", selectLeague: "Select league", noLeagues: "Join a league to view its activity.",
+      goLeagues: "Go to leagues", filterAll: "All", filterLeague: "League", filterMarket: "Market", filterTransfers: "Signings", empty: "There is no activity in this league yet.",
+      today: "Today", yesterday: "Yesterday", eventsCount: "{count} moves", actorFallback: "A coach", playerFallback: "a player", system: "System",
+      leagueCreated: "{actor} created the league", memberJoined: "{actor} joined the league", memberLeft: "{actor} is no longer in the league",
+      playerBought: "{actor} signed {player} for {amount}", playerSold: "{actor} sold {player} for {amount}",
+      releaseClauseFull: "{actor} paid {target} the {amount} release clause for {player}", releaseClause: "{actor} signed {player} by paying a {amount} release clause",
+      tradeFull: "{actor} acquired {player} in a trade with {target}", trade: "{actor} acquired {player} in a trade",
+      auctionWon: "{actor} won the bid for {player} with {amount}", transferFull: "{player} moved from {target} to {actor}", transfer: "{actor} acquired {player}",
+      marketOperation: "{actor} completed a deal for {player}", viewPlayer: "View {player}'s profile", loading: "Loading activity…",
     },
     notifications: {
       title: "Alerts", markAllRead: "Mark all as read", newCount: "{count} new alerts", newSingle: "1 new alert",
@@ -717,6 +741,7 @@ export const messages = {
       leagues: "Ligues",
       team: "Mon équipe",
       market: "Marché",
+      activity: "Activité",
       more: "Plus",
       logout: "Se déconnecter",
     },
@@ -789,7 +814,7 @@ export const messages = {
       upcomingMatches: "Prochains matchs VCT", viewSchedule: "Voir le calendrier", matchesError: "Impossible de charger les matchs pour le moment.",
       noMatches: "Aucun match VCT n’est programmé cette semaine.", noRecentActivity: "Aucune activité récente dans vos ligues",
       leagueActivity: "Activité des ligues", latestMoves: "Derniers mouvements", recruitment: "Recrutement", departure: "Départ",
-      reassignment: "Transfert", trade: "Échange", auction: "Enchère", operation: "Opération", system: "Système", item: "Joueur", inLeague: "dans",
+      reassignment: "Transfert", trade: "Échange", auction: "Enchère", operation: "Opération", system: "Système", item: "Joueur", inLeague: "dans", viewAllActivity: "Tout voir",
       tutorialOpen: "Comment jouer", tutorialEyebrow: "Guide de l’entraîneur", tutorialStep: "Étape {current} sur {total}", tutorialSkip: "Ignorer le tutoriel",
       tutorialBack: "Précédent", tutorialNext: "Suivant", tutorialFinish: "Terminer le guide", tutorialSaving: "Enregistrement…", tutorialSaveFailed: "L’état du tutoriel n’a pas pu être enregistré. Réessayez.", tutorialGoTo: "Aller à {section}",
       tutorialWelcomeTitle: "Bienvenue sur le banc", tutorialWelcomeDescription: "Créez un effectif avec des joueurs du VCT 2027, affrontez d’autres entraîneurs et marquez des points grâce à leurs performances réelles.",
@@ -896,10 +921,21 @@ export const messages = {
       statusCancelled: "Annulée", statusExpired: "Expirée",
     },
     more: {
-      title: "Plus", subtitle: "Profil et préférences", profile: "Profil", performance: "Performance", community: "Communauté",
+      title: "Plus", subtitle: "Profil et préférences", profile: "Profil", performance: "Performance", community: "Communauté", activity: "Activité de la ligue",
       notifications: "Notifications", invite: "Inviter des amis", rules: "Règles et scores", support: "Aide et FAQ",
       privacyTerms: "Confidentialité et conditions", operations: "Opérations VLR", logout: "Se déconnecter", legalNotice: "Mentions légales",
       privacy: "Confidentialité", terms: "Conditions", cookies: "Cookies",
+    },
+    activity: {
+      title: "Activité", subtitle: "Tout ce qui se passe dans votre ligue", selectLeague: "Sélectionner la ligue", noLeagues: "Rejoignez une ligue pour voir son activité.",
+      goLeagues: "Voir les ligues", filterAll: "Tout", filterLeague: "Ligue", filterMarket: "Marché", filterTransfers: "Recrutements", empty: "Aucune activité dans cette ligue pour le moment.",
+      today: "Aujourd’hui", yesterday: "Hier", eventsCount: "{count} mouvements", actorFallback: "Un entraîneur", playerFallback: "un joueur", system: "Système",
+      leagueCreated: "{actor} a créé la ligue", memberJoined: "{actor} a rejoint la ligue", memberLeft: "{actor} ne fait plus partie de la ligue",
+      playerBought: "{actor} a recruté {player} pour {amount}", playerSold: "{actor} a vendu {player} pour {amount}",
+      releaseClauseFull: "{actor} a payé à {target} la clause de {player} pour {amount}", releaseClause: "{actor} a recruté {player} en payant une clause de {amount}",
+      tradeFull: "{actor} a recruté {player} lors d’un échange avec {target}", trade: "{actor} a recruté {player} lors d’un échange",
+      auctionWon: "{actor} a remporté l’enchère pour {player} avec {amount}", transferFull: "{player} est passé de {target} à {actor}", transfer: "{actor} a recruté {player}",
+      marketOperation: "{actor} a effectué une opération pour {player}", viewPlayer: "Voir le profil de {player}", loading: "Chargement de l’activité…",
     },
     notifications: {
       title: "Alertes", markAllRead: "Tout marquer comme lu", newCount: "{count} nouvelles alertes", newSingle: "1 nouvelle alerte",
@@ -1062,6 +1098,7 @@ export type MessageKey =
   | `leagues.${keyof (typeof messages)["es"]["leagues"]}`
   | `team.${keyof (typeof messages)["es"]["team"]}`
   | `market.${keyof (typeof messages)["es"]["market"]}`
+  | `activity.${keyof (typeof messages)["es"]["activity"]}`
   | `more.${keyof (typeof messages)["es"]["more"]}`
   | `notifications.${keyof (typeof messages)["es"]["notifications"]}`
   | `profile.${keyof (typeof messages)["es"]["profile"]}`

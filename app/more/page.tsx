@@ -7,6 +7,7 @@ import { getServerTranslator } from "@/lib/i18n/server";
 const baseOptions = [
   { labelKey: "more.profile" as const, href: "/more/profile" },
   { labelKey: "more.performance" as const, href: "/stats" },
+  { labelKey: "more.activity" as const, href: "/activity" },
   { labelKey: "more.community" as const, href: "/more/community" },
   { labelKey: "more.notifications" as const, href: "/more/notifications" },
   { labelKey: "more.invite" as const, href: "/more/invite" },

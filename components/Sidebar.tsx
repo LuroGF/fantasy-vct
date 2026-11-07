@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LogOut, Users, ShoppingCart, Trophy, MoreHorizontal } from "lucide-react";
+import { Activity, Home, LogOut, Users, ShoppingCart, Trophy, MoreHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -20,6 +20,7 @@ const navItems = [
   { href: "/leagues", labelKey: "nav.leagues" as const, icon: Trophy },
   { href: "/team", labelKey: "nav.team" as const, icon: Users },
   { href: "/market", labelKey: "nav.market" as const, icon: ShoppingCart },
+  { href: "/activity", labelKey: "nav.activity" as const, icon: Activity },
   { href: "/more", labelKey: "nav.more" as const, icon: MoreHorizontal },
 ];
 

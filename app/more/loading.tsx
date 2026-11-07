@@ -15,7 +15,7 @@ export default async function MoreLoading() {
       </div>
 
       <div className="v-panel space-y-1 bg-v-gray/40 p-2">
-        {Array.from({ length: 7 }).map((_, index) => (
+        {Array.from({ length: 8 }).map((_, index) => (
           <div
             key={index}
             className="flex items-center justify-between border-b border-white/5 p-4 last:border-0"
