@@ -138,7 +138,7 @@ export default async function DashboardPage({
 
   return (
     <ClientRefreshWrapper>
-      <div className="mx-auto flex w-full max-w-md flex-col gap-8 px-4 py-6 sm:max-w-xl sm:px-6 sm:pb-44 lg:max-w-4xl">
+      <div className="mx-auto flex w-full max-w-full min-w-0 flex-col gap-8 px-4 py-6 sm:max-w-xl sm:px-6 sm:pb-44 lg:max-w-4xl">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0 space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-v-red">
@@ -191,11 +191,11 @@ export default async function DashboardPage({
                 </Link>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
                 {metrics.map((metric) => {
                   const Icon = metric.icon;
                   return (
-                    <div key={metric.label} className="v-panel p-4">
+                    <div key={metric.label} className="v-panel min-w-0 p-4">
                       <div className="mb-4 flex items-center justify-between">
                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-v-white/40">
                           {metric.label}
@@ -203,7 +203,7 @@ export default async function DashboardPage({
                         <Icon className="h-4 w-4 text-v-red" />
                       </div>
                       <p className="text-2xl font-black italic">{metric.value}</p>
-                      <p className="mt-1 text-[9px] text-v-white/35">{metric.detail}</p>
+                      <p className="mt-1 break-words text-[9px] text-v-white/35">{metric.detail}</p>
                     </div>
                   );
                 })}

@@ -137,7 +137,7 @@ export default function TopBar() {
     const hasNotifications = unreadCount > 0 || bonusStatus.canClaim;
 
     return (
-        <header className="sticky top-0 left-0 w-full z-40 bg-black/40 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 h-14 flex items-center justify-between">
+        <header className="sticky left-0 top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] w-full max-w-full items-center justify-between border-b border-white/5 bg-black/40 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:h-14 sm:px-6 sm:pt-0">
             {/* Background design element */}
             <div className="absolute inset-0 bg-linear-to-r from-v-red/5 to-transparent pointer-events-none" />
             

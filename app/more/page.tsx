@@ -29,7 +29,7 @@ export default async function MorePage() {
         className="
   mx-auto
   w-full
-  max-w-md sm:max-w-xl lg:max-w-4xl
+  max-w-full min-w-0 sm:max-w-xl lg:max-w-4xl
   px-4 sm:px-6
   flex flex-col gap-8
   animate-in fade-in slide-in-from-bottom-4 duration-700 py-6

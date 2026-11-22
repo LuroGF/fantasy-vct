@@ -68,7 +68,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-linear-to-b from-v-navy/55 via-v-navy/85 to-v-navy" />
       </div>
 
-      <div className="relative z-10 min-h-screen w-full px-5 sm:px-6 py-10 sm:py-12 lg:grid lg:place-items-center">
+      <div className="relative z-10 min-h-screen w-full px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-[calc(2.5rem+env(safe-area-inset-top))] sm:px-6 sm:py-12 lg:grid lg:place-items-center">
         <div className="w-full max-w-md lg:max-w-lg">
           <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
             <div className="space-y-4">

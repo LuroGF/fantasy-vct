@@ -107,6 +107,9 @@
 html {
   background-color: var(--background);
   scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -137,6 +140,9 @@ body {
   font-family: var(--font-sans);
 
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  overscroll-behavior-x: none;
 
   -webkit-font-smoothing: antialiased;
 
@@ -477,6 +483,13 @@ h3 {
    ========================================================= */
 
 @media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    /* iOS amplía automáticamente los controles con texto inferior a 16px. */
+    font-size: 16px;
+  }
+
   .v-btn {
     @apply px-6 py-3 text-[10px];
 

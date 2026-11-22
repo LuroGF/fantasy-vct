@@ -1,5 +1,5 @@
 // Service Worker for PWA
-const CACHE_NAME = 'vct-fantasy-v1.4';
+const CACHE_NAME = 'vct-fantasy-v1.5';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/offline',

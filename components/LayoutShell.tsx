@@ -26,14 +26,14 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
     pathname === "/cookies";
 
   return (
-    <div className="relative h-dvh w-full overflow-hidden bg-background shadow-2xl">
+    <div className="relative h-dvh w-full max-w-full overflow-hidden bg-background shadow-2xl">
       {/* Sidebar fixed (desktop) */}
       {!isAuthPage && <Sidebar />}
 
       {/* MAIN FULL WIDTH */}
       <div 
         className={cn(
-          "relative h-full w-full transition-all duration-300",
+          "relative h-full min-w-0 w-full max-w-full overflow-hidden transition-all duration-300",
           !isAuthPage && "lg:pl-72"
         )}
       >
@@ -44,8 +44,10 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         <main
           id="main-content"
           className={cn(
-            "w-full overflow-y-auto overscroll-contain custom-scrollbar relative z-10",
-            !isAuthPage ? "h-[calc(100%-7.5rem)] lg:h-[calc(100%-3.5rem)]" : "h-full"
+            "relative z-10 w-full max-w-full min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain custom-scrollbar",
+            !isAuthPage
+              ? "h-[calc(100%-7.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] lg:h-[calc(100%-3.5rem)]"
+              : "h-full"
           )}
         >
           {children}
